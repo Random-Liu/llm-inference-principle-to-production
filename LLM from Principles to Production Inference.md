@@ -1667,7 +1667,7 @@ RDMA 是一种能力，可以跑在不同的物理网络上，目前主流有两
 
 **NVLink Switch：跨机的 NVLink 延伸**
 
-NVLink Switch（如 GB200 NVL72 系统中的 NVSwitch 3.0）通过光缆将多台机器的 GPU 连成一个超大 NVLink 域，突破单机 8 卡的限制，可将 72 张 GPU 组成全互联集群，跨机带宽和延迟接近单机 NVLink 水平。目前主要面向超大规模训练场景，整体成本极高；推理场景的跨机通信需求（PP、Disaggregated Serving）靠 IB/RoCE 已经足够，暂不作重点讨论。
+NVLink Switch（如 GB200 NVL72 系统中的 NVSwitch 3.0）通过光缆将多台机器的 GPU 连成一个超大 NVLink 域，突破单机 8 卡的限制，可将 72 张 GPU 组成全互联集群，跨机带宽和延迟接近单机 NVLink 水平。目前主要面向超大规模训练场景，整体成本极高；推理场景的跨机通信需求（PP、Disaggregated Serving）靠 InfiniBand 或 RoCE 已经足够，暂不作重点讨论。
 
 #### 第四节：网络条件与并行模式的“最佳拍档”
 
@@ -1675,15 +1675,15 @@ NVLink Switch（如 GB200 NVL72 系统中的 NVSwitch 3.0）通过光缆将多�
 1.  **张量并行 (TP) -> 必须“NVLink/NVSwitch”**
     *   **原因**：TP 发生在每一层网络内部（如 Attention 的多头计算），每次前向传播需要多次 All-Reduce 通信，数据量大且频率极高。
     *   **网络要求**：必须运行在具有 NVLink 的单机内部。跨机做 TP 会因为网络延迟导致性能雪崩。
-2.  **流水线并行 (PP) -> “InfiniBand / RoCE” 即可**
+2.  **流水线并行 (PP) -> InfiniBand / RoCE**
     *   **原因**：PP 发生在层与层之间，只有在阶段边界才需要传递激活值（Activations），通信频率低得多。
-    *   **网络要求**：非常适合跨机部署，使用 200G/400G 的 IB 或 RoCE 网络即可轻松应对。
-3.  **上下文并行 (CP) -> 依赖高速环形通信**
+    *   **网络要求**：非常适合跨机部署，使用 200G/400G 的 InfiniBand 或 RoCE 网络即可轻松应对。
+3.  **上下文并行 (CP) -> InfiniBand / RoCE**
     *   **原因**：Ring Attention 需要在环中不断传递 KV Cache。虽然可以通过计算与通信的重叠（Overlap）来掩盖延迟，但对带宽依然有较高要求。
-    *   **网络要求**：单机内 TP+CP 共享 NVLink；跨机 CP 则严重依赖 InfiniBand 等低延迟网络。
-4.  **分离式推理 (Disaggregated Serving) -> 强依赖 RDMA**
+    *   **网络要求**：单机内 TP+CP 共享 NVLink；跨机 CP 则依赖 InfiniBand 或 RoCE，带宽要求比 PP 更高。
+4.  **分离式推理 (Disaggregated Serving) -> InfiniBand / RoCE**
     *   **原因**：Prefill 节点算完的庞大 KV Cache 需要瞬间“拍”到 Decode 节点。
-    *   **网络要求**：必须使用支持 RDMA 的高速网络（IB 或高性能 RoCE），否则网络传输时间将直接抵消分离部署带来的所有延迟收益。
+    *   **网络要求**：必须使用支持 RDMA 的高速网络（InfiniBand 或 RoCE），否则网络传输时间将直接抵消分离部署带来的所有延迟收益。
 
 ---
 
