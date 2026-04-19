@@ -1637,11 +1637,7 @@ Prefill 节点算完了一个 10 万 Token 的 Prompt，产生了几十 GB 的 K
 1.  **PCIe (Peripheral Component Interconnect Express)**:
     *   **特点**：传统的通用总线，GPU 通过 PCIe 与 CPU 及其他设备通信。目前主流的 PCIe 5.0 x16 单向带宽约为 64 GB/s。
     *   **局限**：在张量并行（TP）这种需要极高频、海量数据同步的场景下，PCIe 带宽会成为严重瓶颈。
-
-2.  **NVLink + NVSwitch（现代高速互联方案）**:
-
-    NVLink 和 NVSwitch 是配合使用的两个层次，共同构成单机内的全互联高速网络。
-
+2.  **NVLink + NVSwitch（现代高速互联方案）**: NVLink 和 NVSwitch 是配合使用的两个层次，共同构成单机内的全互联高速网络。
     *   **NVLink（传输介质）**：NVIDIA 专为 GPU 互联开发的高速点对点链路，允许两张 GPU 之间直接读写对方显存（P2P），绕过 CPU。带宽极高，如 NVLink 4.0 在 H100 上可提供高达 900 GB/s 的双向总带宽。
     *   **NVSwitch（交换节点）**：NVLink 是点对点连接，若要让 8 张 GPU 两两全速互联，理论上需要 C(8,2)=28 条独立链路，GPU 的物理接口根本不够用。NVSwitch 解决了这个扩展性问题——每张 GPU 通过 NVLink 连到 NVSwitch 这颗专用交换芯片，由它在内部做路由，使任意两张 GPU 之间都能以完整的 NVLink 带宽通信。
     *   **整体效果**：8 张 GPU 各自只需连到 NVSwitch，就能获得等同于两两直连的全速全互联网络，是实现高效张量并行（TP）的物理基石。
