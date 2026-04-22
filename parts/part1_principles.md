@@ -48,7 +48,7 @@ We can compare this to **simultaneous interpretation**:
 
 **Summary**: The Encoder understands the input (bidirectional), while the Decoder generates output (unidirectional).
 
-### Section 2: Evolution: The Decoder-Only Architecture of Modern LLMs
+### Section 2: Evolution: Decoder-Only Architecture
 
 ```mermaid
 graph BT
@@ -83,7 +83,7 @@ How it works:
 
 This "great truth is simple" design makes training more efficient and provides the foundation for inference optimizations like **KV Cache**.
 
-### Section 3: The Library Analogy: Understanding the Logical Meaning of Self-Attention Q, K, V
+### Section 3: The Library Analogy: Intuitive Meaning of QKV
 
 Let's use a library analogy to understand Q, K, and V before diving into math.
 
@@ -118,7 +118,7 @@ Through this dynamic matching, the same word can be given completely different, 
 
 ---
 
-### Section 4: Mathematical Principles
+### Section 4: Mathematical Principles: Matrix Computation of QKV
 
 Let's see how matrices dynamically calculate Q, K, and V.
 
@@ -155,7 +155,7 @@ $$\text{Output} = \sum (\text{Attention Weights} \times V)$$
 
 ---
 
-### Section 5: Feed-Forward Network (FFN): The Model's Highway and Knowledge Base
+### Section 5: Feed-Forward Network: Highway and Knowledge Base
 
 After the self-attention mechanism completes the information exchange between words, the vector enters the **Feed-Forward Network (FFN)**. If the attention mechanism is responsible for "finding relationships between words", then the FFN is responsible for each word's "closed-door thinking".
 
@@ -208,7 +208,7 @@ This is like a **"scratchpad"** carried by the Token:
 
 ---
 
-### Section 6: Multi-Head Attention (MHA)
+### Section 6: Multi-Head Attention: Parallel Perspectives
 
 Single-head attention blends all semantic relationships into one vector, risking loss of focus. Industrial models use dozens of heads (sets of matrices) per layer, called **Multi-Head Attention (MHA)**.
 
@@ -231,7 +231,7 @@ MHA observes sentences from dozens of perspectives in parallel. It concatenates 
 
 ---
 
-### Section 7: Mixture of Experts (MoE)
+### Section 7: Mixture of Experts: Sparse Activation
 
 MoE upgrades the FFN by creating multiple replicas.
 
@@ -289,7 +289,7 @@ graph LR
     end
 ```
 
-### Section 1: Word Embeddings and Positional Encoding
+### Section 1: Input Stage: Embeddings and Positional Encoding
 
 Before entering the layers, data undergoes processing in the "lobby" to become model-readable and acquire critical context.
 
@@ -301,7 +301,7 @@ Before entering the layers, data undergoes processing in the "lobby" to become m
 
 ---
 
-### Section 2: Why Multiple Transformer Layers?
+### Section 2: Wisdom of Stacking: Hierarchical Feature Extraction
 
 After embedding, the word vector begins climbing the Transformer skyscraper. Modern LLMs stack dozens or hundreds of **Transformer Blocks** (e.g., Llama-3 70B has 80 layers).
 
@@ -371,7 +371,7 @@ Multiplying $h_{last}$ by the LM Head yields **raw scores (Logits)** for every w
 
 ---
 
-### Section 4: Logits and Softmax
+### Section 4: Logits and Softmax: Probabilistic Normalization
 
 Logits are irregular real numbers (e.g., "apple": 12.5, "phone": 8.2). To select a word, the system converts these scores into a probability distribution using **Softmax**.
 
@@ -383,7 +383,7 @@ The result is a distribution like `{"apple": 0.7, "phone": 0.2, "run": 0.001}`.
 
 ---
 
-### Section 5: Understanding Parameter Counts: What Makes Up an 8B/70B Model?
+### Section 5: Parameter Breakdown: What Makes Up 8B/70B Models
 
 What do 8B or 70B parameters refer to?
 
@@ -414,7 +414,7 @@ Downloading a 405B model means downloading 405 billion floating-point numbers (a
 
 ---
 
-### Section 6: Data Flow: End-to-End
+### Section 6: Data Flow: End-to-End Pipeline
 
 Let's trace a token's journey from entry to output:
 
@@ -440,7 +440,7 @@ This completes a **single forward pass**, predicting the next word.
 
 In Chapter 2, we understood the static structure of the skyscraper. Now, we are going to make this building truly operate. When a user's request (input) arrives, how does the model process it step by step and ultimately "speak" the answer out?
 
-### Section 1: Prefill: Handling Input
+### Section 1: Prefill Phase: Handling Input Context
 
 Suppose the user asks: "What is artificial intelligence?"
 
@@ -453,7 +453,7 @@ Suppose the user asks: "What is artificial intelligence?"
 
 ---
 
-### Section 2: Decode: The Autoregressive Loop
+### Section 2: Decode Phase: The Autoregressive Loop
 
 Based on the probability distribution from Prefill, the model selects the next word (e.g., "AI").
 
