@@ -121,6 +121,26 @@ As we discussed in depth in Chapter 8, the Decode phase is a classic **Memory-Bo
 
 On modern GPUs like the NVIDIA H100, hardware natively supports FP8 tensor calculations, making the compute overhead of this quantization conversion almost negligible. Therefore, trading insignificant computational cost for halved VRAM usage and doubled transfer speeds has become standard in modern high-performance inference engines.
 
+#### Section 3: INT8 vs. FP8: Strikingly Different Paradigms
+
+Two distinct routes exist for 8-bit KV Cache quantization:
+
+*   **INT8 (8-bit Integer)**: This maps floats to integers. It scales and rounds values into 256 discrete grids. Compute requires dequantizing back to FP16 first. Though mathematically lossy, fine-grained quantization (per-token or per-channel) minimizes accuracy drops.
+*   **FP8 (8-bit Floating Point)**: This remains a floating-point number with sign, exponent, and mantissa. It just reduces precision and range compared to FP16. On NVIDIA H100, FP8 computes extremely fast without explicit dequantization, dominating server deployments.
+
+#### Section 4: Dynamic vs. Static: Contrasting with Model Weight Quantization
+
+Why not quantize the model weights too?
+
+We do. Weight quantization (e.g., GPTQ, AWQ) is even more common. But they differ in difficulty and impact:
+
+*   **Weight Quantization (Static)**: Weights are fixed. We can analyze them offline and calibrate with data. Even at 4-bit, large models stay smart.
+*   **KV Cache Quantization (Dynamic)**: Activations change with every input. Outliers appear dynamically. Compressing to 4-bit destroys the range and collapses output quality. Thus, KV Cache usually stays at 8-bit.
+
+They are often combined:
+*   **W4A16 (Weights Only)**: Focuses on capacity, fitting big models into smaller GPUs.
+*   **W8A8 / FP8 (Full Quantization)**: Focuses on speed, serving as the top choice for high concurrency.
+
 ---
 
 Although the size of the KV Cache is substantially compressed through GQA and quantization techniques, as context grows, it still causes severe fragmentation issues in VRAM. This is why we still need **PagedAttention**.
