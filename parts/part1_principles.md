@@ -1,10 +1,10 @@
-# 第一部分：原理篇 —— Transformer 与 LLM 的工作底座
+# Part One: Principles — The Foundational Engine of Transformers and LLMs
 
-## 第一章：揭秘 Transformer：Q、K、V 的魔力
+## Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V
 
-在大语言模型（LLM）的世界里，一切魔法的起点都源于一个叫做 **Transformer** 的架构，而 Transformer 的核心则是 **自注意力机制（Self-Attention）** 。在这一章中，我们将拆解自注意力机制中最著名的三个字母：**Q（Query）**、**K（Key）** 和 **V（Value）**。它们是模型理解上下文、捕捉词语间复杂关系的灵魂所在。
+In the world of Large Language Models (LLMs), the origin of all magic stems from an architecture called the **Transformer**, and the core of the Transformer is the **Self-Attention mechanism**. In this chapter, we will break down the three most famous letters in the self-attention mechanism: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the soul of the model's ability to understand context and capture complex relationships between words.
 
-### 第一节：鸟瞰图：经典 Transformer 架构的宏观分工
+### Section 1: A Bird's-Eye View: The Macro Division of Labor in the Classic Transformer Architecture
 
 ```mermaid
 graph BT
@@ -29,26 +29,26 @@ graph BT
     Head --> Prob[Predict Next Token]
 ```
 
-在深入 QKV 的微观世界之前，我们先借助上面这张图，从宏观上理解 Transformer 的工作流程。 **请注意，这张图展示的是经典的 Encoder-Decoder（编码器-解码器）架构，也就是 Transformer 的原版设计。**
+Before diving into the microscopic world of QKV, let's use the diagram above to grasp the workflow of the Transformer from a macroscopic perspective. **Please note that this diagram illustrates the classic Encoder-Decoder architecture, which is the original design of the Transformer.**
 
-我们可以把这个过程类比为**同声传译**：
+We can draw an analogy between this process and **simultaneous interpretation**:
 
-1.  **左侧：Encoder（编码器）——“听懂并记录”** 经过多层处理。
-    *   **输入**：比如英文句子 "The cat is black"。
-    *   **工作**：数据从底部进入，经过多层处理。
-    *   **核心机制** ：每一层都包含“自注意力机制”（Self-Attention）。 **请注意，这里的自注意力是“无掩码”的（Unmasked）** 。这与你可能熟悉的、GPT 等模型中只能看前文的 Masked Self-Attention 不同。在 Encoder 中，句子里所有的词都可以 **互相观察** ，无死角地理解彼此的语境。在翻译任务中是完全合理的，因为输入的源句子是 **已知且完整** 的，我们不需要预测它，只需要彻底榨干它的语义，最大化地提取上下文信息。
-    *   **输出**：最终顶端吐出的不是文字，而是包含了丰富语境信息的**隐藏状态向量**。它代表 Encoder 已经完全“听懂”了这句话。
+1.  **Left Side: Encoder — "Listening and Comprehending"** through multiple layers of processing.
+    *   **Input**: For example, the English sentence "The cat is black".
+    *   **Workflow**: Data enters from the bottom and goes through multiple layers of processing.
+    *   **Core Mechanism**: Each layer contains a "Self-Attention" mechanism. **Please note that the self-attention here is "Unmasked".** This is different from the Masked Self-Attention you might be familiar with in models like GPT, which can only look at preceding text. In the Encoder, all words in the sentence can **observe each other**, understanding the context of one another without any blind spots. This makes perfect sense in translation tasks because the input source sentence is **known and complete**; we do not need to predict it, but rather fully extract its semantics and maximize the extraction of contextual information.
+    *   **Output**: What ultimately comes out of the top is not text, but **hidden state vectors** rich in contextual information. It represents that the Encoder has fully "understood" the sentence.
 
-2.  **右侧：Decoder（解码器）——“翻译并表达”**
-    *   **输入** ：它接收两部分信息：一是 Encoder 传过来的“听懂的秘密报告”；二是 **它自己上一时刻已经翻译出来的词** 。
-    *   **工作**：
-        *   底部的 **Masked Self-Attention** ：这是解码器的核心机制。让它在预测下一个词时，只能看前面已经说出来的词，不能“偷看”未来的词。 **为什么？** 因为在推理时，未来的词根本还没生出来；而在训练时，如果允许看未来的词，模型就会学会“偷看答案”的作弊技巧，从而无法学会真正的预测能力。
-        *   中间的 **Multi-Head Cross-Attention（交叉注意力）** ： **这是最关键的一步！** Decoder 用自己当前的意图（Query），去 Encoder 的秘密报告里寻找匹配的线索（Key 和 Value）。
-    *   **输出**：经过 Softmax，预测出下一个词（比如 "est"）的概率。
+2.  **Right Side: Decoder — "Translating and Expressing"**
+    *   **Input**: It receives two pieces of information: first, the "secret report of understanding" passed from the Encoder; second, **the words it has already translated in previous moments**.
+    *   **Workflow**:
+        *   The bottom **Masked Self-Attention**: This is the core mechanism of the decoder. It forces the decoder to only look at the previously generated words when predicting the next word, preventing it from "peeking" at future words. **Why?** Because during inference, future words have not even been generated yet; and during training, if allowed to see future words, the model would learn the cheating trick of "peeking at the answers," thereby failing to learn true predictive capabilities.
+        *   The middle **Multi-Head Cross-Attention**: **This is the most critical step!** The Decoder uses its current intention (Query) to search for matching clues (Key and Value) within the Encoder's secret report.
+    *   **Output**: After passing through Softmax, it predicts the probability of the next word (e.g., "est").
 
-**总结** ：Encoder 负责“理解输入”（双向观察），Decoder 负责“根据理解生成输出”（单向生成）。
+**Summary**: The Encoder is responsible for "understanding the input" (bidirectional observation), while the Decoder is responsible for "generating output based on understanding" (unidirectional generation).
 
-### 第二节：演进：现代 LLM 的 Decoder-Only 架构
+### Section 2: Evolution: The Decoder-Only Architecture of Modern LLMs
 
 ```mermaid
 graph BT
@@ -62,218 +62,218 @@ graph BT
     Head --> Prob[Predict Next Token]
 ```
 
-在经典的 Transformer 之后，大语言模型经历了一次重大的架构演进。如今我们熟知的 GPT、Llama、DeepSeek 等主流大模型，并没有沿用原生的 Encoder-Decoder 双塔架构，而是走向了极简的 **Decoder-Only（仅解码器）** 架构——也就是说，它们去掉了左半边的 Encoder，只保留了右半边的 Decoder。
+Following the classic Transformer, large language models underwent a major architectural evolution. The mainstream large models we are familiar with today, such as GPT, Llama, and DeepSeek, did not inherit the original Encoder-Decoder dual-tower architecture. Instead, they moved towards a minimalist **Decoder-Only** architecture—meaning, they discarded the left-hand Encoder and retained only the right-hand Decoder.
 
-看到这里，读者可能会产生一个非常自然的疑问： **既然 Encoder 这么擅长理解，为什么现在的模型反而把它丢弃了，全都变成了只有 Decoder 的“单塔”架构了呢？**
+Seeing this, readers might naturally wonder: **Since the Encoder is so good at understanding, why have current models discarded it and all become "single-tower" architectures with only a Decoder?**
 
-这涉及到一个极其优雅的范式转变（历史的转折）：
-1.  **Transformer 最初是为了“翻译”而生的** ：在翻译任务中，“输入”和“输出”是天然割裂的两个语言实体（比如英文和中文）。因此需要 Encoder 先完整听懂英文，Decoder 再翻译成中文。
-2.  **现代 LLM 玩的是“文本接龙”** ：科学家们发现，世界上所有的自然语言任务（问答、代码生成、推理甚至翻译），都可以统一为 **“给出上一段话，预测下一个词”** 的接龙游戏。
-3.  **Decoder 搞定一切** ：既然只是一段连续的文本，我们就不再需要物理上隔离的两个塔了。我们直接把提示词（Prompt）和回答（Response）拼在一起，全部喂给 Decoder。
+This involves an extremely elegant paradigm shift (a historical turning point):
+1.  **The Transformer was originally born for "translation"**: In translation tasks, the "input" and "output" are naturally separated linguistic entities (like English and Chinese). Therefore, an Encoder is needed to fully understand the English first, and then a Decoder translates it into Chinese.
+2.  **Modern LLMs play "text continuation"**: Scientists discovered that all natural language tasks in the world (Q&A, code generation, reasoning, and even translation) can be unified into a word-solitaire game of **"given the preceding text, predict the next word."**
+3.  **The Decoder handles everything**: Since it's just a continuous piece of text, we no longer need two physically isolated towers. We directly concatenate the prompt and the response, feeding them entirely to the Decoder.
 
-从上面的架构图可以看出，Decoder-Only 架构相比经典架构（你可以对比第一节的图，去掉了左边的 Encoder 塔和中间的交叉注意力）进行了极大的简化：
-1.  **去掉了 Encoder** ：不再有左侧的独立编码器塔。
-2.  **去掉了 Cross-Attention** ：因为没有了 Encoder，自然也就不再需要用于跨塔交互的交叉注意力机制了。
-3.  **统一的输入** ：Prompt（提示词）和 Response（回答）被拼接成一个连续的序列，从底部统一输入。
-4.  **核心机制** ：整个模型完全由堆叠的 **Masked Self-Attention** 块和 **Feed-Forward Network (FFN)** 块组成。
+From the architectural diagram above, it can be seen that the Decoder-Only architecture has been vastly simplified compared to the classic architecture (you can compare it with the diagram in Section 1, removing the left Encoder tower and the middle cross-attention):
+1.  **Removed the Encoder**: There is no longer an independent encoder tower on the left.
+2.  **Removed Cross-Attention**: Without the Encoder, the cross-attention mechanism used for inter-tower interaction is naturally no longer needed.
+3.  **Unified Input**: The Prompt and Response are concatenated into a continuous sequence and fed uniformly from the bottom.
+4.  **Core Mechanism**: The entire model is composed entirely of stacked **Masked Self-Attention** blocks and **Feed-Forward Network (FFN)** blocks.
 
-在这种架构下，模型是如何工作的呢？
-*   **Prefill（预填充）阶段** ：你输入的 Prompt 会被一次性喂给模型。虽然使用的是 Masked Self-Attention，但因为 Prompt 是已知的，模型可以在内部并行地计算 Prompt 中各个词之间的关系（类似于 Encoder 的工作）。
-*   **Decode（生成）阶段** ：模型开始逐字生成回答。每生成一个新词，就把它加到输入序列的末尾，然后预测下一个词。此时，Masked Self-Attention 确保了生成新词时只能看到前面的 Prompt 和已经生成的词，保证了因果关系。
+How does the model work under this architecture?
+*   **Prefill Phase**: Your input Prompt is fed into the model all at once. Although Masked Self-Attention is used, because the Prompt is known, the model can compute the relationships between the words in the Prompt in parallel internally (similar to the Encoder's work).
+*   **Decode (Generation) Phase**: The model starts generating the response word by word. Each time a new word is generated, it is appended to the end of the input sequence, and then the next word is predicted. At this point, Masked Self-Attention ensures that when generating a new word, only the preceding Prompt and the already generated words can be seen, maintaining causality.
 
-这种“大道至简”的架构设计，不仅让模型在海量数据上的预训练变得更加高效，也为后续章节我们将要讨论的 **KV Cache** 等生产级推理优化技术提供了统一的物理基础。
+This "great truth is simple" architectural design not only makes the model's pre-training on massive data much more efficient, but also provides a unified physical foundation for production-level inference optimization technologies like **KV Cache**, which we will discuss in subsequent chapters.
 
-### 第三节：图书馆类比：理解自注意力 Q、K、V 的逻辑含义
+### Section 3: The Library Analogy: Understanding the Logical Meaning of Self-Attention Q, K, V
 
-在深入复杂的数学公式之前，我们先用一个极其直观的现实场景来理解 Q、K、V 的逻辑意义。
+Before diving into complex mathematical formulas, let's use an extremely intuitive real-world scenario to understand the logical meaning of Q, K, and V.
 
-想象一下，你走进了一家巨大的**科技图书馆**，想要寻找关于“降噪蓝牙耳机”的资料。在这个场景中，Q、K、V 分别扮演着不同的角色：
+Imagine you walk into a massive **technology library**, looking for information on "noise-canceling Bluetooth headphones". In this scenario, Q, K, and V play different roles respectively:
 
-1.  **Q (Query / 查询)**：代表**你当前的意图**。也就是你在图书馆检索电脑里输入的搜索词：“降噪蓝牙耳机”。这代表你现在“想要寻找具备什么特征”的信息。
-2.  **K (Key / 键)**：代表**书中内容的标签或索引**。图书馆里的每本书都有它的书名、作者、摘要和分类标签。比如：
-    *   书本 A 的 Key 是：“有线游戏耳机评测”。
-    *   书本 B 的 Key 是：“索尼降噪蓝牙耳机拆解与芯片分析”。
-3.  **V (Value / 值)**：代表**书本实际包含的知识内容**。如果你最终决定阅读书本 B，你真正读进脑子里的那些关于降噪芯片、声学原理的详细文字，就是 Value。
+1.  **Q (Query)**: Represents **your current intention**. That is the search term you type into the library's retrieval computer: "noise-canceling Bluetooth headphones". This represents what characteristics of information you "want to find right now".
+2.  **K (Key)**: Represents **the labels or index of the book's contents**. Every book in the library has its title, author, abstract, and classification tags. For instance:
+    *   The Key for Book A is: "Wired Gaming Headset Review".
+    *   The Key for Book B is: "Teardown and Chip Analysis of Sony Noise-Canceling Bluetooth Headphones".
+3.  **V (Value)**: Represents **the actual knowledge content contained within the book**. If you ultimately decide to read Book B, the detailed text you actually absorb into your brain regarding noise-canceling chips and acoustic principles is the Value.
 
-**自注意力机制的整体逻辑流**，就是用你的 **Query** 去和图书馆里所有书的 **Key** 进行匹配，计算出一个相关性得分；然后根据这个得分，决定你花多少精力去读每本书的 **Value**。
+**The overall logic flow of the self-attention mechanism** is to use your **Query** to match with the **Keys** of all the books in the library to calculate a relevance score; then, based on this score, decide how much effort you should spend reading the **Value** of each book.
 
-映射回大模型中，我们用“苹果”这个词来做个具体而形象的对比：
+Mapping back to large models, let's use the word "apple" for a specific and vivid comparison:
 
-假设我们有两句话：
-*   句子 A：“在今天的**新品发布会**上，**苹果**推出了……”
-*   句子 B：“我在**超市**买的这一箱**苹果**非常……”
+Suppose we have two sentences:
+*   Sentence A: "At today's **new product launch**, **Apple** introduced..."
+*   Sentence B: "At the **supermarket**, the box of **apples** I bought is very..."
 
-当模型处理到“苹果”这个词时：
-1.  **它会生成自己的 Query (Q)**：代表它的“搜寻意图”。
+When the model processes the word "apple":
+1.  **It generates its own Query (Q)**: Representing its "search intention".
     > [!NOTE]
-    > 现实中，这个 Query 是一个极其复杂的高维连续向量，包含了成百上千个抽象的搜寻维度，这些都是在海量数据训练中“固化”在矩阵里的知识。这里我们用“我是‘苹果’，我需要寻找‘科技’或‘水果’线索”这种拟人化的语言，只是为了方便人类直观理解。
-2.  **它去和前文所有词（即前面已经生成的词或已知的 Prompt）的 Key (K) 进行匹配**：
-    *   在**句子 A** 中，“苹果”的 **Q** 与前文“**新品发布会**”的 **K** 匹配度极高（因为发布会通常与科技公司强相关）。
-    *   在**句子 B** 中，“苹果”的 **Q** 与前文“**超市**”的 **K** 匹配度极高（因为超市与食品、水果强相关）。
-3.  **根据权重提取 Value (V)**：
-    *   在**句子 A** 中，因为与“新品发布会”高度匹配，模型会给“新品发布会”的 **V** 分配大权重，最终融合成的“苹果”向量会偏向**“苹果公司”**的语义。
-    *   在**句子 B** 中，因为与“超市”高度匹配，模型会给“超市”的 **V** 分配大权重，最终融合成的“苹果”向量会偏向**“水果”**的语义。
+    > In reality, this Query is an extremely complex, high-dimensional continuous vector containing hundreds or thousands of abstract search dimensions, which are all knowledge "solidified" in matrices through massive data training. Here, we use anthropomorphic language like "I am an 'apple', and I need to find 'technology' or 'fruit' clues" simply to facilitate intuitive human understanding.
+2.  **It matches with the Keys (K) of all preceding words (i.e., previously generated words or known Prompts)**:
+    *   In **Sentence A**, the **Q** of "Apple" has an extremely high match rate with the **K** of the preceding "**new product launch**" (because product launches are typically strongly associated with tech companies).
+    *   In **Sentence B**, the **Q** of "apples" has an extremely high match rate with the **K** of the preceding "**supermarket**" (because supermarkets are strongly associated with food and fruit).
+3.  **Extract Value (V) based on weights**:
+    *   In **Sentence A**, because of the high match with "new product launch", the model assigns a large weight to the **V** of "new product launch", and the resulting fused vector for "Apple" will lean towards the semantics of **"Apple Inc."**
+    *   In **Sentence B**, because of the high match with "supermarket", the model assigns a large weight to the **V** of "supermarket", and the resulting fused vector for "apples" will lean towards the semantics of **"fruit"**.
 
-通过这种动态匹配，同一个词在不同的语境下，就能被赋予完全不同的、精准的含义。
+Through this dynamic matching, the same word can be given completely different, precise meanings under different contexts.
 
 ---
 
-### 第四节：数学原理：自注意力的权重矩阵与动态向量生成
+### Section 4: Mathematical Principles: Self-Attention Weight Matrices and Dynamic Vector Generation
 
-理解了逻辑意义后，我们来看大模型在底层是如何通过矩阵乘法动态计算出 Q、K、V 的。
+Having understood the logical meaning, let's see how large models dynamically calculate Q, K, and V underneath the hood using matrix multiplication.
 
-#### 0. 什么是词向量（Embedding）？
-在开始计算之前，我们需要先把文字变成电脑能懂的数字。假设输入是“苹果”这个词，模型首先会查阅一本字典（Embedding 表），把“苹果”转换成一串连续的数字，比如一个 4096 维的向量 $X$。这串数字就代表了“苹果”在多维语义空间中的初始坐标（请注意，这个字典里的数值也是通过海量数据训练学出来的，而不是人为指定的）。
+#### 0. What is a Word Vector (Embedding)?
+Before starting calculations, we must first convert words into numbers the computer understands. Assuming the input is the word "apple", the model will first consult a dictionary (Embedding table) to convert "apple" into a continuous sequence of numbers, for instance, a 4096-dimensional vector $X$. This sequence of numbers represents the initial coordinates of "apple" in the multi-dimensional semantic space (please note that the values in this dictionary are also learned through massive data training, not manually specified).
 
-#### 1. 线性映射（从词向量到 Q, K, V）
-假设我们有了输入的词向量 $X$。在 Transformer 模型中，存在三个核心的、通过海量数据训练学习到的**权重矩阵**：$W_Q$、$W_K$ 和 $W_V$。
+#### 1. Linear Projection (From Word Vector to Q, K, V)
+Assume we have the input word vector $X$. In the Transformer model, there are three core **weight matrices** learned through massive data training: $W_Q$, $W_K$, and $W_V$.
 
-输入词向量分别乘以这三个矩阵，就动态地生成了该词对应的 Q、K、V 向量：
+The input word vector is multiplied by these three matrices respectively to dynamically generate the corresponding Q, K, and V vectors for that word:
 
 $$Q = X W_Q$$
 $$K = X W_K$$
 $$V = X W_V$$
 
 > [!NOTE]
-> **静态权重 vs 动态数据**
-> 这里有一个极其重要的概念边界：$W_Q, W_K, W_V$ 是**静态的模型权重**，它们在训练完成后就固定在显存里了，对所有 Token 都是共享的“加工规则”。而 Q、K、V 则是**动态生成的数据**，它们是每次你输入不同的句子时，由输入向量 $X$ 实时乘以权重矩阵临时计算出来的。这也是为什么同一个词在不同语境下能生成不同语义的根源。
+> **Static Weights vs Dynamic Data**
+> There is an extremely important conceptual boundary here: $W_Q, W_K, W_V$ are **static model weights**. After training, they are fixed in VRAM and are shared "processing rules" for all Tokens. On the other hand, Q, K, and V are **dynamically generated data**. They are calculated on the fly by multiplying the input vector $X$ with the weight matrices each time you input a different sentence. This is also the root cause of why the same word can generate different semantics in different contexts.
 
-#### 2. 计算相似度与注意力权重
-为了知道当前词（Query）应该对句子里的其他词（Keys）投入多少注意力，模型会计算 Q 和 K 的**点积（Dot Product）**。点积的结果越大，说明两个向量在语义空间中越相似。
+#### 2. Calculating Similarity and Attention Weights
+To know how much attention the current word (Query) should allocate to other words in the sentence (Keys), the model calculates the **Dot Product** of Q and K. The larger the dot product result, the more similar the two vectors are in the semantic space.
 
 $$\text{Score} = Q \cdot K^T$$
 
-为了防止点积结果过大导致梯度消失，模型会除以一个缩放因子 $\sqrt{d_k}$（$d_k$ 是向量的维度）。随后，通过 **Softmax** 函数将这些得分转化为概率分布，使所有权重相加等于 1：
+To prevent the dot product result from becoming too large and causing gradient vanishing, the model divides it by a scaling factor $\sqrt{d_k}$ ($d_k$ is the dimensionality of the vector). Subsequently, through the **Softmax** function, these scores are converted into a probability distribution, making the sum of all weights equal to 1:
 
 $$\text{Attention Weights} = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)$$
 
-#### 3. 提取信息（加权求和）
-最后一步，模型用计算出来的注意力权重，对所有词的 **Value** 进行加权求和。这就完成了上下文信息的抓取：
+#### 3. Extracting Information (Weighted Sum)
+In the final step, the model uses the calculated attention weights to perform a weighted sum of the **Values** of all words. This completes the capture of contextual information:
 
 $$\text{Output} = \sum (\text{Attention Weights} \times V)$$
 
 > [!NOTE]
-> 这里的关键在于**动态生成**。同一个词（比如“苹果”），在不同的句子中，其初始词向量 $X$ 经过查表是相同的，但通过与不同的上下文词进行注意力计算，最终融合出来的输出向量（Output）会截然不同。这就是自注意力机制的魅力所在。
+> The key here lies in **dynamic generation**. The same word (e.g., "apple"), in different sentences, has the same initial word vector $X$ retrieved via table lookup, but through attention calculation with different contextual words, the ultimately fused output vector (Output) will be entirely different. This is the charm of the self-attention mechanism.
 
 ---
 
-### 第五节：前馈网络（FFN）：模型的高速公路与知识库
+### Section 5: Feed-Forward Network (FFN): The Model's Highway and Knowledge Base
 
-在自注意力机制完成了词与词之间的信息交换后，向量会进入 **Feed-Forward Network (FFN，前馈网络)**。如果说注意力机制负责“找词语之间的关系”，那么 FFN 就负责每个词的“闭门思考”。
+After the self-attention mechanism completes the information exchange between words, the vector enters the **Feed-Forward Network (FFN)**. If the attention mechanism is responsible for "finding relationships between words", then the FFN is responsible for each word's "closed-door thinking".
 
-#### 1. FFN 的经典工作流程
+#### 1. The Classic Workflow of FFN
 
-很多人在学完 Attention 之后，以为进入 FFN 的直接就是 Q、K 或者是 V。实际上，进入 FFN 的输入向量 $H$，并不是单纯的 Attention 输出，而是 **Attention 的输出**与**进入 Attention 之前的输入向量 $X$** 进行**残差相加（Residual Connection）**之后的结果。
+Many people, after learning about Attention, assume that what enters the FFN directly is Q, K, or V. In reality, the input vector $H$ entering the FFN is not simply the Output of Attention, but the result of a **Residual Connection (addition)** between **the Output of Attention** and **the input vector $X$ before entering Attention**.
 
-这个 $H$ 向量包含了“我是谁”（原始词意）和“我经历了什么”（全局语境）的混合信息。FFN 的处理流程通常包含以下三步：
+This vector $H$ contains a mixture of information about "who I am" (original word meaning) and "what I have experienced" (global context). The FFN processing pipeline typically includes the following three steps:
 
-1.  **第一步：升维映射（Up-Projection）**
-    输入的向量 $H$ 首先乘以一个权重矩阵 $W_1$。在很多大模型中，这一步会把向量的维度从比如 4096 维扩展到 16384 维。这就像是把信息展开，提供一个更大的空间来进行复杂的特征提取。
-2.  **第二步：非线性激活（Activation）**
-    升维后的向量会经过一个非线性激活函数 $\sigma$（如 ReLU、GeLU 或现代模型常用的 SwiGLU）。这一步引入了非线性能力，并且起到了“过滤”和“选择”信息的作用。
-3.  **第三步：降维映射（Down-Projection）**
-    最后，被激活的向量乘以另一个权重矩阵 $W_2$，把维度重新从 16384 维压缩回原始的 4096 维，以便与输入进行残差相加。
+1.  **Step One: Up-Projection**
+    The input vector $H$ is first multiplied by a weight matrix $W_1$. In many large models, this step expands the dimension of the vector from, say, 4096 dimensions to 16384 dimensions. This is like unfolding the information, providing a larger space for complex feature extraction.
+2.  **Step Two: Non-linear Activation**
+    The up-projected vector passes through a non-linear activation function $\sigma$ (such as ReLU, GeLU, or SwiGLU, commonly used in modern models). This step introduces non-linear capabilities and plays the role of "filtering" and "selecting" information.
+3.  **Step Three: Down-Projection**
+    Finally, the activated vector is multiplied by another weight matrix $W_2$, compressing the dimension from 16384 back to the original 4096 dimensions, in order to perform residual addition with the input.
 
-#### 2. 与 Attention 的精妙对比：FFN 是隐藏的“软 KV 记忆库”
+#### 2. An Elegant Comparison with Attention: FFN is a Hidden "Soft KV Memory Base"
 
-你既然已经习惯了 Attention 里 Q,K,V “三足鼎立”的框架，现在看 FFN 只有 $W_1$ 和 $W_2$ 两个矩阵，自然会觉得少了点什么。学术界在 2020 年的一篇著名论文中给出了极其优美的数学对称性解释：**FFN 在本质上，也是一个 Key-Value 记忆检索系统！**
+Since you are already accustomed to the "three-legged stool" framework of Q, K, and V in Attention, you will naturally feel something is missing when looking at FFN, which only has two matrices, $W_1$ and $W_2$. The academic community provided an extremely beautiful mathematical symmetry explanation in a famous 2020 paper: **The FFN is, in essence, also a Key-Value memory retrieval system!**
 
-我们把 Attention 和 FFN 的核心公式放在一起做个绝妙的对比：
-*   **Attention 的核心公式**：$\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V$
-*   **FFN 的核心公式**：$\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2$
+Let's place the core formulas of Attention and FFN side by side for a brilliant comparison:
+*   **Core formula of Attention**: $\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V$
+*   **Core formula of FFN**: $\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2$
 
-在这个视角下，FFN 的计算过程可以完美对应到 Q、K、V 的逻辑中：
+From this perspective, the calculation process of the FFN can perfectly correspond to the logic of Q, K, and V:
 
-1.  **输入向量 $H$ 就是那个 Q（Query）！**
-    它站在 FFN 面前，本身就是一个“提问”：“我现在的状态是这样的（包含了上下文），知识库里有什么关于我的补充信息吗？”
-2.  **升维矩阵 $W_1$ 扮演 K (Keys)**
-    我们将 $W_1$ 按列切分，看作是 16384 个列向量。这里的每一个列向量，代表着大模型学到的一个特定的“模式”或“前置条件”（比如“词意是水果，且处于‘超市’或‘食物’的语境中”）。计算 $H \cdot W_1$，就是在计算提问 $H$ (Query) 和知识库里所有钥匙 $W_1$ (Keys) 的点积相似度。
-3.  **降维矩阵 $W_2$ 扮演 V (Values)**
-    我们将 $W_2$ 按行切分，看作是 16384 个行向量。这里的每一个行向量，代表着与对应模式绑定的“具象知识”（比如“清脆、多汁”的特征向量）。
+1.  **The input vector $H$ is that Q (Query)!**
+    Standing in front of the FFN, it is itself a "question": "My current state is like this (including context), is there any supplementary information about me in the knowledge base?"
+2.  **The Up-Projection Matrix $W_1$ acts as K (Keys)**
+    We split $W_1$ by columns and treat it as 16384 column vectors. Each column vector here represents a specific "pattern" or "precondition" learned by the large model (for example, "the meaning is a fruit, and it is in a 'supermarket' or 'food' context"). Calculating $H \cdot W_1$ is calculating the dot product similarity between the question $H$ (Query) and all the keys $W_1$ (Keys) in the knowledge base.
+3.  **The Down-Projection Matrix $W_2$ acts as V (Values)**
+    We split $W_2$ by rows and treat it as 16384 row vectors. Each row vector here represents the "concrete knowledge" bound to the corresponding pattern (for example, the feature vector for "crisp, juicy").
 
-当向量 $H$ 走进来时，FFN 通过以下三步完成知识检索（我们继续沿用上一节“苹果”的例子）：
+When the vector $H$ enters, the FFN completes the knowledge retrieval through the following three steps (we continue with the "apple" example from the previous section):
 
-如果我们处理的是**句子 B**（“我在**超市**买的这一箱**苹果**非常……”）：
-1.  **模式匹配**：输入向量 $H$（此时已经通过 Attention 融合成为了“水果苹果”）与 $W_1$ 的所有列向量做内积。它会与 $W_1$ 中代表“水果、食物”的模式向量产生极高的匹配分。
-2.  **激活过滤**：激活函数 $\sigma$ 介入，把与“科技公司”、“电子产品”等无关模式的得分归零，只保留“水果”模式的激活。
-3.  **知识提取**：用这些激活系数去和 $W_2$ 中的 Values 做加权求和，提取出“清脆、多汁”等关于水果的具象知识，融合成最终的输出。
+If we are processing **Sentence B** ("At the **supermarket**, the box of **apples** I bought is very..."):
+1.  **Pattern Matching**: The input vector $H$ (which has already fused into "fruit apple" through Attention) takes the inner product with all column vectors of $W_1$. It will generate an extremely high matching score with the pattern vector in $W_1$ representing "fruit, food".
+2.  **Activation Filtering**: The activation function $\sigma$ intervenes, zeroing out scores for patterns unrelated like "tech company" or "electronic products", retaining only the activation for the "fruit" pattern.
+3.  **Knowledge Extraction**: These activation coefficients are used to perform a weighted sum with the Values in $W_2$, extracting concrete knowledge about fruit such as "crisp, juicy", and fusing it into the final output.
 
-反之，如果我们处理的是**句子 A**（“在今天的新品发布会上，苹果推出了……”）：
-1.  **模式匹配**：输入向量 $H$（此时是“科技公司苹果”）会与 $W_1$ 中代表“科技、数码、公司”的模式向量产生高分。
-2.  **激活过滤**：激活函数过滤掉“水果”模式。
-3.  **知识提取**：从 $W_2$ 中提取出“iPhone、高科技”等关于公司的具象知识。
+Conversely, if we are processing **Sentence A** ("At today's new product launch, Apple introduced..."):
+1.  **Pattern Matching**: The input vector $H$ (now "tech company Apple") will generate high scores with pattern vectors in $W_1$ representing "technology, digital, company".
+2.  **Activation Filtering**: The activation function filters out the "fruit" pattern.
+3.  **Knowledge Extraction**: It extracts concrete knowledge about the company like "iPhone, high-tech" from $W_2$.
 
-#### 3. 融合与 Token 的完整一生
-FFN 查出的知识，不会直接替换掉原本的向量，而是通过 **残差连接（相加）** 融合在一起：
+#### 3. Fusion and the Complete Life of a Token
+The knowledge retrieved by the FFN will not directly replace the original vector, but is fused together through a **Residual Connection (addition)**:
 $$x_{new} = H + FFN(H)$$
 
-这就像 Token 随身带的 **“记事本”** ：
-*   $H$（记事本上写着）：我是一个“苹果”，我处于“吃”的语境中。
-*   $FFN(H)$（知识库补充）：属性是“清脆、多汁”。
-*   **相加**：把补充资料钉在记事本下一页。Token 既懂了语境，又懂了知识。
+This is like a **"scratchpad"** carried by the Token:
+*   $H$ (written on the scratchpad): I am an "apple", and I am in the context of "eating".
+*   $FFN(H)$ (knowledge base supplement): Attributes are "crisp, juicy".
+*   **Addition**: Staple the supplementary material to the next page of the scratchpad. The Token now understands both context and knowledge.
 
-**总结**：一个 Token 在一层 Transformer 里的旅程，就是**先去 Attention 开会（懂语境）**，**再去 FFN 查图书馆（懂知识）**，最后带着丰满的记忆走向下一层！
-
----
-
-### 第六节：自注意力的拓展：多头注意力（Multi-Head Attention）
-
-在前面的讨论中，我们为了简化，假设模型只有一套 $W_Q, W_K, W_V$。当模型只有一个“头”时，它被迫把所有的语义关系都揉杂在一个向量里，很容易顾此失彼。
-
-但在实际的工业级大模型中，每一层中都包含几十套这样的矩阵（比如 32 个或 64 个）。这就叫做**多头注意力（Multi-Head Attention）**。
-
-**为什么模型需要多个“头”？**
-因为人类的语言太复杂了，一个词在句子里可能同时扮演着多种角色，具有多重语义。
-*   **头 1（语法头）**：可能专门负责寻找主谓宾关系，看哪个词是动词的发出者。
-*   **头 2（情感头）**：可能专门负责捕捉带有情绪色彩的形容词。
-*   **头 3（指代头）**：可能专门负责寻找“他”、“它”这些代词到底指代前文的哪个名词。
-
-通过多头机制，模型可以并行地从几十个不同的“语义视角”去观察这个句子，极大地增强了模型的表达能力。在理解了单头注意力的数学原理后，你可以简单地把多头注意力理解为：**多个单头注意力并行计算，最后把它们的输出拼接（Concatenate）在一起，再通过一个线性层进行整合。**
-
-为了让大家彻底搞懂，我们以 **Llama 3 405B** 的真实参数规模为例，拆解一下标准 MHA 的完整计算过程（物理实现层面）：
-1.  **输入准备**：输入的句子矩阵形状为 `[N, 16384]`（$N$ 个词，每个词长达 16384 维）。
-2.  **投影得到 Q、K、V**：使用三个大小为 `[16384, 16384]` 的大矩阵 $W_Q, W_K, W_V$，计算得到 $Q, K, V$ 矩阵，形状均为 `[N, 16384]`。
-3.  **切分成多头**：在逻辑上把 16384 维切分成 $H = 128$ 个头，每个头维度 $d_k = 128$。形状变为 `[N, 128, 128]`。
-4.  **计算注意力分数**：在 128 个头内部各自独立计算，每个头的 $Q$（形状 `[N, 128]`）与 $K$ 的转置（形状 `[128, N]`）相乘，得到注意力分数矩阵 `[N, N]`。
-5.  **结合 Value 矩阵**：用分数矩阵乘以当前头的 $V$（形状 `[N, 128]`），得到每个头的输出，形状为 `[N, 128]`。
-6.  **拼接多头**：将 128 个头的输出拼接回去，恢复成 `[N, 16384]`。
-7.  **输出投影（$W_O$ 登场）**：使用大小为 `[16384, 16384]` 的输出矩阵 $W_O$ 对拼接结果进行融合，得到最终输出 `[N, 16384]`。
-
-通过这最后一步的 $W_O$ 矩阵乘法，模型将 128 个头的信息进行了深度融合，打破了头与头之间的壁垒。
+**Summary**: A Token's journey in one layer of the Transformer is: **first go to the Attention meeting (understand context)**, **then go to the FFN library (understand knowledge)**, and finally walk to the next layer with enriched memory!
 
 ---
 
-### 第七节：FFN 的拓展：混合专家模型（MoE）
+### Section 6: Extension of Self-Attention: Multi-Head Attention (MHA)
 
-在理解了 FFN 是模型的“知识库”之后，我们很容易理解当今最火热的 **MoE（Mixture of Experts，混合专家模型）** 架构。MoE 本质上就是 **FFN 的多副本升级版**。
+In our previous discussion, for the sake of simplicity, we assumed the model had only one set of $W_Q, W_K, W_V$. When a model has only one "head", it is forced to blend all semantic relationships into a single vector, making it easy to lose focus.
 
-#### 1. 稠密模型的痛点
-在传统的 **稠密（Dense）** 模型中，每一层只有一个 FFN。所有的 Token，无论是聊“量子力学”还是聊“红烧肉怎么做”，都必须穿过同一个 FFN。随着模型想要记住的知识越来越多，FFN 的体积就必须变得极大。这导致计算量（FLOPs）急剧飙升，推理成本高昂。
+But in practical, industrial-grade large models, each layer contains dozens of such sets of matrices (for example, 32 or 64). This is called **Multi-Head Attention (MHA)**.
 
-#### 2. MoE 的解法：术业有专攻
-MoE 引入了“分工”的思想。它把原本那一个巨大的 FFN，拆分成了多个（比如 8 个或 16 个）较小的 FFN，每一个被称为一个 **“专家”（Expert）** 。
+**Why does the model need multiple "heads"?**
+Because human language is too complex; a word in a sentence might simultaneously play multiple roles and carry multiple semantics.
+*   **Head 1 (Grammar Head)**: Might specialize in finding subject-verb-object relationships, looking for the initiator of a verb.
+*   **Head 2 (Emotion Head)**: Might specialize in capturing adjectives with emotional color.
+*   **Head 3 (Coreference Head)**: Might specialize in finding out exactly which noun "he" or "it" refers to in the preceding text.
 
-MoE 的工作流程包含两个核心组件：
-*   **门控网络（Router / 路由器）**：当一个 Token 走进来时，Router 会根据它的语境（Query），计算它与各个专家的匹配度。
-*   **专家网络（Experts）**：每个专家在底层依然是一个标准的 FFN。在训练过程中，不同的专家会自动学会专注于不同的知识领域（比如专家 1 擅长代码，专家 2 擅长文学）。
+Through the multi-head mechanism, the model can observe the sentence in parallel from dozens of different "semantic perspectives", greatly enhancing the model's expressive power. After understanding the mathematical principles of single-head attention, you can simply understand multi-head attention as: **multiple single-head attentions computed in parallel, their outputs concatenated together, and then integrated through a linear layer.**
 
-#### 3. 稀疏激活：用小模型的成本，享大模型的智商
-当 Token 进来时：
-1.  **Router 算分**：发现这个 Token 在聊“量子力学”。
-2.  **稀疏激活（Sparse Activation）**：Router 只会激活与物理最相关的 Top-K 个专家（比如只激活专家 3 和专家 5），而让其他专家“休息”。
-3.  **知识提取与融合**：只让激活的专家处理这个 Token，最后把它们的结果按权重融合。
+To make it completely clear, let's break down the complete computation process (at the physical implementation level) of standard MHA, taking the actual parameter scale of **Llama 3 405B** as an example:
+1.  **Input Preparation**: The shape of the input sentence matrix is `[N, 16384]` ($N$ words, each word 16384 dimensions long).
+2.  **Projecting to get Q, K, V**: Three large matrices $W_Q, W_K, W_V$ of size `[16384, 16384]` are used to calculate the $Q, K, V$ matrices, all with the shape `[N, 16384]`.
+3.  **Splitting into Multiple Heads**: Logically slice the 16384 dimensions into $H = 128$ heads, each with a dimension $d_k = 128$. The shape becomes `[N, 128, 128]`.
+4.  **Calculating Attention Scores**: Computed independently within the 128 heads; each head's $Q$ (shape `[N, 128]`) is multiplied by the transpose of $K$ (shape `[128, N]`), resulting in an attention score matrix `[N, N]`.
+5.  **Combining with Value Matrix**: Multiply the score matrix by the current head's $V$ (shape `[N, 128]`), yielding an output for each head with the shape `[N, 128]`.
+6.  **Concatenating Multiple Heads**: Concatenate the outputs of the 128 heads back together to restore `[N, 16384]`.
+7.  **Output Projection ($W_O$ enters the stage)**: Use an output matrix $W_O$ of size `[16384, 16384]` to fuse the concatenated results, yielding the final output `[N, 16384]`.
 
-**总结** ：MoE 实现了 **“总参数量巨大（知识海量），但每次激活的参数量很小（计算省钱）”** 的绝妙效果。这也正是 DeepSeek 等模型能以极低成本提供顶尖能力的核心秘密。
+Through this final matrix multiplication with $W_O$, the model deeply integrates the information from the 128 heads, breaking down the barriers between them.
 
 ---
 
-## 第二章：建造摩天大楼：层层堆叠与数据流
+### Section 7: Extension of FFN: Mixture of Experts (MoE)
 
-在第一章中，我们拆解了 Transformer 最核心的“零件”——自注意力机制与 FFN。但仅有这些零件还不足以构成一个能思考的大模型。在这一章中，我们将把视线放大，看看这些零件是如何被组装成一座庞大的大模型“摩天大楼”的，以及数据是如何在其中穿梭的。
+After understanding that the FFN is the model's "knowledge base", it is very easy to comprehend the currently hottest **MoE (Mixture of Experts)** architecture. MoE is essentially **a multi-replica upgrade of the FFN**.
 
-**完整模型架构图**
+#### 1. The Pain Points of Dense Models
+In a traditional **Dense** model, there is only one FFN per layer. All Tokens, whether discussing "quantum mechanics" or "how to cook braised pork", must pass through the exact same FFN. As the model tries to memorize more and more knowledge, the FFN's volume must become massive. This leads to a sharp surge in computational cost (FLOPs) and expensive inference.
 
-为了让你对接下来要讨论的“大楼”有一个全局的认识，我们先来看一张完整的 Decoder-Only 模型架构图。它展示了一个 Token 从进入大楼到最终输出预测的完整旅程：
+#### 2. The MoE Solution: Specialized Expertise
+MoE introduces the concept of "division of labor". It splits that originally massive single FFN into multiple (say, 8 or 16) smaller FFNs, each of which is called an **"Expert"**.
+
+The workflow of MoE includes two core components:
+*   **Router (Gating Network)**: When a Token enters, the Router calculates its match score with each expert based on its context (Query).
+*   **Experts (Expert Networks)**: Each expert remains a standard FFN at its core. During training, different experts automatically learn to specialize in different knowledge domains (e.g., Expert 1 is good at code, Expert 2 is good at literature).
+
+#### 3. Sparse Activation: Enjoying Big Model Intelligence at Small Model Costs
+When a Token enters:
+1.  **Router Scoring**: It discovers this Token is talking about "quantum mechanics".
+2.  **Sparse Activation**: The Router will only activate the Top-K experts most relevant to physics (e.g., only activating Expert 3 and Expert 5), while letting other experts "rest".
+3.  **Knowledge Extraction and Fusion**: It only lets the activated experts process this Token, and finally fuses their results according to their weights.
+
+**Summary**: MoE achieves the brilliant effect of having a **"massive total parameter count (vast knowledge) but a very small active parameter count per forward pass (cheap computation)"**. This is exactly the core secret behind how models like DeepSeek can provide top-tier capabilities at extremely low costs.
+
+---
+
+## Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow
+
+In the first chapter, we tore down the core "parts" of the Transformer—the self-attention mechanism and the FFN. But having just these parts isn't enough to build a large model capable of thinking. In this chapter, we will zoom out to see how these parts are assembled into a massive large model "skyscraper", and how data shuttles through it.
+
+**Complete Model Architecture Diagram**
+
+To give you a global understanding of the "skyscraper" we are about to discuss, let's first look at a complete Decoder-Only model architecture diagram. It illustrates the complete journey of a Token from entering the building to ultimately outputting a prediction:
 
 ```mermaid
 graph LR
@@ -301,46 +301,46 @@ graph LR
     end
 ```
 
-### 第一节：摩天大楼的入口：词嵌入与位置编码
+### Section 1: The Entrance to the Skyscraper: Word Embeddings and Positional Encoding
 
-在数据进入多层 Transformer 之前，必须先经过“门厅”的处理，将其转化为模型能理解的格式并注入关键信息。
+Before data enters the multi-layer Transformer, it must first be processed in the "lobby", converting it into a format the model can understand and injecting critical information.
 
-1.  **词嵌入（Embedding）**：正如我们在第一章第四节提到的，输入的文字（Token）首先会通过查表转化为一个高维向量（例如 4096 维）。这代表了词语的初始语义坐标。
-2.  **位置编码（Positional Encoding）**：
-    自注意力机制有一个天然的物理缺陷：**它是“时间盲”的**。在 Attention 的公式里，词语与词语之间只是在算向量的相似度，并没有包含它们在句子里的先后顺序信息。如果不做任何处理，“我吃苹果”和“苹果吃我”在 Attention 看来是完全一样的。
+1.  **Word Embedding**: As we mentioned in Chapter 1, Section 4, the input text (Token) is first converted into a high-dimensional vector (e.g., 4096 dimensions) via table lookup. This represents the word's initial semantic coordinates.
+2.  **Positional Encoding**:
+    The self-attention mechanism has an inherent physical flaw: **it is "time-blind"**. In the Attention formula, words are simply calculating vector similarity with each other, without containing any information about their sequential order in the sentence. Without any processing, "I eat the apple" and "the apple eats me" would look exactly the same to Attention.
     
-    因此，在大楼的入口处，我们必须为人为地给向量注入**位置感**。
-    *   **旋转位置编码（RoPE）** ：当今最顶尖的开源大模型（如 Llama 系列、Qwen 等）普遍采用 RoPE。它的思想非常具有几何美感：它不在初始阶段把位置揉进词向量，而是在模型计算 Q 和 K 的点积时，用复数旋转的数学矩阵，直接把 Q 向量和 K 向量在多维空间中 **“扭转”** 一个角度。
-    *   如果两个词挨得很近，它们的 Q 和 K 被扭转的角度差就很小，点积结果就大；反之则小。这优雅地将相对位置信息编码进了注意力计算中。
+    Therefore, at the entrance to the building, we must artificially inject a **sense of position** into the vectors.
+    *   **Rotary Position Embedding (RoPE)**: Today's top open-source large models (such as the Llama series, Qwen, etc.) universally adopt RoPE. Its idea has great geometric beauty: instead of kneading position into the word vector at the initial stage, it directly **"twists"** the Q vector and K vector by an angle in the multi-dimensional space using complex rotation mathematical matrices at the moment the model calculates the dot product of Q and K.
+    *   If two words are close to each other, the difference in the angles by which their Q and K are twisted is small, resulting in a large dot product; conversely, the dot product is small. This elegantly encodes relative positional information into the attention calculation.
 
 ---
 
-### 第二节：层层堆叠的智慧：为什么要多层 Transformer？
+### Section 2: The Wisdom of Stacking: Why Multiple Transformer Layers?
 
-有了带位置信息的词向量后，它就开始了在 Transformer 大楼里的攀爬之旅。现在的 LLM 通常由几十层甚至上百层高度标准化的 **Transformer 块（Blocks）** 堆叠而成（例如 Llama-3 70B 有 80 层）。
+Having obtained a word vector with positional information, it begins its climb up the Transformer skyscraper. Current LLMs are typically stacked from dozens or even over a hundred highly standardized **Transformer Blocks** (e.g., Llama-3 70B has 80 layers).
 
-**为什么要搞这么多层？**
+**Why build so many layers?**
 
-这涉及到一个极其重要的概念：**层次化特征提取（Hierarchical Feature Extraction）**。
+This involves an extremely important concept: **Hierarchical Feature Extraction**.
 
-1.  **单层能力的极限**：只用一层自注意力，模型只能识别非常表面的、局部的词语关联（比如把“苹果”和“超市”连在一起）。它无法进行深度的逻辑推理或复杂语义的抽象。
-2.  **低层（底层的几层）**：主要负责“提取语法和局部关系”。比如识别哪些词是主语，哪些词是修饰语。
-3.  **中层（中间的几十层）**：开始理解“实体关系与常识知识”。FFN 在这里疯狂查阅它的“软记忆库”，把各种背景知识补充进向量里。
-4.  **高层（顶层的几层）**：负责“抽象概念与逻辑推理”。在这个阶段，模型已经不再看具体的词了，而是把整个句子的语义提炼成一个抽象的意图，准备好回答问题。
+1.  **The Limits of a Single Layer**: Using only a single layer of self-attention, the model can only recognize very superficial, local word associations (like connecting "apple" and "supermarket"). It cannot perform deep logical reasoning or abstract complex semantics.
+2.  **Low Layers (The bottom few layers)**: Primarily responsible for "extracting grammar and local relationships". For instance, identifying which words are subjects and which are modifiers.
+3.  **Middle Layers (The middle dozens of layers)**: Begin to understand "entity relationships and common sense knowledge". The FFN frantically consults its "soft memory base" here, supplementing various background knowledge into the vector.
+4.  **High Layers (The top few layers)**: Responsible for "abstract concepts and logical reasoning". At this stage, the model is no longer looking at concrete words, but distilling the semantics of the entire sentence into an abstract intent, ready to answer the question.
 
-这种层层递进、从具象到抽象的处理方式，正是大模型具备“智能”的关键所在。
+This layer-by-layer progression, from concrete to abstract processing, is exactly the key to large models possessing "intelligence".
 
-这里还隐藏着一个关于“信息如何流动”的精妙设计。很多初学者会误以为，词语是像排队一样一个接一个穿过模型的。但实际上，在处理提示词（Prompt）时，所有的词是**齐头并进、一层一层往上爬的**。
+There is also an exquisite design hidden here regarding "how information flows". Many beginners mistakenly think that words pass through the model one by one like standing in line. But in reality, when processing the Prompt, all words are **advancing side by side, climbing up layer by layer simultaneously**.
 
-当所有的词一起进入第 1 层时，第 4 个词去匹配第 3 个词，拿到的并不是第 3 个词“刚刚与 1、2 融合完”的最新状态，而是第 3 个词刚进入第 1 层时的独立状态。因为大家是并行计算的，互不等待。
+When all words enter Layer 1 together, when the 4th word goes to match with the 3rd word, what it gets is not the latest state of the 3rd word "just fused with 1 and 2", but the independent state of the 3rd word when it just entered Layer 1. Because everyone is computing in parallel, they don't wait for each other.
 
-那么第 3 个词在第 1 层融合了 1 和 2 的信息，结果有什么用呢？答案是：**带到第 2 层去**。第 3 个词带着融合后的结果上了第 2 层，当第 4 个词也在第 2 层开会时，它读取第 3 个词的 Key 和 Value，就间接地读到了 1 和 2 的信息。
+Then what is the use of the result of the 3rd word fusing information from 1 and 2 in Layer 1? The answer is: **bring it to Layer 2**. The 3rd word brings the fused result up to Layer 2. When the 4th word is also having a meeting in Layer 2, by reading the 3rd word's Key and Value, it indirectly reads the information from 1 and 2.
 
-信息不是在同一层内“横向流动”，而是跨层“斜向上流动”。这种设计不仅让 GPU 能够高效地并行计算所有词，还通过层数的堆叠，实现了极其复杂的深度语义融合。
+Information does not "flow horizontally" within the same layer, but "flows diagonally upwards" across layers. This design not only allows the GPU to efficiently compute all words in parallel, but also achieves extremely complex deep semantic fusion through the stacking of layers.
 
 ```mermaid
 graph LR
-    subgraph Layer1 ["Layer 1 (第一层)"]
+    subgraph Layer1 ["Layer 1"]
         direction TB
         L1_T1["Token 1"]
         L1_T2["Token 2"]
@@ -351,7 +351,7 @@ graph LR
         L1_T2 -->|Attention| L1_T3
     end
 
-    subgraph Layer2 ["Layer 2 (第二层)"]
+    subgraph Layer2 ["Layer 2"]
         direction TB
         L2_T1["Token 1'"]
         L2_T2["Token 2'"]
@@ -362,145 +362,144 @@ graph LR
         L2_T2 -->|Attention| L2_T3
     end
 
-    L1_T1 -->|层间传递| L2_T1
-    L1_T2 -->|层间传递| L2_T2
-    L1_T3 -->|层间传递| L2_T3
+    L1_T1 -->|Inter-layer Passing| L2_T1
+    L1_T2 -->|Inter-layer Passing| L2_T2
+    L1_T3 -->|Inter-layer Passing| L2_T3
 ```
 
 ---
 
-### 第三节：翻译官：LM Head
-当我们的输入数据穿过 Transformer 大楼的顶层时，每一个 Token 都会吐出一个最终的隐藏状态向量（$h_{last}$）。这个向量已经吸干了整栋大楼所有层的智慧，包含了极度复杂的语义。
+### Section 3: The Translator: LM Head
+When our input data passes through the top floor of the Transformer skyscraper, every Token spits out a final hidden state vector ($h_{last}$). This vector has absorbed the wisdom of all layers of the entire building and contains extremely complex semantics.
 
-但是，人类看不懂向量，人类只能看懂词汇。
+However, humans don't understand vectors; humans only understand words.
 
-于是，模型在最顶层设置了一个特殊的“翻译官”——**LM Head（Language Model Head）**。LM Head 本质上是一个巨大的线性映射矩阵，它的形状是 `[向量维度, 词表大小]`（词表大小通常在 50,000 到 150,000 之间）。
+Thus, the model has set up a special "translator" on the top floor — the **LM Head (Language Model Head)**. The LM Head is essentially a huge linear projection matrix, its shape being `[vector dimension, vocabulary size]` (vocabulary size is typically between 50,000 and 150,000).
 
-模型用 $h_{last}$ 去乘以这个 LM Head 矩阵，把高维的向量重新投影回这个巨大的词表空间中。计算出来的结果，就是词表中每一个词的**原始得分（Logits）**。
-
-> [!NOTE]
-> **为什么中间层没有“翻译官（LM Head）”？**
-> 这是一个常见的直觉疑问：既然每一层都输出了向量，为什么不顺便预测一下词呢？
-> 因为在数据穿过中间的几十层时，它们始终以“高维稠密向量”的形式流动（可以理解为模型的“潜意识”）。如果我们在中间层就强行把它映射回具体的词，就会破坏这种高维的、复杂的抽象逻辑，造成严重的信息损失。只有让信息在内部充分“思考”（流动）到顶层，最后一次性输出，才能得到最准确的结果。
+The model multiplies $h_{last}$ with this LM Head matrix, projecting the high-dimensional vector back into this massive vocabulary space. The calculated result is the **raw score (Logits)** for every single word in the vocabulary.
 
 > [!NOTE]
-> **工程彩蛋：权重绑定（Weight Tying）**
-> 在很多经典模型（如 GPT-2、Llama 2 等）的设计中，为了节省宝贵的显存，第一步的“词嵌入矩阵（Embedding Matrix）”和最后一步的“LM Head 矩阵”其实是**共享同一个物理矩阵**的。也就是用同一套向量既当大楼的“入口”，又当大楼的“出口”。不过在一些最新的超大模型中，为了追求极致的表达能力，这两者也会选择解耦，使用独立的参数。
+> **Why is there no "translator (LM Head)" in the middle layers?**
+> This is a common intuitive question: since every layer outputs vectors, why not conveniently predict the word right then and there?
+> Because as data flows through the dozens of middle layers, it always flows in the form of "high-dimensional dense vectors" (which can be understood as the model's "subconscious"). If we forcibly map it back to concrete words in the middle layers, it would destroy this high-dimensional, complex abstract logic, causing severe information loss. Only by letting the information fully "think" (flow) internally all the way to the top layer and outputting it all at once at the very end can the most accurate result be obtained.
+
+> [!NOTE]
+> **Engineering Easter Egg: Weight Tying**
+> In the design of many classic models (such as GPT-2, Llama 2, etc.), in order to save precious VRAM, the "Embedding Matrix" in the first step and the "LM Head matrix" in the final step actually **share the same physical matrix**. That is, using the same set of vectors as both the "entrance" and the "exit" of the building. However, in some of the latest ultra-large models, in pursuit of ultimate expressive power, the two will be decoupled and use independent parameters.
 
 ---
 
-### 第四节：Logits 和 Softmax：将原始分数转换为概率分布
+### Section 4: Logits and Softmax: Converting Raw Scores to a Probability Distribution
 
-LM Head 吐出来的 Logits 是一堆毫无规律的实数（比如“苹果”得分 12.5，“手机”得分 8.2，“跑”得分 -3.1）。
+The Logits spat out by the LM Head are a bunch of irregular real numbers (for example, "apple" scores 12.5, "phone" scores 8.2, "run" scores -3.1).
 
-为了决定最终输出哪个词，系统必须把这些原始分数转化为人类和程序更容易理解的**概率分布**。这里再次用到了我们在第一章见过的 **Softmax** 函数。
+To decide which word to ultimately output, the system must convert these raw scores into a **probability distribution** that is easier for humans and programs to understand. Here, we once again use the **Softmax** function we saw in Chapter 1.
 
-Softmax 会把这几万个词的 Logits 进行指数化和归一化，确保：
-1.  所有的概率都在 0 到 1 之间。
-2.  所有词的概率相加严格等于 1。
+Softmax exponentiates and normalizes the Logits of these tens of thousands of words, ensuring:
+1.  All probabilities are between 0 and 1.
+2.  The probabilities of all words add up strictly to 1.
 
-经过 Softmax 之后，我们得到了一个概率分布，比如：`{"苹果": 0.7, "手机": 0.2, "跑": 0.001 ...}`。
-
----
-
-### 第五节：科普小贴士：我们常说的 8B/70B 参数到底存在哪里？
-
-在学完了大模型的各个构件（Embedding、Attention、FFN、LM Head）之后，我们终于可以解开大模型身世中最著名的一个谜团：**当我们说一个模型是 8B（80亿）或 70B（700亿）参数时，这些参数到底指的是什么？它们分布在哪里？**
-
-简单来说，**参数（Parameters）就是模型中所有可学习的权重矩阵里的数字总和**。它们是模型在海量数据训练中“固化”下来的智慧结晶。
-
-为了让你有最直观的感受，我们以目前最顶级的开源大模型 **Llama 3 (405B)** 为例，来拆解一下它的 4050 亿参数到底分布在哪里。
-
-**Llama 3 (405B) 的核心配置**：
-*   词表大小（Vocab Size）：$128,256$
-*   隐藏层维度（$d$）：$16384$
-*   层数（$L$）：$126$
-*   FFN 中间维度：$53248$
-*   采用 GQA（分组查询注意力），Query 头数 128，KV 头数 8。
-
-我们来算算每一部分的账：
-
-1.  **词嵌入层（Embedding）**：
-    *   **公式**：`词表大小 * 隐藏层维度`
-    *   **计算**：$128,256 \times 16384 \approx 21.0$ 亿参数。
-    *   **大白话**：字典里有 12.8 万个词，每个词用一个 16384 维的向量表示。
-2.  **Transformer 层（需要乘以总层数 126）**：
-    *   每一层包含：
-        *   **注意力机制**：$W_Q, W_K, W_V, W_O$ 四个矩阵。加起来每层大约有 $5.7$ 亿参数。
-        *   **前馈网络（FFN）**：包含 Gate、Up、Down 三个巨大的矩阵（尺寸为 $16384 \times 53248$）。加起来每层高达 $26.17$ 亿参数。
-    *   **单层合计**：约 $31.87$ 亿参数。
-    *   **126 层总计**：$126 \times 31.87 \approx 401.6$ 亿参数。
-    *   **划重点**：你可以看到，**FFN 占据了 Transformer 层中绝大多数的参数量（约 82%）！** 模型学到的绝大多数“硬知识”都存在 FFN 的矩阵里。
-3.  **输出层（LM Head）**：
-    *   **公式**：`隐藏层维度 * 词表大小`
-    *   **计算**：$16384 \times 128,256 \approx 21.0$ 亿参数。
-    *   负责把高维向量翻译回人类词汇的原始得分。
-
-**总账单**：
-$2.1 \text{ 亿 (Embedding)} + 401.6 \text{ 亿 (126层)} + 2.1 \text{ 亿 (LM Head)} \approx 405.8 \text{ 亿参数！}$
-
-**总结**：
-所以，当你下载一个 405B 的模型时，你实际上是在下载一个包含约 4050 亿个浮点数（如果用 FP16 格式，大约占用 810GB 显存）的巨大文件。这些数字整整齐齐地填满了上面提到的那些矩阵。当你输入 Prompt 时，数据就是与这 4050 亿个数字进行疯狂的矩阵乘法，最终才蹦出了智能的火花。
+After passing through Softmax, we obtain a probability distribution, for instance: `{"apple": 0.7, "phone": 0.2, "run": 0.001 ...}`.
 
 ---
 
-### 第六节：数据流：从底层直达顶层的端到端全景
+### Section 5: A Popular Science Tip: Where Exactly Are the 8B/70B Parameters We Often Talk About Stored?
 
-现在我们把整座大楼的各个部件串联起来，看看一个 Token 从进入大楼到最终输出的完整“登顶之旅”（End-to-End）：
+After learning about the various components of large models (Embedding, Attention, FFN, LM Head), we can finally solve one of the most famous mysteries regarding large models: **When we say a model has 8B (8 billion) or 70B (70 billion) parameters, what exactly do these parameters refer to? Where are they distributed?**
 
-1.  **输入阶段**：Prompt 里的所有 Token 同时通过查表转化为词向量，作为初始输入 $X_0$。
+Simply put, **Parameters are the sum total of all numbers in the learnable weight matrices within the model**. They are the crystallization of wisdom "solidified" by the model during massive data training.
+
+To give you the most intuitive feeling, let's take the current top open-source large model **Llama 3 (405B)** as an example, to break down exactly where its 405 billion parameters are distributed.
+
+**Core configuration of Llama 3 (405B)**:
+*   Vocabulary Size (Vocab Size): $128,256$
+*   Hidden Dimension ($d$): $16384$
+*   Number of Layers ($L$): $126$
+*   FFN Intermediate Dimension: $53248$
+*   Adopts GQA (Grouped-Query Attention), Query Heads 128, KV Heads 8.
+
+Let's calculate the bill for each part:
+
+1.  **Embedding Layer**:
+    *   **Formula**: `Vocabulary Size * Hidden Dimension`
+    *   **Calculation**: $128,256 \times 16384 \approx 2.10$ billion parameters.
+    *   **In Plain English**: There are 128.2k words in the dictionary, each word is represented by a 16384-dimensional vector.
+2.  **Transformer Layers (need to multiply by the total number of layers 126)**:
+    *   Each layer contains:
+        *   **Attention Mechanism**: $W_Q, W_K, W_V, W_O$ four matrices. Added together, there are about $5.7$ billion parameters per layer.
+        *   **Feed-Forward Network (FFN)**: Contains Gate, Up, Down three massive matrices (dimensions are $16384 \times 53248$). Added together, this reaches up to $26.17$ billion parameters per layer.
+    *   **Single Layer Total**: About $31.87$ billion parameters.
+    *   **126 Layers Total**: $126 \times 31.87 \approx 401.6$ billion parameters.
+    *   **Key Point**: You can see that **the FFN occupies the vast majority of the parameter count in the Transformer layers (about 82%)!** Most of the "hard knowledge" the model learns is stored in the matrices of the FFN.
+3.  **Output Layer (LM Head)**:
+    *   **Formula**: `Hidden Dimension * Vocabulary Size`
+    *   **Calculation**: $16384 \times 128,256 \approx 2.10$ billion parameters.
+    *   Responsible for translating high-dimensional vectors back into raw scores for human vocabulary.
+
+**Total Bill**:
+$2.1 \text{ Billion (Embedding)} + 401.6 \text{ Billion (126 Layers)} + 2.1 \text{ Billion (LM Head)} \approx 405.8 \text{ Billion Parameters!}$
+
+**Summary**:
+So, when you download a 405B model, you are actually downloading a massive file containing about 405 billion floating-point numbers (if using the FP16 format, taking up about 810GB of VRAM). These numbers neatly fill those matrices mentioned above. When you input a Prompt, the data engages in frantic matrix multiplication with these 405 billion numbers, ultimately sparking the flash of intelligence.
+
+---
+
+### Section 6: Data Flow: An End-to-End Panorama from Bottom Straight to Top
+
+Now let's connect the various components of the entire building and look at a Token's complete "summit journey" (End-to-End) from entering the building to final output:
+
+1.  **Input Stage**: All Tokens in the Prompt are converted into word vectors via table lookup simultaneously, serving as the initial input $X_0$.
     > [!NOTE]
-    > 如果模型使用的是经典的绝对位置编码（如 BERT），位置信息会在这里与词向量相加。如果使用的是现代的 RoPE，则初始输入不包含位置信息。
-2.  **逐层穿梭阶段**：
-    *   $X_0$ 进入第 1 层 Block 的 Attention 部门。如果使用 RoPE，此时会在这里动态注入位置旋转。
-    *   词与词交换信息后，通过**残差连接**与原向量相加，防止特征丢失。
-    *   进入第 1 层 Block 的 FFN 部门，查阅知识并闭门思考。
-    *   再次通过残差连接相加，得到第 1 层的输出 $X_1$。
-    *   $X_1$ 坐电梯进入第 2 层，重复上述过程，直至穿过最后一层（如第 80 层），得到最终的隐藏状态向量 $h_{last}$。
-3.  **输出阶段**：
-    *   $h_{last}$ 经过归一化（Norm）后，进入 **LM Head**。
-    *   LM Head 将其投影回庞大的词表空间，计算出每个词的原始得分（Logits）。
-    *   Logits 经过 **Softmax** 归一化，转化为所有词的概率分布。
+    > If the model uses classic absolute positional encoding (like BERT), positional information is added to the word vectors here. If using modern RoPE, the initial input does not contain positional information.
+2.  **Layer-by-Layer Shuttle Stage**:
+    *   $X_0$ enters the Attention department of the Layer 1 Block. If using RoPE, positional rotation is dynamically injected here.
+    *   After words exchange information with each other, they are added back to the original vector via a **Residual Connection** to prevent feature loss.
+    *   Enters the FFN department of the Layer 1 Block, consulting knowledge and engaging in closed-door thinking.
+    *   Added together via another residual connection to obtain the output of Layer 1, $X_1$.
+    *   $X_1$ takes the elevator to Layer 2 and repeats the above process, until it passes through the final layer (e.g., Layer 80), obtaining the final hidden state vector $h_{last}$.
+3.  **Output Stage**:
+    *   After normalization (Norm), $h_{last}$ enters the **LM Head**.
+    *   The LM Head projects it back into the massive vocabulary space, calculating the raw score (Logits) for each word.
+    *   Logits undergo **Softmax** normalization, converting into a probability distribution over all words.
 
-至此，大模型的**完整单次前向传播**就全部完成了。我们成功地将输入的文字，转化为了对下一个词的精准概率预测。
+At this point, a **complete single forward pass** of the large model is entirely finished. We have successfully converted the input text into a precise probability prediction for the next word.
 
 ---
 
-## 第三章：运转的艺术：自回归解码与文本生成
+## Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation
 
-在第二章中，我们了解了摩天大楼的静态结构。现在，我们要让这座大楼真正运转起来。当一个用户的请求（输入）到来时，模型是如何一步步处理，并最终把答案“说”出来的呢？
+In Chapter 2, we understood the static structure of the skyscraper. Now, we are going to make this building truly operate. When a user's request (input) arrives, how does the model process it step by step and ultimately "speak" the answer out?
 
-### 第一节：Prefill（预填充）：处理输入的具体过程
+### Section 1: Prefill: The Specific Process of Handling Input
 
-假设用户输入了一个问题：“什么是人工智能？”
+Suppose the user inputs a question: "What is artificial intelligence?"
 
-1.  **分词（Tokenization）**：输入文本首先被切分成一个个 Token（如“什么”、“是”、“人工”、“智能”）。
-2.  **一次性灌入**：这些 Token 对应的向量被**同时**喂入模型。
-3.  **并行计算**：虽然使用的是 Masked Self-Attention，但因为输入的 Prompt 是**已知且完整**的，模型可以在内部并行地计算这些词之间的相互关系。这一步的主要目的是**彻底理解输入的语境**，并为生成后续文本做好准备。
+1.  **Tokenization**: The input text is first split into individual Tokens (like "What", "is", "artificial", "intelligence", "?").
+2.  **Poured in All at Once**: The vectors corresponding to these Tokens are fed into the model **simultaneously**.
+3.  **Parallel Computation**: Although Masked Self-Attention is used, because the input Prompt is **known and complete**, the model can compute the mutual relationships between these words in parallel internally. The primary purpose of this step is to **thoroughly understand the context of the input** and prepare for generating the subsequent text.
     > [!TIP]
-    > **理解 Prefill 的并行**：这里包含两步并行。第一步是**并行生成**所有 Token 的 Q、K、V 向量（每个 Token 独立与权重矩阵相乘，互不依赖）；第二步是**并行计算**所有 Token 之间的注意力权重并加权融合。这两步在 GPU 上都是以矩阵乘法的形式高效并行完成的。
-4.  **产生第一个词的概率**：数据流流过所有层和 LM Head 后，生成了针对下一个词的概率分布。
+    > **Understanding the parallelism of Prefill**: This involves two steps of parallelism. The first step is the **parallel generation** of Q, K, V vectors for all Tokens (each Token independently multiplies with weight matrices, without mutual dependency); the second step is the **parallel computation** of attention weights between all Tokens and their weighted fusion. Both steps are efficiently completed in parallel on the GPU in the form of matrix multiplications.
+4.  **Generating the Probability for the First Word**: After the data flow passes through all layers and the LM Head, a probability distribution for the next word is generated.
 
 ---
 
-### 第二节：Decode（解码）：自回归循环与文本生成
+### Section 2: Decode: The Autoregressive Loop and Text Generation
 
-基于 Prefill 阶段最后输出的概率分布，模型可能会挑选出“AI”作为最可能的下一个词。
+Based on the probability distribution finally output in the Prefill stage, the model might select "AI" as the most likely next word.
 
-1.  **吐出第一个词**：模型输出“AI”。
-2.  **循环往复的“接龙”**：
-    *   模型把刚刚生成的“AI”**原封不动地拼接到原句的末尾**，输入序列变成：“什么是人工智能？AI”。
-    *   这个新的、更长的序列被**再次**从第 1 层楼喂进去，重新走一遍整栋大楼的旅程。
-    *   大楼顶层吐出新的概率分布，预测下一个词（比如“是”）。
-    *   把“是”再拼接到末尾，继续下一轮循环……
+1.  **Spitting Out the First Word**: The model outputs "AI".
+2.  **The Cyclic "Solitaire"**:
+    *   The model **appends the newly generated "AI" intact to the end of the original sentence**, making the input sequence: "What is artificial intelligence? AI".
+    *   This new, longer sequence is **fed in again** from the 1st floor, going through the entire building's journey all over again.
+    *   The top floor of the building spits out a new probability distribution, predicting the next word (e.g., "is").
+    *   Append "is" to the end again, and continue the next round of the loop...
 
-这就是 **自回归（Autoregressive）** 的本质： **前一次的输出，成为下一次的输入** 。
+This is the essence of **Autoregressive**: **The output of the previous step becomes the input of the next step**.
 
-这种“一个字一个字往外蹦”的机制虽然保证了上下文的连贯性，但它带来了一个极其残酷的物理现实：如果你要模型生成一个 1000 字的故事，大模型就必须把整栋大楼完整地跑完 1000 遍！
+Although this "popping out one word at a time" mechanism guarantees contextual coherence, it brings an extremely cruel physical reality: if you want the model to generate a 1000-word story, the large model must run through the entire building completely 1000 times!
 
-在第一部分中，我们完成了对 Transformer 摩天大楼的“毛坯房”拆解，理解了自注意力机制与前馈网络是如何协同工作的，以及数据是如何在多层网络中流动并最终转化为概率输出的。然而，这种优雅的“接龙”游戏在面对海量请求和超长文本时，会暴露出惊人的算力与显存饥渴。
+In the first part, we completed the teardown of the "rough shell" of the Transformer skyscraper, understanding how the self-attention mechanism and feed-forward networks work together, and how data flows through multi-layer networks and is ultimately converted into probability outputs. However, this elegant "solitaire" game exposes an astonishing thirst for compute and VRAM when faced with massive requests and ultra-long texts.
 
-到底是什么在卡死大模型的推理速度？显存又是如何被一步步吞噬的？让我们带着这些问题，翻开本书的**第二部分**，一起去直面那些残酷的物理与数学瓶颈。
+What exactly is bottlenecking the inference speed of large models? How is VRAM swallowed up step by step? With these questions in mind, let's open the **second part** of this book and directly confront those cruel physical and mathematical bottlenecks.
 
 ---
-

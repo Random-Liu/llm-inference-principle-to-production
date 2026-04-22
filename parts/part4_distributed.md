@@ -1,421 +1,421 @@
-## 第四部分：分布式篇 —— 跨越单机的协奏：并行策略与高速互联
+# Part Four: Distributed Chapter — The Concerto Across Single Nodes: Parallel Strategies and High-Speed Interconnects
 
-最后一部分将视角放大到集群级架构，以及顶级科技公司如何服务数十亿次请求。
+The final part zooms out to cluster-level architecture and how top tech companies serve billions of requests.
 
-### 第十六章：切分巨人：张量、流水线与上下文并行
+## Chapter 16: Slicing the Giant: Tensor, Pipeline, and Context Parallelism
 
-当模型的参数量从 7B（70亿）飙升到 400B（4000亿）甚至更大时，单张显卡乃至单台服务器的物理限制就会被彻底击碎。我们必须将这个“巨人”切碎，分发到多台机器上协同推理。本章将介绍分布式推理的核心技术。
+When the model's parameter count soars from 7B (7 billion) to 400B (400 billion) or even larger, the physical limits of a single graphics card and even a single server are completely shattered. We must slice this "giant" into pieces and distribute them across multiple machines for collaborative inference. This chapter will introduce the core technologies of distributed inference.
 
-#### 第一节：多机必要性：装不下的巨人
+### Section 1: The Necessity of Multiple Machines: The Giant That Doesn't Fit
 
-为什么我们必须进行分布式推理？最直接的原因就是**显存装不下**。
+Why must we perform distributed inference? The most direct reason is that **it cannot fit into the VRAM (Video RAM)**.
 
-以一个 400B 参数的模型为例：
-*   如果使用半精度（FP16）存储，仅仅是模型权重本身就需要占用 **800 GB** 的显存！
-*   以经典的 **NVIDIA H100** 为例，其单卡显存通常为 80 GB。这意味着，你至少需要 10 张 H100 显卡，才能勉强把这个模型“装”进去（这还没有预留任何空间给 KV Cache）。
+Take a 400B parameter model as an example:
+* If using half-precision (FP16) storage, the model weights alone would occupy **800 GB** of VRAM!
+* Take the classic **NVIDIA H100** as an example, its single-card VRAM is usually 80 GB. This means you need at least 10 H100 graphics cards to barely "fit" this model (and this leaves absolutely no room for KV Cache).
 
-虽然随着硬件的飞速演进，目前 Blackwell 架构（如 B200，单卡显存达 192 GB）已经走向台前，未来还会有更强的 Rubin 架构，所需的卡数会相应减少。但“单卡装不下超大模型权重与海量 KV Cache”的物理极限依然存在。因此，多机多卡分布式推理不是一种选择，而是绝对的刚需。
-
----
-
-#### 第二节：TP 与 PP：垂直切分与水平切分
-
-为了让多张显卡协同工作，业界主要有两种经典的切分策略：
-
-**1. 张量并行（Tensor Parallelism, TP）—— 垂直切分**
-*   **做法**：把模型中的某一个巨大的矩阵乘法（张量）“竖着切一刀”或“横着切一刀”，分给不同的 GPU 去算。比如，GPU 1 算左半部分，GPU 2 算右半部分，最后通过高速互联（如 NVLink）进行结果汇总（AllReduce）。
-*   **特点**：它发生在**每一层网络内部**。通信极其频繁，对带宽要求极高，因此通常被限制在**单机内部**的多张卡之间进行。
-
-**2. 流水线并行（Pipeline Parallelism, PP）—— 水平切分**
-*   **做法**：把模型的层（Layers）拆开。假设模型有 80 层，机器 A 负责 1~40 层，机器 B 负责 41~80 层。机器 A 算完前 40 层的隐藏状态，通过网络发给机器 B 继续算。
-*   **特点**：它发生在**层与层之间**。通信频率相对较低，非常适合跨越不同物理主机（Multi-host）进行分布式部署。
-
-通过 TP 和 PP 的结合（比如 8 卡 TP + 2 机 PP），我们可以优雅地把超大模型切分在 16 张甚至更多显卡上。
+Although with the rapid evolution of hardware, the Blackwell architecture (like B200, with single-card VRAM up to 192 GB) has come to the stage, and there will be an even stronger Rubin architecture in the future, meaning the required number of cards will correspondingly decrease. However, the physical limit of "single card cannot fit super large model weights and massive KV Cache" still exists. Therefore, multi-machine, multi-card distributed inference is not an option, but an absolute necessity.
 
 ---
 
-#### 第三节：自动分发：计算与内存的分布式解耦
+### Section 2: TP and PP: Vertical and Horizontal Slicing
 
-当我们将大模型切分到多张显卡或多台机器上时，**计算（Compute）**和**内存（Memory）**的占用都会随之发生天然的分布式解耦。
+To make multiple graphics cards work together collaboratively, the industry mainly has two classic slicing strategies:
 
-我们可以从计算和内存两个维度来审视这种分发：
+**1. Tensor Parallelism (TP) — Vertical Slicing**
+* **Approach**: Take a huge matrix multiplication (tensor) in the model and slice it "vertically" or "horizontally", distributing it to different GPUs for computation. For example, GPU 1 computes the left half, GPU 2 computes the right half, and finally the results are aggregated through high-speed interconnects (like NVLink) via AllReduce.
+* **Characteristics**: It occurs **inside each network layer**. The communication is extremely frequent and the bandwidth requirement is extremely high, so it is usually limited to **within a single machine** among multiple cards.
 
-**1. 计算的分布式分发**
-*   **张量并行（TP）**：将**单层内的计算**打散。一个巨大的矩阵乘法被切分成几块，分给不同的 GPU 并行计算。这意味着每张卡只承担了一部分算力负荷。
-*   **流水线并行（PP）**：将**层与层之间的计算**打散。机器 A 算前几层，机器 B 算后几层，计算在时间上呈现出流水线式的接力。
+**2. Pipeline Parallelism (PP) — Horizontal Slicing**
+* **Approach**: Break apart the layers of the model. Suppose a model has 80 layers, machine A is responsible for layers 1~40, and machine B is responsible for layers 41~80. After machine A finishes computing the hidden states of the first 40 layers, it sends them over the network to machine B to continue the computation.
+* **Characteristics**: It occurs **between layers**. The communication frequency is relatively low, making it very suitable for distributed deployment across different physical hosts (Multi-host).
 
-**2. 内存的分布式分发（显存的真正构成）**
-在分布式环境下，显存的占用主要由以下几部分构成，它们都会被自然隔离和分摊：
-
-1.  **模型权重（Model Weights）**：在 TP 下，每张卡只存储自己负责切分的那部分矩阵权重；在 PP 下，每台机器只存储自己负责的那几十层网络的权重。这彻底解决了“单机装不下”的终极难题。
-2.  **KV Cache（注意力缓存）**：在 TP 下，由于注意力头被切分，每个 GPU 只负责存储自己那部分头对应的 K 和 V 向量；在 PP 下，KV Cache 是与层强绑定的，只有负责处理特定层的机器，才会持有该层的 KV Cache。
-3.  **激活值（Activations）与临时缓冲区**：在模型前向传播过程中产生的中间特征图等临时数据，也会随着计算的切分而散落在各自的 GPU 上。TP 组内需要频繁同步这些激活值，而 PP 组则需要将阶段边界的激活值跨机传递。
-
-这种“各管各的、自然隔离”的分布式架构，避免了构建中心化巨型内存池的复杂性，但也对芯片间的高速互联（NVLink/RDMA）提出了极高的要求，以确保这些被打散的碎片能完美地拼凑出最终的智能。
+By combining TP and PP (for example, 8-card TP + 2-machine PP), we can elegantly slice a super large model across 16 or even more graphics cards.
 
 ---
 
-#### 第四节：TP 与 PP 对核心指标（Metrics）的影响
+### Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory
 
-在理解了 TP 和 PP 的基本原理后，我们来系统分析它们对我们在第四章定义的核心性能指标（TTFT、TBT、Throughput）的影响。为了更精准地分析，我们必须严格区分以下几个时间概念：
-*   **排队时间（Queueing Time）**：请求在调度队列中等待 GPU 资源的时间。
-*   **执行 TTFT（Execution TTFT）**：模型真正开始处理请求到吐出第一个 Token 的纯计算时间。
-*   **用户感知的 TTFT（User-facing TTFT）**：从用户按下发送键到屏幕上看到第一个字的总时间（大致等于 排队时间 + 执行 TTFT + 网络传输延迟）。
+When we slice a large model onto multiple graphics cards or multiple machines, the occupation of **Compute** and **Memory** will naturally undergo a distributed decoupling.
 
-**1. 张量并行（TP）的指标影响：大力飞砖与车道扩容**
-*   **对执行 TTFT 的影响**：**显著降低**。Prefill 阶段是计算密集型的，TP 通过分摊矩阵乘法计算，直接缩短了模型运行的纯计算时间。
-*   **对 TBT / TPS 的影响**：**有所降低（提升 TPS）**。在 Decode 阶段，TP 仍能加速每步计算。但由于计算量小，跨卡 All-Reduce 的通信开销占比会上升，加速比并非线性。
-*   **对排队时间与吞吐量的影响**：**双重优化但有 Trade-off**。
-    1.  **缩短服务时间**：因为 TP 算得快，老请求快速下车，后请求的排队时间自然变短。
-    2.  **扩张并发容量**：TP 聚合了多卡显存，允许开启更大的 Batch Size，原本排队的请求可以直接被拉入 Batch 共同处理，排队时间降为 0。
-    *   *权衡*：如果模型本能装进单卡，强行 TP 引入的通信开销会损耗总算力，反而降低吞吐量。
+We can examine this distribution from the two dimensions of compute and memory:
 
-**2. 流水线并行（PP）的指标影响：多段接力与吞吐为王**
-*   **对执行 TTFT 的影响**：**略微增加**。请求需按顺序流经不同机器层，跨机通信和流水线启动带来了固定延迟开销。
-*   **对 TBT / TPS 的影响**：**几乎没有改善**。它仅是层与层之间的物理拆分，并没有加速单个 Token 的前向计算。
-*   **对排队时间与吞吐量的影响**：**显著提升**。
-    *   **流水线效应减少排队**：当请求 A 在第一台机器完成第一阶段 Prefill 并流向下一台机器时，第一台机器立刻被释放，排队中的请求 B 可以马上开始它的 Prefill。这种空间复用使得新请求能更早地进入系统。
-    *   **吞吐为王**：通过流水线机制（不同机器同时处理不同 Batch 的不同层），极大提升了 GPU 利用率，是做大集群吞吐的利器。高吞吐有助于消化队列，从宏观上降低平均排队时间。
+**1. Distributed Distribution of Compute**
+* **Tensor Parallelism (TP)**: Breaks apart the **computation within a single layer**. A huge matrix multiplication is sliced into several blocks, distributed to different GPUs for parallel computation. This means each card only bears a part of the computational load.
+* **Pipeline Parallelism (PP)**: Breaks apart the **computation between layers**. Machine A computes the first few layers, machine B computes the latter layers, and the computation presents a pipeline-style relay in time.
+
+**2. Distributed Distribution of Memory (The True Composition of VRAM)**
+In a distributed environment, the VRAM occupation is mainly composed of the following parts, and they will be naturally isolated and amortized:
+
+1. **Model Weights**: Under TP, each card only stores the weights of the matrix slice it is responsible for; under PP, each machine only stores the weights of the dozens of network layers it is responsible for. This completely solves the ultimate problem of "not fitting in a single machine".
+2. **KV Cache (Attention Cache)**: Under TP, because the attention heads are sliced, each GPU is only responsible for storing the K and V vectors corresponding to its share of heads; under PP, the KV Cache is strongly bound to the layers, and only the machine responsible for processing specific layers will hold the KV Cache of those layers.
+3. **Activations and Temporary Buffers**: Temporary data such as intermediate feature maps generated during the model's forward propagation process will also be scattered on respective GPUs following the computation slicing. Within the TP group, these activations need to be synchronized frequently, while the PP group needs to pass the activations at the stage boundaries across machines.
+
+This distributed architecture of "each managing its own, natural isolation" avoids the complexity of building a centralized giant memory pool, but it also imposes extremely high requirements on inter-chip high-speed interconnects (NVLink/RDMA) to ensure that these scattered fragments can be perfectly pieced together into the ultimate intelligence.
 
 ---
 
-#### 第五节：打破序列墙：上下文并行 (Context Parallelism)
+### Section 4: The Impact of TP and PP on Core Metrics
 
-随着大模型上下文窗口（Context Window）从早期的几千飙升到现在的百万级别（如 Gemini 1.5），传统的张量并行（TP）和流水线并行（PP）在处理超长序列时开始显得力不从心。这就催生了第三种切分维度——**上下文并行（Context Parallelism, CP）**。
+After understanding the basic principles of TP and PP, let's systematically analyze their impact on the core performance metrics we defined in Chapter 4 (TTFT, TBT, Throughput). For a more precise analysis, we must strictly distinguish the following time concepts:
+* **Queueing Time**: The time a request waits in the scheduling queue for GPU resources.
+* **Execution TTFT**: The pure computation time from when the model truly begins processing the request to spitting out the first Token.
+* **User-facing TTFT**: The total time from when the user presses the send key to seeing the first word on the screen (roughly equal to Queueing Time + Execution TTFT + Network transmission delay).
 
-**1. 它要解决什么问题？**
-在极长上下文场景下，核心瓶颈不再仅仅是模型权重，而是**随序列长度线性增长的 KV Cache** 以及**呈二次方增长的注意力计算量**。
-*   即使你用 TP 把模型权重切分到了 8 张卡上，单张卡依然可能塞不下长达数十万甚至上百万 Token 的 KV Cache。
-*   传统的 TP 关注的是隐藏层维度（Hidden Dimension）的切分，而无法有效分摊超长序列维度（Sequence Length）带来的显存与计算压力。
-*   因此，CP 的核心目标是**粉碎“序列墙”**，让系统能够处理远超单卡显存容量的超长文本。
+**1. The Metric Impact of Tensor Parallelism (TP): Brute Force and Lane Expansion**
+* **Impact on Execution TTFT**: **Significantly reduced**. The Prefill phase is compute-bound. TP directly shortens the pure computation time of the model run by amortizing the matrix multiplication computation.
+* **Impact on TBT / TPS**: **Slightly reduced (improves TPS)**. In the Decode phase, TP can still accelerate the computation of each step. But because the computation amount is small, the communication overhead ratio of cross-card All-Reduce will rise, and the speedup ratio is not linear.
+* **Impact on Queueing Time and Throughput**: **Dual optimization but with a Trade-off**.
+    1. **Shorten service time**: Because TP computes faster, old requests disembark quickly, and the queueing time for subsequent requests naturally shortens.
+    2. **Expand concurrency capacity**: TP aggregates multi-card VRAM, allowing a larger Batch Size to be enabled. Requests originally in the queue can be directly pulled into the Batch for joint processing, reducing the queueing time to 0.
+    * *Trade-off*: If a model can originally fit into a single card, forcing TP will introduce communication overhead that consumes total compute, and actually reduces throughput.
 
-**2. 它是怎么做的？**
-上下文并行的核心思想是**沿序列维度（Sequence Dimension）进行切分**：
-1.  **序列切块**：将长达数万甚至数百万的 Token 序列切成 $N$ 个小块，分发给 $N$ 个 GPU。每个 GPU 只负责处理和存储自己那一段序列的 KV Cache。
-2.  **环形注意力（Ring Attention）**：由于自注意力机制要求每个 Token 都要与前面所有的 Token 做计算，序列被切断后，GPU 之间必须进行通信。典型的做法是采用 **Ring Attention** 机制：各个 GPU 形成一个环形拓扑，一边计算本地数据的 Attention，一边像传手绢一样在环中传递 KV Cache 的分块。这样可以在不将所有 KV Cache 集中到单卡的前提下，完成全局注意力的计算。
+**2. The Metric Impact of Pipeline Parallelism (PP): Multi-stage Relay and Throughput is King**
+* **Impact on Execution TTFT**: **Slightly increased**. Requests must sequentially flow through the layers of different machines, and cross-machine communication and pipeline startup bring fixed latency overhead.
+* **Impact on TBT / TPS**: **Almost no improvement**. It is only a physical split between layers and does not accelerate the forward computation of a single Token.
+* **Impact on Queueing Time and Throughput**: **Significantly increased**.
+    * **Pipeline effect reduces queueing**: When request A completes the first stage Prefill on the first machine and flows to the next machine, the first machine is immediately released, and request B in the queue can immediately begin its Prefill. This spatial multiplexing allows new requests to enter the system earlier.
+    * **Throughput is king**: Through the pipeline mechanism (different machines simultaneously process different layers of different Batches), the GPU utilization is greatly improved. It is a sharp weapon for increasing the throughput of large clusters. High throughput helps digest the queue, macroscopically reducing the average queueing time.
+
+---
+
+### Section 5: Breaking the Sequence Wall: Context Parallelism
+
+As the context window of large models soars from thousands in the early days to millions today (such as Gemini 1.5), traditional Tensor Parallelism (TP) and Pipeline Parallelism (PP) begin to appear inadequate when handling super-long sequences. This gave birth to a third slicing dimension — **Context Parallelism (CP)**.
+
+**1. What problem does it solve?**
+In extremely long context scenarios, the core bottleneck is no longer just model weights, but the **KV Cache growing linearly with sequence length** and the **attention computation volume growing quadratically**.
+* Even if you use TP to slice the model weights onto 8 cards, a single card still might not be able to fit the KV Cache for a sequence of hundreds of thousands or even millions of Tokens.
+* Traditional TP focuses on slicing the Hidden Dimension, but cannot effectively amortize the VRAM and compute pressure brought by the Sequence Length dimension.
+* Therefore, the core goal of CP is to **smash the "sequence wall"**, allowing the system to process super-long texts far exceeding single-card VRAM capacity.
+
+**2. How does it work?**
+The core idea of Context Parallelism is to **slice along the Sequence Dimension**:
+1. **Sequence chunking**: Cut a sequence of tens of thousands or even millions of Tokens into $N$ small chunks, and distribute them to $N$ GPUs. Each GPU is only responsible for processing and storing the KV Cache of its segment of the sequence.
+2. **Ring Attention**: Because the self-attention mechanism requires each Token to compute with all preceding Tokens, after the sequence is cut, communication must occur between GPUs. A typical approach is to use the **Ring Attention** mechanism: each GPU forms a ring topology. While computing the Attention of local data, they pass the KV Cache chunks in the ring like passing a parcel. This allows the global attention computation to be completed without centralizing all KV Caches on a single card.
 
 > [!NOTE]
-> **深入探讨：Ring Attention 的动态协调与负载均衡**
+> **Deep Dive: Dynamic Coordination and Load Balancing of Ring Attention**
 >
-> 环形注意力（Ring Attention）的实现并非简单的“数据切块”，它在工程上面临着通信协调和计算负载均衡的巨大挑战。
+> The implementation of Ring Attention is not simply "data chunking"; it faces enormous engineering challenges in communication coordination and computational load balancing.
 >
-> **1. 通信与计算的“击鼓传花”式协调**
-> 假设我们将序列切分为 3 块，由 3 台机器协同计算。机器 1 持有 $Q_1, K_1, V_1$；机器 2 持有 $Q_2, K_2, V_2$；机器 3 持有 $Q_3, K_3, V_3$。在 Causal Attention（自回归）模式下，协调过程如下：
-> *   **步骤 1**：所有机器同时启动，计算本地 $Q$ 与本地 $KV$ 的注意力。同时，启动异步通信，像传手绢一样在环中传递 $KV$ 块：机器 1 发送 $KV_1$ 给机器 2，机器 2 发送 $KV_2$ 给机器 3，以此类推。
-> *   **步骤 2**：机器收到上游传来的 $KV$ 块后，计算本地 $Q$ 与新 $KV$ 的注意力。例如机器 2 收到 $KV_1$，计算 $Q_2$ 与 $KV_1$ 的注意力。此时机器 1 收到 $KV_3$，但因为是因果注意力，它不能看未来的信息，所以这次计算是无效的（或被 Mask 掉）。
-> *   **步骤 3**：继续传递 $KV$ 块。机器 3 最终收到 $KV_1$，计算 $Q_3$ 与 $KV_1$ 的注意力。
+> **1. "Pass the Parcel" Coordination of Communication and Computation**
+> Suppose we slice the sequence into 3 chunks, collaboratively computed by 3 machines. Machine 1 holds $Q_1, K_1, V_1$; Machine 2 holds $Q_2, K_2, V_2$; Machine 3 holds $Q_3, K_3, V_3$. In Causal Attention (autoregressive) mode, the coordination process is as follows:
+> * **Step 1**: All machines start simultaneously, computing the attention of local $Q$ with local $KV$. At the same time, asynchronous communication is initiated, passing $KV$ chunks in the ring like a parcel: Machine 1 sends $KV_1$ to Machine 2, Machine 2 sends $KV_2$ to Machine 3, and so on.
+> * **Step 2**: After receiving the $KV$ chunk passed from upstream, the machine computes the attention of local $Q$ with the new $KV$. For example, Machine 2 receives $KV_1$ and computes the attention of $Q_2$ with $KV_1$. At this time, Machine 1 receives $KV_3$, but because it is causal attention, it cannot look at future information, so this computation is invalid (or masked out).
+> * **Step 3**: Continue passing $KV$ chunks. Machine 3 eventually receives $KV_1$ and computes the attention of $Q_3$ with $KV_1$.
 >
-> 通过这种方式，每台机器最终都与它所需要的所有历史 $KV$ 块完成了计算。由于通信是异步的，注意力计算的延迟被有效地掩盖了。**为了保持数学上的等价性**，各台机器需要结合 Online Softmax（类似 FlashAttention 的技巧），在接收到新的 KV 块后动态更新局部 Softmax 的最大值和累加和。
+> In this way, each machine eventually completes the computation with all the historical $KV$ chunks it needs. Because communication is asynchronous, the latency of attention computation is effectively hidden. **To maintain mathematical equivalence**, each machine needs to combine Online Softmax (a trick similar to FlashAttention) to dynamically update the maximum value and accumulated sum of the local Softmax after receiving a new KV chunk.
 >
-> **环形注意力协调流程图：**
+> **Ring Attention Coordination Flowchart:**
 > ```mermaid
 > sequenceDiagram
->     participant M1 as 机器 1 (持有 Q1, KV1)
->     participant M2 as 机器 2 (持有 Q2, KV2)
->     participant M3 as 机器 3 (持有 Q3, KV3)
+>     participant M1 as Machine 1 (holds Q1, KV1)
+>     participant M2 as Machine 2 (holds Q2, KV2)
+>     participant M3 as Machine 3 (holds Q3, KV3)
 > 
->     Note over M1, M3: 步骤 1: 计算本地并传递 KV
->     par 异步通信
->         M1->>M2: 发送 KV1
+>     Note over M1, M3: Step 1: Compute locally and pass KV
+>     par Asynchronous Communication
+>         M1->>M2: Send KV1
 >     and
->         M2->>M3: 发送 KV2
+>         M2->>M3: Send KV2
 >     and
->         M3->>M1: 发送 KV3
+>         M3->>M1: Send KV3
 >     end
->     Note over M1: 计算 Q1 * KV1
->     Note over M2: 计算 Q2 * KV2
->     Note over M3: 计算 Q3 * KV3
+>     Note over M1: Compute Q1 * KV1
+>     Note over M2: Compute Q2 * KV2
+>     Note over M3: Compute Q3 * KV3
 > 
->     Note over M1, M3: 步骤 2: 计算收到的 KV 并继续传递
->     par 异步通信
->         M1->>M2: 转发 KV3
+>     Note over M1, M3: Step 2: Compute received KV and continue passing
+>     par Asynchronous Communication
+>         M1->>M2: Forward KV3
 >     and
->         M2->>M3: 转发 KV1
+>         M2->>M3: Forward KV1
 >     and
->         M3->>M1: 转发 KV2
+>         M3->>M1: Forward KV2
 >     end
->     Note over M1: 计算 Q1 * KV3 (Causal 模式下无效)
->     Note over M2: 计算 Q2 * KV1
->     Note over M3: 计算 Q3 * KV2
+>     Note over M1: Compute Q1 * KV3 (Invalid in Causal mode)
+>     Note over M2: Compute Q2 * KV1
+>     Note over M3: Compute Q3 * KV2
 > 
->     Note over M1, M3: 步骤 3: 最后一轮计算
->     Note over M1: 计算 Q1 * KV2 (Causal 模式下无效)
->     Note over M2: 计算 Q2 * KV3 (Causal 模式下无效)
->     Note over M3: 计算 Q3 * KV1
+>     Note over M1, M3: Step 3: Final round of computation
+>     Note over M1: Compute Q1 * KV2 (Invalid in Causal mode)
+>     Note over M2: Compute Q2 * KV3 (Invalid in Causal mode)
+>     Note over M3: Compute Q3 * KV1
 > ```
 >
-> **2. 负载不均衡难题与 Zig-zag 优化**
-> 从上述过程可以看出，在 Causal Attention 中，有效的注意力计算呈下三角形状：
-> *   机器 1 只需要算 1 份有效计算（$Q_1$ 与 $KV_1$）。
-> *   机器 2 需要算 2 份有效计算（$Q_2$ 与 $KV_1, KV_2$）。
-> *   机器 3 需要算 3 份有效计算（$Q_3$ 与 $KV_1, KV_2, KV_3$）。
+> **2. The Challenge of Load Imbalance and Zig-zag Optimization**
+> As can be seen from the above process, in Causal Attention, valid attention computation presents a lower triangular shape:
+> * Machine 1 only needs to compute 1 valid computation ($Q_1$ with $KV_1$).
+> * Machine 2 needs to compute 2 valid computations ($Q_2$ with $KV_1, KV_2$).
+> * Machine 3 needs to compute 3 valid computations ($Q_3$ with $KV_1, KV_2, KV_3$).
 >
-> 这会导致严重的负载不均衡，机器 1 和机器 2 会提前闲置。为了解决这个问题，业界主要有两种方案：
-> *   **方案 A：暴力填充（Padding/Masking）**：所有机器都进行满负荷计算，即使是无效的未来块也照常计算，最后用掩码强行滤除。这虽然保持了代码的简单和对称，但浪费了接近 50% 的算力。
-> *   **方案 B：交错切分（Zig-zag Partitioning / Striping）**：不再按连续区间切分序列，而是采用“发牌”或“两头凑”的方式分配。假设有 6 个块，机器 1 拿块 1 和 6（工作量 $1+6=7$），机器 2 拿块 2 和 5（工作量 $2+5=7$），机器 3 拿块 3 和 4（工作量 $3+4=7$）。通过这种巧妙的编排，每台机器的计算量被完美平衡，消灭了闲置时间。
+> This leads to severe load imbalance, and Machine 1 and Machine 2 will be idle early. To solve this problem, the industry mainly has two solutions:
+> * **Solution A: Brute-force Padding/Masking**: All machines perform full-load computation; even invalid future chunks are computed normally, and finally forcibly filtered out with a mask. While this keeps the code simple and symmetric, it wastes nearly 50% of compute.
+> * **Solution B: Zig-zag Partitioning / Striping**: Stop slicing the sequence into contiguous intervals, but use a "dealing cards" or "pairing from both ends" method to allocate. Suppose there are 6 chunks. Machine 1 takes chunk 1 and 6 (workload $1+6=7$), Machine 2 takes chunk 2 and 5 (workload $2+5=7$), Machine 3 takes chunk 3 and 4 (workload $3+4=7$). Through this clever orchestration, the computation load of each machine is perfectly balanced, eliminating idle time.
 >
-> **负载均衡与 Zig-zag 示意图：**
+> **Load Balancing and Zig-zag Diagram:**
 > ```mermaid
 > graph TD
->     subgraph "朴素连续切分 (Contiguous)"
->         N1["机器 1: 块 [1, 2]"]
->         N2["机器 2: 块 [3, 4]"]
->         N3["机器 3: 块 [5, 6]"]
->         N1 -->|"工作量: 1+2 = 3"| NW1["严重闲置"]
->         N2 -->|"工作量: 3+4 = 7"| NW2["中度负载"]
->         N3 -->|"工作量: 5+6 = 11"| NW3["重度负载"]
+>     subgraph "Contiguous Partitioning"
+>         N1["Machine 1: Chunks [1, 2]"]
+>         N2["Machine 2: Chunks [3, 4]"]
+>         N3["Machine 3: Chunks [5, 6]"]
+>         N1 -->|"Workload: 1+2 = 3"| NW1["Severely Idle"]
+>         N2 -->|"Workload: 3+4 = 7"| NW2["Moderate Load"]
+>         N3 -->|"Workload: 5+6 = 11"| NW3["Heavy Load"]
 >     end
 > 
->     subgraph "交错切分 (Zig-zag)"
->         Z1["机器 1: 块 [1, 6]"]
->         Z2["机器 2: 块 [2, 5]"]
->         Z3["机器 3: 块 [3, 4]"]
->         Z1 -->|"工作量: 1+6 = 7"| ZW1["完美平衡"]
->         Z2 -->|"工作量: 2+5 = 7"| ZW2["完美平衡"]
->         Z3 -->|"工作量: 3+4 = 7"| ZW3["完美平衡"]
+>     subgraph "Zig-zag Partitioning"
+>         Z1["Machine 1: Chunks [1, 6]"]
+>         Z2["Machine 2: Chunks [2, 5]"]
+>         Z3["Machine 3: Chunks [3, 4]"]
+>         Z1 -->|"Workload: 1+6 = 7"| ZW1["Perfectly Balanced"]
+>         Z2 -->|"Workload: 2+5 = 7"| ZW2["Perfectly Balanced"]
+>         Z3 -->|"Workload: 3+4 = 7"| ZW3["Perfectly Balanced"]
 >     end
 > ```
 
-**3. 它如何影响推理性能？**
-1.  **对执行 TTFT 的影响**：**大幅优化超长文本的 TTFT**。在 Prefill 阶段，处理百万字 Prompt 的计算量极其恐怖。CP 通过将序列打散到多卡并行计算，显著缩减了超长文本的预填充时间。
-2.  **对 TBT / TPS 的影响**：**影响较小**。在 Decode 阶段，每次只生成一个 Token，并不需要像 Prefill 那样处理全量长文本的矩阵乘法，因此 CP 对吐字间隔的改善有限。
-3.  **对吞吐量与成本的影响**：**以高昂的通信换取“可行性”**。CP 引入了大量的环形通信开销。它在普通短文本推理中毫无优势，但在超长文本场景下，它是**让任务“能跑起来”的唯一解**。
+**3. How does it affect inference performance?**
+1. **Impact on Execution TTFT**: **Dramatically optimizes TTFT for super-long texts**. In the Prefill phase, the computation amount to process a million-word Prompt is extremely terrifying. CP significantly reduces the prefilling time of super-long texts by breaking the sequence and computing in parallel across multiple cards.
+2. **Impact on TBT / TPS**: **Minor impact**. In the Decode phase, only one Token is generated at a time, and it does not need to process the matrix multiplication of the full long text like Prefill, so CP has limited improvement on the inter-token time.
+3. **Impact on Throughput and Cost**: **Trading high communication costs for "feasibility"**. CP introduces a massive amount of ring communication overhead. It has no advantage in ordinary short-text inference, but in super-long text scenarios, it is the **only solution to "make the task run"**.
 
-### 第十七章：完美的劳动力分工：分离式推理 (Disaggregated Serving)
+### Chapter 17: The Perfect Division of Labor: Disaggregated Serving
 
-什么是**分离式推理（Disaggregated Serving）**？简单来说，它是一种将大模型推理的 **Prefill（预填充）** 阶段和 **Decode（解码）** 阶段，彻底剥离并运行在不同硬件配置的物理集群上的架构。
+What is **Disaggregated Serving**? Put simply, it is an architecture that completely strips the **Prefill** phase and **Decode** phase of large model inference and runs them on physical clusters with different hardware configurations.
 
-在第三部分中，我们介绍了**连续批处理**和**分块预填充**，它们在单机层面实现了 Prefill 和 Decode 的“完美拼车”，极大地压榨了单张显卡的性能。你可能会问：既然单机问题已经解决了，为什么还要大费周章搞分离式推理？
+In Part Three, we introduced **Continuous Batching** and **Chunked Prefill**. They achieved the "perfect carpooling" of Prefill and Decode at the single-machine level, greatly squeezing the performance of a single graphics card. You might ask: Since the single-machine problem has been solved, why go through the trouble of doing disaggregated serving?
 
-答案是：单机优化只是**“战术级”**的极限压榨。在单机内部试图完美平衡 Prefill 和 Decode，不仅受制于**硬件错配**的物理极限，更带来了**系统管理和调度的极高复杂度**。当服务规模达到工业级量级时，单机内的“完美”反而变成了宏观上的“负担”。本章将揭秘**分离式推理 (Disaggregated Serving)**，看它是如何同时解决硬件错配并极大简化资源管理的。
+The answer is: single-machine optimization is only a **"tactical-level"** limit squeeze. Attempting to perfectly balance Prefill and Decode within a single machine is not only constrained by the physical limits of **hardware mismatch**, but also brings **extremely high complexity in system management and scheduling**. When the service scale reaches an industrial magnitude, the "perfection" within a single machine becomes a macroscopic "burden". This chapter will unveil **Disaggregated Serving** and see how it simultaneously solves hardware mismatch and greatly simplifies resource management.
 
-#### 第一节：难以调和的矛盾：硬件错配与管理困境
+#### Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma
 
-我们在第八章提到过，Prefill 和 Decode 对硬件的需求是完全相反的：
-*   **Prefill**：处理海量输入，需要极高的**计算算力（FLOPs）**，但对显存容量要求相对较小。
-*   **Decode**：逐字吐出 Token，计算量很小（算力闲置），但需要频繁从显存搬运庞大的 KV Cache，极度渴望**显存带宽**和**显存容量**。
+We mentioned in Chapter 8 that Prefill and Decode have completely opposite hardware requirements:
+* **Prefill**: Processes massive inputs, requiring extremely high **Compute (FLOPs)**, but relatively small VRAM capacity requirements.
+* **Decode**: Spits out Tokens word by word, with very little computation (compute is idle), but needs to frequently move massive KV Caches from VRAM, extremely craving **Memory Bandwidth** and **Memory Capacity**.
 
-如果使用传统的统一架构（混合部署），系统将面临双重打击：
-1.  **硬件错配的浪费**：当你用昂贵的 H100 显卡去跑 Decode 阶段时，它那毁天灭地的 Tensor Core 算力绝大多数时间都在“睡大觉”等显存搬数据。这无异于用屠龙刀去砍柴，造成了极大的成本浪费。
-2.  **管理与调度的“走钢丝”**：为了在单机上解决这个矛盾，工程师们发明了连续批处理、分块预填充等极其复杂的调度算法（如前几章所述）。这无异于在单张显卡上“走钢丝”——系统必须小心翼翼地平衡两者的资源占用，稍有不慎就会引发首字延迟（TTFT）或吐字间隔（TBT）的抖动。这种多维度（算力、显存、带宽）的混合优化，让集群的资源规划和容量管理变得异常复杂。
+If using a traditional unified architecture (mixed deployment), the system will face a double blow:
+1. **Waste from Hardware Mismatch**: When you use an expensive H100 graphics card to run the Decode phase, its world-destroying Tensor Core compute is "sleeping" and waiting for memory to move data most of the time. This is tantamount to using a dragon-slaying sword to chop wood, causing a huge waste of cost.
+2. **The "Tightrope Walking" of Management and Scheduling**: To solve this contradiction on a single machine, engineers invented extremely complex scheduling algorithms like Continuous Batching and Chunked Prefill (as described in previous chapters). This is tantamount to "walking a tightrope" on a single graphics card — the system must carefully balance the resource occupation of both; any carelessness will trigger jitter in Time to First Token (TTFT) or Time Between Tokens (TBT). This multi-dimensional (compute, memory capacity, bandwidth) mixed optimization makes the resource planning and capacity management of the cluster exceptionally complex.
 
 > [!NOTE]
-> **为什么分块预填充（Chunked Prefill）救不了它？**
-> 尽管我们可以把 Prefill 的计算切碎，塞进 Decode 的空闲时间里，但这依然要求我们为了照顾 Decode 的显存带宽，去购买昂贵的高带宽显卡。而在长文本生成（如写小说）或高并发场景下，GPU 依然会长时间处于“带宽受限”状态，昂贵的算力依然在被浪费。此外，两者在同一张卡上竞争资源，必然会导致首字延迟（TTFT）和吐字间隔（TBT）的抖动，并没有从根本上简化管理。
+> **Why can't Chunked Prefill save it?**
+> Although we can chop the Prefill computation into pieces and stuff them into the idle time of Decode, this still requires us to purchase expensive high-bandwidth graphics cards to accommodate the memory bandwidth of Decode. And in long-text generation (like writing novels) or high-concurrency scenarios, the GPU will still be in a "bandwidth-bound" state for a long time, and expensive compute is still being wasted. Furthermore, the two competing for resources on the same card will inevitably lead to jitter in Time to First Token (TTFT) and Time Between Tokens (TBT), and does not fundamentally simplify management.
 
 ---
 
-#### 第二节：物理分离：解耦硬件，简化管理
+#### Section 2: Physical Separation: Decoupling Hardware, Simplifying Management
 
-为了从根本上破局，顶级科技公司开始采用 **Disaggregated Serving（分离式推理）** 架构（如 Google 内部的各种系统和开源的 DistServe）。
+To fundamentally break the deadlock, top tech companies have begun to adopt the **Disaggregated Serving** architecture (such as various internal systems at Google and the open-source DistServe).
 
-核心思想是**物理隔离**：
-1.  **Prefill 集群**：由算力极强但显存一般的机器组成，专门负责接收用户的长 Prompt，以最快的速度完成预填充，生成初始的 KV Cache。
-2.  **Decode 集群**：由算力一般、但配备了海量 HBM 显存和超高显存带宽的机器组成，专门负责存储 KV Cache 并逐字吐出 Token。
+The core idea is **Physical Isolation**:
+1. **Prefill Cluster**: Composed of machines with extremely strong compute but average memory, dedicated to receiving users' long Prompts, completing prefilling at the fastest speed, and generating the initial KV Cache.
+2. **Decode Cluster**: Composed of machines with average compute, but equipped with massive HBM memory and ultra-high memory bandwidth, dedicated to storing KV Cache and spitting out Tokens word by word.
 
-这种分工带来了双重收益：
+This division of labor brings dual benefits:
 
-**1. 解决硬件错配，释放硬件潜力**
-我们可以针对不同的集群进行独立的硬件采购，**在 Prefill 集群追求极致的 TTFT，在 Decode 集群追求极致的 TPS 和 TBT 稳定性**，将每一种硬件的特性压榨到极致，大幅降低了整体 TCO（总拥有成本）。
+**1. Solves Hardware Mismatch, Unleashes Hardware Potential**
+We can make independent hardware purchases for different clusters, **pursuing extreme TTFT in the Prefill cluster, and pursuing extreme TPS and TBT stability in the Decode cluster**, squeezing the characteristics of each hardware to the extreme, and significantly reducing the overall TCO (Total Cost of Ownership).
 
-**2. 简化资源匹配与管理（降维打击）**
-更重要的是，分离式推理**将复杂的混合调度问题，降维成了简单的容量规划问题**：
-*   **告别“微操”**：Prefill 节点只管闷头算 Prompt，Decode 节点只管流畅吐字。系统不再需要在单机内做复杂的资源平衡，极大地提升了系统的稳定性和可维护性。
-*   **业务驱动的极简扩缩容**：资源管理不再是黑盒的算法调优，而是直接与业务画像挂钩。
-    *   **RAG（检索增强生成）与长文档问答**：用户通常会上传几万字的背景资料，但只要求模型回答几百字。这是一种**“重 Prefill、轻 Decode”**的场景。在分离架构下，我们只需定向扩容 Prefill 集群即可。
-    *   **Agent（智能体）与思维链（CoT）推理**：用户可能只输入了一句简短的指令，但模型在背后需要进行复杂的工具调用或长达数万字的“内心独白”。这是一种**“轻 Prefill、重 Decode”**的场景。此时，我们只需定向扩容配备海量显存的 Decode 集群，避免了为 Prefill 算力买单的冤枉钱。
+**2. Simplifies Resource Matching and Management (Dimensionality Reduction Strike)**
+More importantly, disaggregated serving **reduces the complex mixed scheduling problem into a simple capacity planning problem**:
+* **Farewell to "Micromanagement"**: Prefill nodes just focus on computing the Prompt; Decode nodes just focus on smoothly spitting out text. The system no longer needs to do complex resource balancing within a single machine, greatly improving system stability and maintainability.
+* **Business-Driven Minimalist Scaling**: Resource management is no longer black-box algorithm tuning, but directly linked to business profiles.
+    * **RAG (Retrieval-Augmented Generation) and Long Document Q&A**: Users usually upload tens of thousands of words of background material, but only ask the model to answer a few hundred words. This is a **"heavy Prefill, light Decode"** scenario. Under the separated architecture, we only need to directionally scale the Prefill cluster.
+    * **Agent and Chain of Thought (CoT) Inference**: The user might only input a short instruction, but the model behind the scenes needs to perform complex tool calls or an "inner monologue" of tens of thousands of words. This is a **"light Prefill, heavy Decode"** scenario. At this time, we only need to directionally scale the Decode cluster equipped with massive VRAM, avoiding paying unjust money for Prefill compute.
 
-通过这种精细化的资源匹配，分离式推理不仅解决了屠龙刀砍柴的尴尬，更让整个集群的资源匹配和管理变得清爽、可控。
+Through this refined resource matching, disaggregated serving not only solves the awkwardness of chopping wood with a dragon-slaying sword but also makes the resource matching and management of the entire cluster clean and controllable.
 
-#### 第三节：分离式推理的典型工作流
+#### Section 3: Typical Workflow of Disaggregated Serving
 
-理解了分离式推理的优势后，我们来看看一个请求在分离架构下是如何流转的。它就像一场精心安排的接力赛，**AI 网关** 扮演“媒人（Matchmaker）”的角色，而 **Prefill 节点** 和 **Decode 节点** 则进行点对点的交接：
+After understanding the advantages of disaggregated serving, let's see how a request flows under the separated architecture. It is like a carefully arranged relay race. The **AI Gateway** plays the role of a "Matchmaker", while the **Prefill Node** and **Decode Node** perform point-to-point handovers:
 
-1. **请求接入与撮合**：用户发送 Prompt 请求到达 **AI 网关**。网关根据策略挑选出一组 **Prefill 节点** 和 **Decode 节点**，并为它们生成一个全局唯一的会话标识（如 Room ID）。
-2. **并发派发**：AI 网关将带有连接信息（目标节点地址 and Room ID）的请求，**并发地**同时发送给选定的 Prefill 节点 and Decode 节点。
-3. **点对点握手与预分配**：
-   * **Decode 节点** 收到请求后，首先在本地 KV 池中为该请求**预分配**好显存空间，并将这些目标内存地址通过控制流发送给 Prefill 节点（“往这儿写”）。
-   * 此时，两节点完成了点对点的握手。
-4. **Prefill 计算与直推**：
-   * **Prefill 节点** 全力开火，计算 Prompt 并生成 KV Cache。
-   * 计算完成后，Prefill 节点拿到 Decode 节点发过来的目标地址，通过 **RDMA** 高速网络（如 Mooncake 传输引擎），将全量 KV Cache **直接推送（Push）** 到 Decode 节点的显存中。
-5. **Decode 解码生成**：
-   * Decode 节点确认数据接收完成后，直接跳过 Prefill 阶段，接管后续的自回归生成工作，逐字吐出 Token。
-   * 生成的 Token 实时流式返回给用户。
+1. **Request Access and Matchmaking**: The user sends a Prompt request that arrives at the **AI Gateway**. The gateway selects a set of **Prefill Node** and **Decode Node** based on policy and generates a globally unique session identifier (like Room ID) for them.
+2. **Concurrent Dispatching**: The AI Gateway **concurrently** sends the request with connection information (target node address and Room ID) simultaneously to the selected Prefill Node and Decode Node.
+3. **Point-to-Point Handshake and Pre-allocation**:
+   * After the **Decode Node** receives the request, it first **pre-allocates** VRAM space in the local KV pool for the request, and sends these target memory addresses via the control flow to the Prefill Node ("write here").
+   * At this time, the two nodes complete the point-to-point handshake.
+4. **Prefill Computation and Direct Push**:
+   * The **Prefill Node** goes full fire, computing the Prompt and generating the KV Cache.
+   * After the computation is completed, the Prefill Node takes the target address sent by the Decode Node, and via a high-speed **RDMA** network (such as the Mooncake transport engine), **directly pushes** the full KV Cache into the VRAM of the Decode Node.
+5. **Decode Generation**:
+   * After the Decode Node confirms data reception is complete, it directly skips the Prefill phase, takes over the subsequent autoregressive generation work, and spits out Tokens word by word.
+   * The generated Tokens are streamed back to the user in real-time.
 
-为了让你更直观地看清这个“网关撮合、节点直连”的过程，我们可以用下面这张图来表示：
+To let you see this process of "gateway matchmaking, node direct connection" more intuitively, we can use the following diagram to represent it:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as 用户
-    participant Gateway as AI 网关 / 调度器
-    participant Prefill as Prefill 节点<br/>(算力密集型)
-    participant Decode as Decode 节点<br/>(显存/带宽密集型)
+    actor User as User
+    participant Gateway as AI Gateway / Scheduler
+    participant Prefill as Prefill Node<br/>(Compute-bound)
+    participant Decode as Decode Node<br/>(Memory/Bandwidth-bound)
 
-    User->>Gateway: 1. 发送 Prompt 请求
-    Note over Gateway: 媒人角色：挑选 P/D 对<br/>生成 Room ID 与地址信息
-    par 并发派发
-        Gateway->>Prefill: 2. 发送请求 (含 Decode 地址与 Room ID)
+    User->>Gateway: 1. Send Prompt request
+    Note over Gateway: Matchmaker role: Pick P/D pair<br/>Generate Room ID & Address Info
+    par Concurrent Dispatch
+        Gateway->>Prefill: 2. Send request (with Decode Address & Room ID)
     and
-        Gateway->>Decode: 2. 发送请求 (含 Prefill 地址与 Room ID)
+        Gateway->>Decode: 2. Send request (with Prefill Address & Room ID)
     end
     
-    Note over Decode: 3. 预分配本地 KV 显存空间
-    Decode->>Prefill: 4. 发送目标内存地址 (告诉 P 往哪写)
+    Note over Decode: 3. Pre-allocate local KV VRAM space
+    Decode->>Prefill: 4. Send target memory address (tell P where to write)
     
-    Note over Prefill: 5. 密集计算处理 Prompt<br/>生成 KV Cache
+    Note over Prefill: 5. Intensive computation to process Prompt<br/>Generate KV Cache
     
-    Note over Prefill, Decode: 关键交接：点对点极速推送 (通过 RDMA)
-    Prefill->>Decode: 6. 直接 Push KV Cache 到 Decode 显存
+    Note over Prefill, Decode: Critical Handover: Point-to-Point Ultra-fast Push (via RDMA)
+    Prefill->>Decode: 6. Directly Push KV Cache to Decode VRAM
     
-    Prefill->>Gateway: 7. 汇报完成 (可返回首字 TTFT)
+    Prefill->>Gateway: 7. Report completion (can return First Token TTFT)
     
-    Note over Decode: 8. 确认数据就位，开始自回归解码！
+    Note over Decode: 8. Confirm data is in place, start autoregressive decoding!
     
-    loop 逐字生成
-        Decode->>User: 9. 流式返回 Token (TBT)
+    loop Word-by-word generation
+        Decode->>User: 9. Stream return Token (TBT)
     end
-    Decode->>Gateway: 10. 生成结束，释放资源
+    Decode->>Gateway: 10. Generation ends, release resources
 ```
 
-这种“网关只控流、节点点对点直连”的去中心化数据交接机制，成功避免了网关成为海量 KV 数据传输的瓶颈，将单机内的资源竞争转化为了集群间的高效流水线作业。
+This decentralized data handover mechanism where "the gateway only controls flow, nodes connect point-to-point" successfully prevents the gateway from becoming the bottleneck of massive KV data transmission, transforming resource competition within a single machine into efficient pipeline work between clusters.
 
 ---
 
-### 第十八章：全知的交通警察：内容感知路由
+### Chapter 18: The Omniscient Traffic Police: Content-Aware Routing
 
-在第十七章中，我们把集群拆分成了 Prefill 池和 Decode 池。那么，当海量的 HTTP 请求涌入时，谁来决定哪个请求去哪台机器？本章将介绍大模型集群中的“交通警察”——**内容感知路由**。
+In Chapter 17, we split the cluster into a Prefill pool and a Decode pool. So, when massive HTTP requests pour in, who decides which request goes to which machine? This chapter will introduce the "traffic police" in the large model cluster — **Content-Aware Routing**.
 
-#### 第一节：AI 网关：懂业务的交通警察
+#### Section 1: AI Gateway: The Traffic Police That Knows the Business
 
-传统的负载均衡器（如 Nginx 或 F5）只关心网络流量、并发连接数以及服务器的 CPU/内存利用率等基础物理指标。它们看一个 HTTP 请求，只是一堆无意义的字节。
+Traditional load balancers (like Nginx or F5) only care about basic physical metrics such as network traffic, concurrent connections, and server CPU/memory utilization. To them, an HTTP request is just a bunch of meaningless bytes.
 
-但在 LLM 推理集群中，这种“盲目”的路由会导致灾难。因为大模型推理的成本几乎完全由 **Prompt 的内容和长度** 决定。
+But in an LLM inference cluster, this "blind" routing leads to disaster. Because the cost of large model inference is almost entirely determined by the **content and length of the Prompt**.
 
-于是，**AI 网关（AI Gateway）** 应运而生。它是懂业务的交通警察：
-*   **请求检查**：在请求到达 GPU 之前，网关会先对其进行解析，看它包含多少个 Token，属于什么业务类型。
-*   **智能分流决策**：由于大模型请求在 Prefill 和 Decode 阶段的资源消耗差异巨大，网关不能简单地按“轮询”分发，而是需要根据**请求画像（Prompt 长度与预期输出长度）**，对 Prefill 节点和 Decode 节点进行组合路由。
+Thus, the **AI Gateway** emerged. It is a traffic police that knows the business:
+* **Request Inspection**: Before a request reaches the GPU, the gateway first parses it to see how many Tokens it contains and what business type it belongs to.
+* **Intelligent Routing Decision**: Because the resource consumption difference of large model requests in the Prefill and Decode phases is huge, the gateway cannot simply distribute by "round-robin", but needs to perform combined routing to Prefill nodes and Decode nodes based on the **request profile (Prompt length and expected output length)**.
 
-我们可以用下表来梳理 AI 网关在不同请求场景下的路由决策逻辑：
+We can use the following table to sort out the routing decision logic of the AI Gateway under different request scenarios:
 
-| 请求画像 | 特征 (输入/输出) | Prefill 节点路由策略 | Decode 节点路由策略 |
+| Request Profile | Features (Input/Output) | Prefill Node Routing Policy | Decode Node Routing Policy |
 | :--- | :--- | :--- | :--- |
-| **日常闲聊** | 短输入 / 短输出 | **贪心/极速**：分配给当前队列最短、负载最轻的节点，追求极致的 TTFT。 | **随机/轮询**：对显存容量和带宽要求极低，任意低负载节点均可。 |
-| **知识库 (RAG)** | **长输入** / 短输出 | **算力优先**：必须派发给当前无重载、算力充裕的节点，否则庞大的 Prefill 会导致 TTFT 爆炸。 | **容量优先**：必须路由到**显存剩余容量大**的节点，以容纳海量的初始 KV Cache。 |
-| **智能体/长文本生成** | 短输入 / **长输出** | **快速通过**：Prefill 耗时极短，分配给普通空闲节点即可。 | **带宽与稳定性优先**：Decode 持续时间长，需选择当前活跃 Batch 少、显存带宽充裕的节点（保 TBT）。 |
-| **复杂分析/长对话** | **长输入** / **长输出** | **资源倾斜**：极度消耗算力，需选择最空闲的顶级算力节点，甚至触发上下文并行（CP）。 | **双重严苛**：既要**显存容量大**（装下初始大 KV），又要**显存带宽足**（支持长期持续吐字）。 |
+| **Daily Chat** | Short Input / Short Output | **Greedy/Ultra-fast**: Assign to the node with the shortest current queue and lightest load, pursuing extreme TTFT. | **Random/Round-robin**: Extremely low requirements for VRAM capacity and bandwidth, any low-load node will do. |
+| **Knowledge Base (RAG)** | **Long Input** / Short Output | **Compute First**: Must dispatch to a currently non-heavy-load, compute-abundant node, otherwise the massive Prefill will cause TTFT explosion. | **Capacity First**: Must route to a node with **large remaining VRAM capacity** to accommodate the massive initial KV Cache. |
+| **Agent/Long Text Gen** | Short Input / **Long Output** | **Fast Pass**: Prefill time is extremely short, assigning to a normal idle node is fine. | **Bandwidth & Stability First**: Decode lasts long, must select a node with few currently active Batches and abundant memory bandwidth (to guarantee TBT). |
+| **Complex Analysis/Long Conversation** | **Long Input** / **Long Output** | **Resource Tilt**: Extremely consumes compute, needs to select the most idle top-compute node, even triggering Context Parallelism (CP). | **Double Strict**: Needs both **large VRAM capacity** (to fit the large initial KV) and **sufficient VRAM bandwidth** (to support long-term continuous text generation). |
 
 > [!NOTE]
-> **防死锁与防线头阻塞（HOL Blocking）**：当长短请求同时到达时，AI 网关会极力避免将短请求排在长请求后面。如果 Prefill 节点都在忙，网关甚至可能会将短请求插队（Priority Queue）或者分流到专门预留的“快车道”节点，以保证短请求的极致体验。
+> **Anti-Deadlock and Anti-Head-of-Line (HOL) Blocking**: When long and short requests arrive at the same time, the AI Gateway will try its best to avoid putting short requests behind long requests. If Prefill nodes are all busy, the gateway might even let short requests cut in line (Priority Queue) or divert them to specially reserved "fast lane" nodes to ensure the ultimate experience for short requests.
 
 ---
 
-#### 第二节：缓存感知路由与动态副本
+#### Section 2: Cache-Aware Routing and Dynamic Replication
 
-在大模型集群中，**缓存感知路由（Cache-aware Routing）** 是 AI 网关最强悍的杀手锏。
+In large model clusters, **Cache-aware Routing** is the most powerful killer feature of the AI Gateway.
 
-**1. 为什么需要它？**
-结合我们在第十一章学过的 **RadixAttention（前缀缓存）**，如果多个请求共享相同的 System Prompt、长文档背景或历史对话，节点本地会缓存这些前缀的 KV Cache。
-如果网关只是盲目地轮询分发，带有相同前缀的请求会被散落到不同节点，导致每个节点都要重复计算一遍 Prefill。这不仅浪费了海量的 GPU 算力，还极大地拉长了 TTFT。
-因此，我们需要网关能够感知请求的前缀内容，把请求精准路由到已经持有该缓存的节点。
+**1. Why is it needed?**
+Combined with the **RadixAttention (Prefix Caching)** we learned in Chapter 11, if multiple requests share the same System Prompt, long document background, or historical conversation, the node will locally cache the KV Cache of these prefixes.
+If the gateway just blindly routes round-robin, requests with the same prefix will be scattered to different nodes, causing each node to repeat the Prefill computation. This not only wastes massive GPU compute but also greatly lengthens TTFT.
+Therefore, we need the gateway to be aware of the prefix content of the request, and accurately route the request to the node that already holds the cache.
 
-**2. 它的工作流程**
-*   **前缀匹配**：网关在全局维护一张“缓存索引表”，记录哪台节点上缓存了哪些文本前缀。新请求进来时，网关扫描其前缀，把它发送给命中率最高的节点，直接复用 KV Cache。
-*   **动态副本（解决惊群效应）**：如果某个前缀（如全网爆火的系统提示词）成了超级热点，所有请求都疯狂涌向持有该缓存的节点，会导致该节点瞬间被打爆。此时网关必须具备**动态副本（Dynamic Replication）**的能力，检测到负载失衡后，将流量分流到空闲节点，并促使空闲节点也建立该缓存的副本，实现负载均衡。
+**2. Its Workflow**
+* **Prefix Matching**: The gateway maintains a global "cache index table", recording which text prefixes are cached on which node. When a new request comes in, the gateway scans its prefix, sends it to the node with the highest hit rate, and directly reuses the KV Cache.
+* **Dynamic Replication (Solving the Thundering Herd Problem)**: If a prefix (like an internet-viral system prompt) becomes a super hotspot, all requests will madly surge to the node holding the cache, which will cause that node to be instantly overwhelmed. At this time, the gateway must have the capability of **Dynamic Replication**. After detecting a load imbalance, it diverts traffic to idle nodes, and prompts idle nodes to also establish a replica of that cache, achieving load balancing.
 
 ---
 
-#### 第三节：SGLang 的系统级实现：网关近似树与共享 L3
+#### Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3
 
-理解了原理后，我们以目前前沿的推理引擎 **SGLang** 为例，看看它是如何以极低的系统开销落地这套机制的。SGLang 的设计非常巧妙，它并没有使用复杂的中心化“显式复制”指令，而是通过**网关的软路由**与**后端的层次化缓存**自然结合。
+After understanding the principle, let's take **SGLang**, a cutting-edge inference engine, as an example to see how it implements this mechanism with extremely low system overhead. SGLang's design is very clever. It doesn't use complex centralized "explicit replication" instructions, but naturally combines the **gateway's soft routing** with the **backend's hierarchical caching**.
 
-**1. 网关层的“近似前缀树”（解决匹配开销）**
-在 SGLang 的 Rust 网关中，维护了一个全局的**近似前缀树（Approximate Radix Tree）**。
-*   **无 Tokenizer 优化**：为了保证网关的超高吞吐，这个树**直接存储 Raw Text 字符串**，而不是 Token ID。这样网关就不需要加载庞大的词表进行分词，直接用字符串匹配就能快速定位缓存。
-*   **双模切换**：当系统负载均衡时，网关按缓存匹配率路由（直奔记忆节点）；当检测到某个节点因为热点请求导致负载过高时，网关会**强制切换为“最短队列（Shortest Queue）”**策略，直接把新请求撇给空闲节点，瞬间化解惊群效应。
+**1. The Gateway's "Approximate Prefix Tree" (Solving Matching Overhead)**
+In SGLang's Rust gateway, a global **Approximate Radix Tree** is maintained.
+* **Tokenizer-free Optimization**: To ensure the ultra-high throughput of the gateway, this tree **directly stores Raw Text strings** instead of Token IDs. Thus, the gateway doesn't need to load a massive vocabulary for tokenization, and can quickly locate the cache simply via string matching.
+* **Dual-Mode Switching**: When system load is balanced, the gateway routes by cache match rate (heading straight for the memory node); when it detects that a node has a too-high load due to hotspot requests, the gateway will **forcibly switch to the "Shortest Queue"** policy, throwing new requests directly to idle nodes, instantly resolving the thundering herd problem.
 
-**2. 后端的“L3 共享缓存”（解决副本生成）**
-被网关分流到空闲节点的请求，本地并没有 KV Cache，重新计算又太慢，怎么办？
-SGLang 引入了 **HiCache** 机制，将缓存分为 GPU(L1)、CPU(L2) 和**分布式共享存储(L3)**（如 Mooncake 或 DeepSeek 3FS）。
+**2. The Backend's "L3 Shared Cache" (Solving Replica Generation)**
+For requests diverted by the gateway to an idle node, there is no KV Cache locally, and recomputing is too slow. What to do?
+SGLang introduces the **HiCache** mechanism, classifying cache into GPU (L1), CPU (L2), and **Distributed Shared Storage (L3)** (like Mooncake or DeepSeek 3FS).
 
-*   当热点节点的缓存被触发写回 L3 后，空闲节点收到网关分流过来的请求，发现本地无缓存，就会**直接从 L3 共享存储中拉取（Prefetch）**这份 KV Cache。
-*   Node B 处理完后，本地自然也拥有了该缓存。网关在收到反馈后，更新前缀树，Node B 就正式成为了该热点前缀的新“副本”。
+* When the cache of a hotspot node is triggered to write back to L3, and an idle node receives a request diverted from the gateway and finds no local cache, it will **directly Prefetch** this KV Cache from the L3 shared storage.
+* After Node B finishes processing, it naturally possesses that cache locally as well. After receiving the feedback, the gateway updates the prefix tree, and Node B officially becomes a new "replica" of that hotspot prefix.
 
-这种“网关只做软路由分流，数据靠共享 L3 自动按需拉取”的机制，用最小的系统耦合，实现了极其优雅的缓存路由与动态副本。
+This mechanism where "the gateway only does soft routing diversion, and data relies on shared L3 for automatic on-demand fetching" uses minimal system coupling to achieve extremely elegant cache routing and dynamic replication.
 
 > [!NOTE]
-> **深入探讨：什么是 HiCache？它与单机分层卸载（Tiered Offloading）有何异同？**
+> **Deep Dive: What is HiCache? How does it differ from Single-Machine Tiered Offloading?**
 >
-> 读者可能会发现，HiCache 的分层思想与我们在第十四章讲过的“单机分层卸载（Tiered Offloading）”如出一辙。它们的底层物理逻辑是一致的，都是利用“GPU $\rightarrow$ CPU $\rightarrow$ 外部存储”的硬件金字塔来扩充 KV Cache 容量。
+> Readers may notice that the hierarchical idea of HiCache is exactly the same as the "Tiered Offloading" we discussed in Chapter 14. Their underlying physical logic is consistent, both utilizing the hardware pyramid of "GPU $\rightarrow$ CPU $\rightarrow$ External Storage" to expand KV Cache capacity.
 >
-> 但 HiCache 是 Tiered Offloading 的**“集群放大版”**与**“缓存复用版”**：
-> 1. **从单机防溢出到集群共享**：传统的 Tiered Offloading 侧重于单机显存不够时被动地将 KV Cache 换出到 CPU；而 HiCache 不仅支持本地 CPU（L2），还支持分布式存储（L3），目的是让整个集群的节点都能共享和复用这些缓存。
-> 2. **与前缀树深度绑定**：传统 Offloading 管理的是独立的请求 KV，而 HiCache 管理的是 Radix Tree 上的结构化公共前缀，支持主动预取（Prefetch）以掩盖网络延迟。
+> But HiCache is the **"Cluster Scaled-up Version"** and **"Cache Reuse Version"** of Tiered Offloading:
+> 1. **From Single-Machine Anti-Spill to Cluster Sharing**: Traditional Tiered Offloading focuses on passively swapping KV Cache out to CPU when single-machine VRAM is insufficient; while HiCache not only supports local CPU (L2) but also supports distributed storage (L3), with the goal of letting all nodes in the cluster share and reuse these caches.
+> 2. **Deeply Bound to the Prefix Tree**: Traditional Offloading manages the independent KV of requests, while HiCache manages the structured common prefixes on the Radix Tree, supporting active Prefetch to hide network latency.
 
 ---
 
-### 第十九章：打通经脉：大模型推理中的网络通信与高速互联
+### Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference
 
-无论是在分布式推理中实现模型切分，还是在 Disaggregated Serving 中进行数据搬运，**计算在被切分的同时，通信开销也随之产生**网络通信都是决定系统成败的“生命线”。
+Whether implementing model slicing in distributed inference or performing data movement in Disaggregated Serving, **as computation is sliced, communication overhead is also generated**. Network communication is the "lifeline" that determines the success or failure of the system.
 
-本章将分析大模型推理中依赖的核心互联技术、带宽特性，以及它们与各种并行模式的适配关系。
+This chapter will analyze the core interconnect technologies and bandwidth characteristics relied upon in large model inference, and their adaptation relationships with various parallel modes.
 
 
-#### 第一节：单机内的血脉：PCIe、NVLink 与 NVSwitch
+#### Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch
 
-在单台服务器内部，多张 GPU 之间的互联技术经历了巨大的演进：
+Inside a single server, the interconnect technology between multiple GPUs has undergone tremendous evolution:
 
-1.  **PCIe (Peripheral Component Interconnect Express)**:
-    *   **特点**：传统的通用总线，GPU 通过 PCIe 与 CPU 及其他设备通信。目前主流的 PCIe 5.0 x16 单向带宽约为 64 GB/s。
-    *   **局限**：在张量并行（TP）这种需要极高频、海量数据同步的场景下，PCIe 带宽会成为严重瓶颈。
-2.  **NVLink + NVSwitch（现代高速互联方案）**: NVLink 和 NVSwitch 是配合使用的两个层次，共同构成单机内的全互联高速网络。
-    *   **NVLink（传输介质）**：NVIDIA 专为 GPU 互联开发的高速点对点链路，允许两张 GPU 之间直接读写对方显存（P2P），绕过 CPU。带宽极高，如 NVLink 4.0 在 H100 上可提供高达 900 GB/s 的双向总带宽。
-    *   **NVSwitch（交换节点）**：NVLink 是点对点连接，若要让 8 张 GPU 两两全速互联，理论上需要 C(8,2)=28 条独立链路，GPU 的物理接口根本不够用。NVSwitch 解决了这个扩展性问题——每张 GPU 通过 NVLink 连到 NVSwitch 这颗专用交换芯片，由它在内部做路由，使任意两张 GPU 之间都能以完整的 NVLink 带宽通信。
-    *   **整体效果**：8 张 GPU 各自只需连到 NVSwitch，就能获得等同于两两直连的全速全互联网络，是实现高效张量并行（TP）的物理基石。
+1. **PCIe (Peripheral Component Interconnect Express)**:
+    * **Characteristics**: Traditional universal bus. GPUs communicate with the CPU and other devices via PCIe. Currently, the mainstream PCIe 5.0 x16 unidirectional bandwidth is about 64 GB/s.
+    * **Limitations**: In scenarios like Tensor Parallelism (TP) that require extremely high-frequency, massive data synchronization, PCIe bandwidth will become a severe bottleneck.
+2. **NVLink + NVSwitch (Modern High-Speed Interconnect Solution)**: NVLink and NVSwitch are two layers used in combination, jointly forming a fully interconnected high-speed network within a single machine.
+    * **NVLink (Transmission Medium)**: A high-speed point-to-point link developed by NVIDIA specifically for GPU interconnection, allowing two GPUs to directly read and write each other's VRAM (P2P), bypassing the CPU. The bandwidth is extremely high, such as NVLink 4.0 on H100, which can provide a bidirectional total bandwidth of up to 900 GB/s.
+    * **NVSwitch (Switching Node)**: NVLink is a point-to-point connection. If 8 GPUs are to be fully interconnected at full speed, theoretically C(8,2)=28 independent links are needed, and the GPU's physical interfaces are simply not enough. NVSwitch solves this scalability problem — each GPU connects via NVLink to this dedicated switch chip, NVSwitch, which does internal routing, allowing any two GPUs to communicate with full NVLink bandwidth.
+    * **Overall Effect**: 8 GPUs only need to individually connect to NVSwitch to obtain a full-speed, fully interconnected network equivalent to pairwise direct connections, which is the physical cornerstone for realizing efficient Tensor Parallelism (TP).
 
-#### 第二节：跨机桥梁：RDMA 及其实现
+#### Section 2: The Cross-Machine Bridge: RDMA and Its Implementations
 
-当分布式推理跨越物理节点（Multi-host）时，传统的以太网和 TCP/IP 协议栈无法满足需求。数据从 GPU 出发，要经过 GPU 显存 → CPU 内存 → 内核网络栈 → 网卡，路径极长，CPU 全程参与搬运，延迟高、消耗大。
+When distributed inference spans physical nodes (Multi-host), traditional Ethernet and TCP/IP protocol stacks cannot meet the requirements. Data departing from the GPU must go through GPU VRAM → CPU Memory → Kernel Network Stack → NIC. The path is extremely long, the CPU is involved in the movement the whole time, the latency is high, and the consumption is large.
 
-**RDMA：从根本上解决问题**
+**RDMA: Solving the Problem from the Root**
 
-RDMA（Remote Direct Memory Access，远程直接内存访问）允许网卡直接读写远端机器的 GPU 显存，**绕过 CPU 和内核**，实现零拷贝（Zero-copy）。收益是双重的：延迟从毫秒级降至微秒级，同时释放 CPU 算力专注于推理本身。
+RDMA (Remote Direct Memory Access) allows the network card to directly read and write the GPU VRAM of a remote machine, **bypassing the CPU and kernel**, to achieve Zero-copy. The benefit is dual: latency drops from milliseconds to microseconds, while freeing up CPU compute to focus on inference itself.
 
-**两种实现：InfiniBand vs RoCE**
+**Two Implementations: InfiniBand vs. RoCE**
 
-RDMA 是一种能力，可以跑在不同的物理网络上，目前主流有两种实现：
+RDMA is a capability that can run on different physical networks. Currently, there are two mainstream implementations:
 
-1.  **InfiniBand (IB)**：专为 HPC 设计的私有网络，软硬件一体，原生支持 RDMA。天然无损（基于信用的流控，不会丢包），提供极高带宽（400Gbps NDR、800Gbps XDR）和极低延迟（亚微秒级）。代价是成本高，需要专用 IB 网卡和交换机，无法复用现有以太网基础设施。
-2.  **RoCE (RDMA over Converged Ethernet)**：将 RDMA 语义搬到以太网上运行，可复用现有基础设施，成本显著降低。代价是以太网本身会丢包，必须通过配置 PFC（优先级流控）和 ECN（显式拥塞通知）构建”无损以太网”，网络运维复杂度较高，一旦配置不当，拥塞丢包会导致性能急剧下降。
+1. **InfiniBand (IB)**: A private network designed specifically for HPC, integrating software and hardware, and natively supporting RDMA. Naturally lossless (credit-based flow control, no packet loss), providing extremely high bandwidth (400Gbps NDR, 800Gbps XDR) and extremely low latency (sub-microsecond level). The cost is high, requiring dedicated IB NICs and switches, and it cannot reuse existing Ethernet infrastructure.
+2. **RoCE (RDMA over Converged Ethernet)**: Moves RDMA semantics to run over Ethernet, can reuse existing infrastructure, and significantly reduces costs. The trade-off is that Ethernet itself drops packets. A "lossless Ethernet" must be constructed by configuring PFC (Priority-based Flow Control) and ECN (Explicit Congestion Notification). Network operations and maintenance complexity is high, and if configured improperly, congestion packet loss will cause performance to plummet.
 
 | | InfiniBand | RoCE |
 |---|---|---|
-| 典型带宽 | 400G～800Gbps | 200G～400Gbps |
-| 延迟 | 亚微秒 | 微秒级（略高） |
-| 无损性 | 原生支持 | 需配置 PFC/ECN |
-| 成本 | 高（专用硬件） | 低（复用以太网） |
-| 适用场景 | 对延迟极敏感的大规模集群 | 成本敏感或已有以太网基础设施 |
+| Typical Bandwidth | 400G～800Gbps | 200G～400Gbps |
+| Latency | Sub-microsecond | Microsecond level (slightly higher) |
+| Losslessness | Natively supported | Needs PFC/ECN configuration |
+| Cost | High (Dedicated Hardware) | Low (Reuses Ethernet) |
+| Suitable Scenario | Extreme latency-sensitive large clusters | Cost-sensitive or existing Ethernet infrastructure |
 
-**NVLink Switch：跨机的 NVLink 延伸**
+**NVLink Switch: Cross-Machine NVLink Extension**
 
-NVLink Switch（如 GB200 NVL72 系统中的 NVSwitch）通过光缆将多台机器的 GPU 连成一个超大 NVLink 域，突破单机 8 卡的限制，可将 72 张 GPU 组成全互联集群，跨机带宽和延迟接近单机 NVLink 水平。目前主要面向超大规模训练场景，整体成本极高；推理场景的跨机通信需求（PP、Disaggregated Serving）靠 InfiniBand 或 RoCE 已经足够，暂不作重点讨论。
+NVLink Switch (like NVSwitch in the GB200 NVL72 system) connects GPUs across multiple machines via optical cables into a super-large NVLink domain, breaking the 8-card limit of a single machine, allowing 72 GPUs to form a fully interconnected cluster, with cross-machine bandwidth and latency approaching single-machine NVLink levels. Currently, it is mainly targeted at ultra-large-scale training scenarios, and the overall cost is extremely high; the cross-machine communication needs of inference scenarios (PP, Disaggregated Serving) are sufficiently met by InfiniBand or RoCE, so it is not a focus here.
 
-#### 第三节：并行模式、数据量与指标影响
+#### Section 3: Parallel Modes, Data Volumes, and Metric Impacts
 
-为了让你对不同模式下的网络通信有一个全局的量化认知，我们将分布式推理的各种并行模式以及分离式推理的跨机传输特性总结在下表中：
+To give you a global, quantitative understanding of network communication under different modes, we summarize the various parallel modes of distributed inference and the cross-machine transmission characteristics of disaggregated serving in the table below:
 
-| 模式 (Mode) | 通信频率与范围 (Frequency & Scope) | 单次传输数据量 (Single Transfer Volume) | 触发时总数据量 (Total Volume per Event) | 影响的核心指标 (Metrics Affected) | 典型网络要求 (Required Network) |
+| Mode | Frequency & Scope | Single Transfer Volume | Total Volume per Event | Metrics Affected | Required Network |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **张量并行 (TP)** | **步级·持续极高频**：$2 \times L$ 次 / 每步<br>(Prefill 和 Decode 每步均有) | $O(N \cdot d)$<br>(Decode 时极小；Prefill 时中等) | $O(L \cdot N \cdot d)$ | **TBT**, **TTFT**<br>(对延迟极度敏感) | 单机内 NVLink / NVSwitch |
-| **流水线并行 (PP)** | **步级·持续低频**：$P - 1$ 次 / 每步<br>(Prefill 和 Decode 每步均有) | $O(N \cdot d)$<br>(中等数据量) | $O(P \cdot N \cdot d)$ | **Throughput**, **TTFT**<br>(慢了会拉长流水线) | 跨机 InfiniBand / RoCE |
-| **上下文并行 (CP)** | **请求级·单次脉冲**：$(M-1) \times L$ 次 / 请求<br>(**仅在 Prefill 阶段**发生一次) | $O(\frac{N}{M} \cdot d)$<br>(**海量**：超长文本下可达数百 MB) | $O(L \cdot N \cdot d)$ | **TTFT** (超长文本)<br>(传输慢了直接卡死首字) | 单机内 NVLink / 跨机 InfiniBand / RoCE |
-| **分离式推理 (Disaggregated)** | **请求级·单次脉冲**：$1$ 次 / 请求<br>(**仅在阶段交接时**发生一次) | $O(L \cdot N \cdot d)$<br>(**单次极大**：全量 KV Cache) | $O(L \cdot N \cdot d)$ | **User-facing TTFT**<br>(传输时间直接计入延迟) | 跨机 InfiniBand / RoCE |
+| **Tensor Parallelism (TP)** | **Step-level · Continuous Ultra-high Frequency**: $2 \times L$ times / step<br>(Both Prefill and Decode per step) | $O(N \cdot d)$<br>(Extremely small in Decode; Medium in Prefill) | $O(L \cdot N \cdot d)$ | **TBT**, **TTFT**<br>(Extremely sensitive to latency) | Intra-machine NVLink / NVSwitch |
+| **Pipeline Parallelism (PP)** | **Step-level · Continuous Low Frequency**: $P - 1$ times / step<br>(Both Prefill and Decode per step) | $O(N \cdot d)$<br>(Medium volume) | $O(P \cdot N \cdot d)$ | **Throughput**, **TTFT**<br>(Slow transfer lengthens pipeline) | Cross-machine InfiniBand / RoCE |
+| **Context Parallelism (CP)** | **Request-level · Single Pulse**: $(M-1) \times L$ times / request<br>(Occurs **only in the Prefill phase** once) | $O(\frac{N}{M} \cdot d)$<br>(**Massive**: Can reach hundreds of MBs under super-long text) | $O(L \cdot N \cdot d)$ | **TTFT** (Super-long text)<br>(Slow transfer directly blocks First Token) | Intra-machine NVLink / Cross-machine InfiniBand / RoCE |
+| **Disaggregated Serving** | **Request-level · Single Pulse**: $1$ time / request<br>(Occurs **only at phase handover** once) | $O(L \cdot N \cdot d)$<br>(**Single Huge**: Full KV Cache) | $O(L \cdot N \cdot d)$ | **User-facing TTFT**<br>(Transfer time directly counts towards latency) | Cross-machine InfiniBand / RoCE |
 
 > [!NOTE]
-> **参数说明**：$L$ 为模型层数；$N$ 为序列长度；$d$ 为隐藏层维度；$P$ 为流水线阶段数（$P \le L$）；$M$ 为上下文并行的机器数（或 GPU 数）。**“每步”（Step）**指单次前向传播迭代。以 Llama 3 405B ($d=16384$) 为例，在 $B=1, N=1024$ 时，$O(N \cdot d)$ 的 FP16 激活值大小约为 $32$ MB。
+> **Parameter Description**: $L$ is the number of model layers; $N$ is sequence length; $d$ is the hidden layer dimension; $P$ is the number of pipeline stages ($P \le L$); $M$ is the number of machines (or GPUs) for Context Parallelism. **"Step"** refers to a single forward propagation iteration. Taking Llama 3 405B ($d=16384$) as an example, at $B=1, N=1024$, the size of $O(N \cdot d)$ FP16 activations is about $32$ MB.
 
 
-**尺度差异（核心洞察）**：理解上表的关键在于区分**“时间尺度”**。TP 和 PP 是**常态化（步级）**的，绑定在单次前向传播的尺度上，因此 TP 的高频会极度压榨网络延迟；而 CP 和分离式推理是**事件化（请求级）**的，绑定在整个请求的生命周期上（仅在特定阶段触发），因此它们虽然单次数据量巨大，但不会像 TP 那样在持续吐字（Decode）时去卡 GPU 的脖子。
+**Dimensional Difference (Core Insight)**: The key to understanding the above table is to distinguish the **"Time Scale"**. TP and PP are **normalized (step-level)**, bound to the scale of a single forward propagation, so the high frequency of TP will extremely squeeze network latency; while CP and Disaggregated Serving are **eventized (request-level)**, bound to the lifecycle of the entire request (triggered only at a specific phase), so although their single data volume is huge, they will not choke the GPU during continuous text generation (Decode) like TP does.
 
-从表中可以看出，**张量并行（TP）** 是对网络带宽要求最苛刻的，必须锁死在单机 NVLink 内；而 **分离式推理** 虽然单次传输的数据量最大，但由于频率低（每个请求只传输一次），配合 400G/800G 的 RDMA 网络，其延迟完全可以被控制在毫秒级，从而使物理分离架构在生产中成为可能。
+As can be seen from the table, **Tensor Parallelism (TP)** has the harshest requirements on network bandwidth and must be locked into intra-machine NVLink; while **Disaggregated Serving**, although having the largest single transfer data volume, due to its low frequency (each request only transfers once), combined with a 400G/800G RDMA network, its latency can be completely controlled at the millisecond level, making the physical separation architecture feasible in production.
