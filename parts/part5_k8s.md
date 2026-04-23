@@ -4,70 +4,236 @@
 
 ### Section 1: First Principles: Examining Lifecycle Contradictions under Distributed Inference
 
-From first principles, the core essence of Kubernetes (K8s) is: a control plane based on declarative state and eventual consistency, aimed at abstracting heterogeneous infrastructure into a unified resource pool and decoupling computation from state. K8s was originally designed to handle loosely coupled, stateless microservices that can be independently started and stopped.
+From first principles, Kubernetes (K8s) is a control plane based on declarative state and eventual consistency. It abstracts heterogeneous infrastructure into a unified resource pool and decouples compute from state. K8s was designed for loosely coupled, stateless microservices.
 
-In contrast, the core essence of large-scale distributed Large Language Model (LLM) inference is: performing large-scale matrix multiplication operations under extremely strict latency and memory (KV Cache) constraints, with high determinism, strong topology dependence, and requiring extremely high-speed inter-process communication (such as NVLink, InfiniBand). In large-scale LLM inference (such as Tensor Parallelism TP, Pipeline Parallelism PP), tasks are essentially tightly coupled, pseudo-stateful (weights and KV cache state), and high-performance computing (HPC) tasks that follow the "All-or-Nothing" (Gang) principle, **which is effectively equivalent to managing a distributed "supercomputer"**.
+In contrast, large-scale distributed LLM inference performs massive matrix multiplications under strict latency and memory (KV Cache) constraints. It is highly deterministic, topology-dependent, and requires high-speed inter-process communication (e.g., NVLink, InfiniBand). Tasks in Tensor Parallelism (TP) and Pipeline Parallelism (PP) are tightly coupled, pseudo-stateful (weights and cache), and follow the 'All-or-Nothing' (Gang) principle. Managing them is effectively managing a distributed supercomputer.
 
 This fundamental contradiction constitutes the core challenge of orchestrating LLM inference on K8s.
 
 ### Section 2: Workload Lifecycle: Core Contradictions Throughout
 
-The workload lifecycle covers the entire process from image pulling, scheduling, execution, auto-scaling to termination. In distributed LLM inference scenarios, the special nature of large models brings unprecedented challenges to this lifecycle chain. These conflicts are also the core propositions to be deeply analyzed in the subsequent chapters of this part:
+The workload lifecycle spans image pulling, scheduling, execution, scaling, and termination. Distributed LLM inference brings unique challenges to this chain. This part analyzes these conflicts in detail:
 
 1.  **Submission & Distribution: Separation of Image and Weights**
-    *   **Challenge**: While the inference engine image itself is small, the model weights are extremely huge (tens of GBs to hundreds of GBs). Directly packaging weights causes pull timeouts and violates the principle of decoupling compute and data.
-    *   **Evolution Direction**: The industry mainstream has moved towards "separation of image and weights." Weights can be stored as OCI Artifacts but are not pulled as regular container images. OSS Kubernetes introduced features like Image Volumes (OCI Volume) precisely to enable direct mounting of weights in OCI format as volumes. Meanwhile, due to the massive data volume, image and weight distribution need extreme optimization through means like P2P and stream loading (see Chapter 21 for details).
+    *   **Challenge**: Model weights are huge (tens to hundreds of GBs). Packaging them in images causes pull timeouts and violates compute-data decoupling.
+    *   **Direction**: The industry separates images from weights. Weights are stored as OCI Artifacts, not regular images. Kubernetes introduced Image Volumes to mount OCI weights directly. P2P and stream loading optimize distribution (see Chapter 21).
 
 2.  **Scheduling: Topology Awareness and All-or-Nothing**
-    *   **Challenge**: The native K8s scheduler is based on scalar counting (e.g., CPU cores, GPU quantity) and cannot understand complex underlying PCIe topology, NUMA architecture, and NVLink interconnect relationships. Meanwhile, distributed inference relies on NCCL communication rings, and missing one card makes the entire group unable to work.
-    *   **Evolution Direction**: Scheduling must move towards "topology awareness" to avoid performance avalanches (see Chapter 22 for details), and must support "All-or-Nothing (Gang Scheduling)" batch scheduling to prevent resource deadlocks (see Chapter 23 for details).
+    *   **Challenge**: Native K8s schedulers use scalar counting and ignore complex PCIe, NUMA, and NVLink topologies. Distributed inference relies on NCCL rings; missing one card halts the group.
+    *   **Direction**: Scheduling must be topology-aware to avoid performance drops (see Chapter 22) and support Gang Scheduling to prevent deadlocks (see Chapter 23).
 
 3.  **Execution & Scaling: Breathing of the Compute Pool**
-    *   **Challenge**: Traditional HPA based on CPU/memory utilization fails completely here (VRAM is often pre-allocated, and compute is bursty). Meanwhile, Pod scaling is limited by the cold start speed of physical machines (Nodes).
-    *   **Evolution Direction**: Scaling metrics must shift to engine internal business metrics (such as queue length). Meanwhile, the linkage between Pod scaling and Node scaling needs to be solved, utilizing mechanisms like placeholders (Pause Pods) to hide cold start times (see Chapter 25 for details).
+    *   **Challenge**: HPA based on CPU/memory fails because VRAM is pre-allocated and compute is bursty. Pod scaling is limited by node cold start speed.
+    *   **Direction**: Scaling metrics must shift to engine internal metrics (e.g., queue length). Placeholders (Pause Pods) can hide cold start times (see Chapter 25).
 
 4.  **Lifecycle Management: "All-or-Nothing" Throughout**
-    *   **Challenge**: This is not just behavior during failure and termination. In distributed LLM inference, from startup ring creation, health checks, rolling updates to failure recovery, **the entire workload lifecycle requires "All-or-Nothing."** Killing any single Pod reduces the entire group to zombies; updating a single Pod causes version mismatch leading to ring creation deadlocks.
-    *   **Evolution Direction**: The traditional paradigm of K8s independently managing Pods must be broken, introducing orchestration primitives that manage "group lifecycles" (such as LeaderWorkerSet) to ensure atomicity throughout the lifecycle (see Chapter 24 for details).
+    *   **Challenge**: Startup, health checks, updates, and recovery all require atomicity. Killing one Pod creates zombies; updating one Pod causes version mismatches and deadlocks.
+    *   **Direction**: K8s must move beyond independent Pod management. Primitives like LeaderWorkerSet manage group lifecycles to ensure atomicity (see Chapter 24).
 
 ### Section 3: Cluster Lifecycle: Heterogeneous Hardware Bootstrapping and Expensive Graceful Termination
 
 The cluster lifecycle includes infrastructure provisioning, node bootstrapping, component upgrading, and maintenance.
 
 1.  **Provisioning & Bootstrapping**
-    *   **Challenge**: The complexity of K8s node initialization rises exponentially. It is extremely dependent on the underlying driver stack of heterogeneous hardware (NVIDIA Driver, CUDA, OFED, etc.), and the compatibility matrix is easily broken. At the network level, SR-IOV or direct mounting of RDMA network cards is required.
-    *   **Improvement Direction**: Use IaC (such as NVIDIA GPU Operator) to containerize and automate the installation of drivers and plugins; configure dual-network architecture (Multus CNI), with control flow on standard Ethernet and data flow on high-speed network cards.
+    *   **Challenge**: Node initialization is complex. It depends on complex driver stacks (NVIDIA Driver, CUDA, OFED) with fragile compatibility matrices. Networking requires SR-IOV or direct RDMA card mounting.
+    *   **Direction**: Use IaC (like NVIDIA GPU Operator) to containerize driver installation. Configure dual networks (Multus CNI): standard Ethernet for control flow and high-speed cards for data flow.
 
 2.  **Operations & Upgrading**
-    *   **Challenge**: The default graceful termination period of K8s is usually not enough to handle long-context inference tasks, and the cost of evicting inference Pods with long connections and high memory usage is expensive.
-    *   **Improvement Direction**: Combine service meshes or smart gateways to stop assigning new requests before upgrading nodes, waiting for existing requests to "drain out"; future forward-looking directions include hot migration of KV Cache state.
+    *   **Challenge**: K8s default graceful termination is too short for long-context tasks. Evicting Pods with long connections and high memory usage is expensive.
+    *   **Direction**: Use service meshes or smart gateways to stop routing new requests to nodes before upgrades, letting existing requests drain. Future directions include hot migration of KV Cache state.
 
 ---
 
 ## Chapter 21: Racing Against Time: Model Distribution and Cold Start Optimization
 
-### Section 1: The Inevitability of Image and Weights Separation
+Before diving into optimization details, let's use a birds-eye view diagram to understand the complete lifecycle of model weights from remote cloud storage straight to GPU VRAM, including physical boundaries and bus transfers:
 
-In the Large Language Model (LLM) inference scenario, "packaging model weights into a Docker image" has been widely recognized as an absolute anti-pattern. Because the image pulling mechanism simply cannot bear the concurrent I/O of hundreds of GBs, it will cause K8s nodes to fall into an unavailable state due to pull timeouts or disk explosion.
+```mermaid
+graph LR
+    %% Remote Layer
+    subgraph Remote["☁️ Remote Storage Layer"]
+        Registry["📦 OCI Registry / S3"]
+    end
 
-The mainstream practice in the industry has converged to **"separation of image and weights"**. The container image only contains the inference engine (such as vLLM) and the basic runtime environment, while the model weights are managed as independent static data.
+    %% Network Transfer and Distribution
+    Registry -->|"📡 P2P / Stream Transfer (Dragonfly / Nydus)"| Host
 
-To better support this model, OSS Kubernetes introduced features like **Image Volumes (OCI Volume)**. The original intention of this feature was precisely to better handle model weights stored in the form of OCI images (or Artifacts). By pushing weights to a registry that supports OCI specifications, Pods can directly mount weights as a Volume into the container without pulling the full image, retaining both the version control and distribution capabilities of the image registry and achieving decoupling of compute and data.
+    %% Local Host Layer
+    subgraph Host["💻 Local Host Machine"]
+        direction TB
+        FS["🗄️ Virtual File System (FUSE / EROFS)"]
+        PageCache["💾 Kernel Page Cache"]
+        CPUMem["🧠 CPU RAM"]
+        
+        FS -->|"mmap Mapping"| PageCache
+        PageCache -->|"On-demand Load"| CPUMem
+    end
 
-### Section 2: Distribution Optimization of Massive Data
+    %% Hardware Bus
+    Host -->|"🚀 H2D Transfer (PCIe Gen5 / GDS)"| GPU
 
-When weights are separated from images, the distribution of weights evolves into a classic distributed storage and data orchestration problem. Because model files are extremely huge and trigger a terrifying "thundering herd effect" (a large number of nodes pulling the same model at the exact same second) during elastic scaling, traditional filesystems or Registries are easily crushed.
+    %% GPU Layer
+    subgraph GPU["📟 GPU Device"]
+        VRAM["🔥 GPU VRAM"]
+    end
 
-Mainstream optimization means in the industry include:
-1.  **P2P Image and Data Distribution**: Introduce P2P distribution networks like Dragonfly and Kraken to dissolve the pressure on centralized storage into Peer-to-Peer traffic within the local area network, drastically increasing concurrent pull speeds.
-2.  **Distributed Caching and Data Orchestration**: Use tools like Fluid with JuiceFS or Alluxio to build distributed caches locally on K8s nodes, achieving data locality and allowing Pods to read weights at speeds close to local disks.
+    %% Styles
+    classDef remote fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef host fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef gpu fill:#bfb,stroke:#333,stroke-width:2px;
+    
+    class Registry remote;
+    class FS,PageCache,CPUMem host;
+    class VRAM gpu;
+```
 
-### Section 3: Microscopic Bottlenecks and Optimizations of VRAM Loading
+---
 
-When weights have arrived at the node's local disk through optimization means, the cold start battlefield shifts to the microscopic link of "how to pour hundreds of GBs of data from the hard disk into GPU memory."
+### Section 1: Separation of Image and Weights: Choice of Model Formats
 
-Major bottlenecks and optimization directions include:
-1.  **Crossing the Physical Limit of PCIe Bus**: Even top-tier PCIe Gen5 takes several seconds to move hundreds of GBs of data. The industry standard is to use the **Safetensors** format combined with the operating system's **mmap (memory mapping)** technology to achieve zero-copy loading, avoiding CPU transit.
-2.  **GPUDirect Storage (GDS)**: NVIDIA's black tech that supports data bypassing the CPU and system memory to DMA directly from NVMe solid-state drives to GPU VRAM, completely eating up the PCIe bandwidth.
-3.  **Meta Device Initialization**: Using PyTorch's meta device to virtually establish the model topology, avoiding double memory allocation in CPU memory and preventing OOM while shortening initialization time.
-4.  **Engine Warmup & Graph Capture (CUDA Graphs)**: Persistently caching the compilation results of CUDA Graphs to skip the lengthy Dummy Profiling stage during cold start.
+In LLM inference, packaging weights into Docker images is an anti-pattern. The image pull mechanism cannot handle concurrent I/O of hundreds of gigabytes, causing K8s nodes to time out or run out of disk space.
+
+The industry has converged on **separating images from weights**. Container images only contain the inference engine (like vLLM) and the runtime environment. Model weights are managed as independent static data.
+
+#### Format War: Why Safetensors Became the Most Popular Format
+
+To maximize I/O throughput and minimize cold starts, the industry has adopted Hugging Face's **`Safetensors`** as the de facto standard.
+
+##### 1. The Past: Pickle's Security Nightmare and Performance Bottleneck
+Before Safetensors, PyTorch's default `.pt` or `.bin` formats dominated. These formats rely on Python's `pickle` library for serialization.
+*   **Security Risks**: Pickle can execute arbitrary Python code during deserialization. A downloaded model could execute malicious code upon loading. This created significant security concerns for production environments.
+*   **Performance Issues**: Pickle lacks a clear separation between metadata and data. The CPU must parse the entire file and reconstruct complex objects, consuming massive CPU cycles. This prevents using `mmap` for zero-copy loading, leading to slow memory copies and long cold starts.
+
+##### 2. The Present: Design Essence and Advantages of Safetensors
+Hugging Face designed Safetensors to solve these pain points:
+*   **Absolute Safety**: It stores pure tensor data and a light JSON header, preventing code execution.
+*   **Header and Data Separation**: The file begins with a JSON string describing tensor topologies (names, shapes, data types) and file offsets. Engines only need to read a few kilobytes of the header to map the model in virtual memory instantly.
+*   **Perfect for mmap**: The data section contains continuous, uncompressed raw binary data. The OS reads data from disk only when accessed, eliminating CPU copy overhead and minimizing loading times.
+
+##### 3. Sharding and On-Demand Loading
+Large models are usually split into shards (e.g., `model-00001-of-00004.safetensors`) with an `index.json` file mapping tensors to shards. For example, in the Hugging Face repository for [google/gemma-2-27b](https://huggingface.co/google/gemma-2-27b/tree/main), the model is stored in shards following this convention.
+This sharding enables real optimizations in distributed inference:
+*   In **Pipeline Parallelism**, GPUs only download and read shards containing the layers they need, skipping the rest to save bandwidth.
+*   In **Tensor Parallelism**, all cards read all files, but with `mmap`, the OS only loads accessed data pages into physical memory, achieving on-demand loading implicitly. This is widely used in engines like vLLM.
+
+##### Other Model Formats
+Besides Safetensors, the industry uses other formats for different scenarios:
+*   **`.pt` / `.bin` (Legacy PyTorch)**: Based on Python's `pickle`. Phased out due to code execution risks and high CPU deserialization costs preventing effective `mmap` usage.
+*   **`GGUF`**: Popular for edge and local inference. Designed for CPU/GPU hybrid execution and single-machine quantization, but lacks efficient support for large-scale distributed inference (TP and PP).
+*   **`.tensors` (CoreWeave Tensorizer)**: An extremely optimized format from CoreWeave. It loads data directly from S3/HTTP to GPU VRAM, bypassing CPU memory. While offering impressive cold start performance, its ecosystem is closed and lacks general support.
+
+Safetensors solves local reading but not rapid cluster distribution. For massive model weights in cloud-native environments, we must address packaging protocols, Pod mounting methods, and P2P/streaming pull to eliminate bottlenecks and minimize cold starts. The next section explores these topics.
+
+---
+
+### Section 2: Mass Data Distribution: Packaging Protocols and Pod Mounting
+
+Separating weights from images turns distribution into a distributed storage and data orchestration problem. We must safely and quickly deliver data to containers.
+
+#### 1. Packaging Protocols: Git LFS vs OCI Artifact
+
+Before data reaches containers, we must package it. A battle of packaging protocols is playing out at the intersection of AI and cloud-native.
+
+**Background:**
+*   **Git LFS (Large File Storage)**: Git was designed for text code. Storing hundreds of gigabytes of binary files directly would crash repositories. Git LFS solves this by leaving small text pointer files in the Git repo and storing the actual large files on dedicated LFS servers (usually backed by object storage). **Thanks to Hugging Face, Git LFS is the de facto standard for AI asset management.**
+*   **OCI Artifact**: Driven by the **CNCF (Cloud Native Computing Foundation)** under the Linux Foundation. Originally for container images, OCI specifications now extend to any file type (like model weights or Helm Charts). OCI Artifact packages files into specifications similar to Docker images, stored in standard **OCI Registries**. **As a newcomer in cloud-native infrastructure, it represents the future.**
+
+The table below compares the two approaches:
+
+| Dimension | Git LFS | OCI Artifact |
+| :--- | :--- | :--- |
+| **Background & Ecosystem** | Solves Git large file storage; **Hugging Face foundation** | **CNCF cloud-native standard**; treats models as images |
+| **Storage Mechanism** | Text pointers in Git; large files in object storage | Packaged as OCI layers; stored in OCI Registry |
+| **Distribution** | Standard HTTP(S) downloads; lacks native P2P and layer caching | Leverages mature image networks (P2P, streaming) |
+| **Key Advantages** | Developer-friendly; native version branching and rollbacks | Fits cloud-native infrastructure; supports security signing (Cosign) |
+| **Key Disadvantages** | Not designed for high-concurrency distribution; creates bottlenecks | Ecosystem not fully connected; requires conversion from HF |
+| **Popularity** | **Dominant** (de facto AI standard) | **Rising Star** (future of cloud-native AI orchestration) |
+
+**Reality**: A hybrid model is emerging. Developers use Git LFS on Hugging Face for management. For production (Kubernetes), automated pipelines convert models to OCI Artifacts to leverage image distribution networks.
+
+#### 2. How Models Enter Pods
+Delivering weights to containers quickly involves four approaches, each with trade-offs:
+
+*   **Route 1: Distributed Filesystems (CSI + PVC, e.g., JuiceFS / Alluxio)**
+    *   **Principle**: Mount distributed cache systems as PVCs via CSI drivers. Data streams from remote or local cache when the engine reads files.
+    *   **Trade-offs**:
+        *   **Advantages**: Support for stream loading, second-level Pod starts, and transparency to applications.
+        *   **Disadvantages**: High operational costs to maintain high-availability cache clusters.
+*   **Route 2: Asset Image-ization (OCI Artifact + Image Volume)**
+    *   **Principle**: Treat models as images. Native Image Volumes (K8s 1.31+) allow CRIs to unpack and mount OCI model images directly as volumes.
+    *   **Trade-offs**:
+        *   **Advantages**: Perfect integration with cloud-native distribution networks, reusing concurrent pulls and layer caching.
+        *   **Disadvantages**: Incomplete ecosystem adoption.
+*   **Route 3: Pod-Level Glue (Init Container / Sidecar)**
+    *   **Trade-offs**:
+        *   **Advantages**: High flexibility for custom "glue logic."
+        *   **Disadvantages**: Disastrous cold starts (minutes) for full downloads via Init Containers, and increased resource overhead and orchestration complexity for Sidecars.
+*   **Route 4: Node Pre-downloading (HostPath Mounting)**
+    *   **Principle**: Pre-download weights to local NVMe disks of GPU nodes via external automation (Ansible or DaemonSets). Pods use them directly via `hostPath`.
+    *   **Trade-offs**:
+        *   **Advantages**: Physical limit I/O performance, zero cold start overhead, no network dependency, and high determinism.
+        *   **Disadvantages**: Violating "immutable infrastructure" principles, making nodes stateful pets, and causing scheduling constraints and resource waste.
+
+#### 3. P2P and Streaming: Accelerating Weight Distribution and Cold Starts
+Distributing hundreds of gigabytes of model weights to thousands of nodes and minimizing Pod cold starts is a core challenge for cloud-native AI platforms. The industry combines **P2P (peer-to-peer) distribution** and **streaming pull (lazy loading)** for extreme optimization.
+
+*   **Dragonfly: P2P-Based Massive Distribution Acceleration**
+    *   **Principle**: Dragonfly is an open-source P2P file distribution system. Traditional pulls hit centralized storage (Object Storage or Registry) simultaneously, bottlenecking the center node's bandwidth. Dragonfly uses a P2P architecture, splitting large files into chunks. Nodes download chunks while acting as seeds to share data with other nodes.
+    *   **Advantages in AI**: For massive model weights, Dragonfly shifts central storage pressure to node-to-node assistance. As node count increases, total distribution bandwidth grows linearly, drastically speeding up weight distribution during massive scale-outs.
+
+*   **Nydus: On-Demand Loading Streaming Filesystem**
+    *   **Principle**: Nydus is an open-source container image service by Ant Group that implements "lazy loading." Traditional images/files require full download and decompression before use. Nydus separates file metadata from data, supporting stream loading.
+    *   **Advantages in AI**: Paired with FUSE (User-space Filesystem) or EROFS (Read-only Filesystem), a Pod only pulls tiny metadata to instantly start the container. Nydus fetches remote data only when the inference engine actually reads a specific weight chunk. This eliminates waiting for full downloads, compressing cold start times from minutes to seconds.
+
+**The Ultimate Combo: Dragonfly + Nydus**
+Nydus alone enables second-level Pod starts. However, if massive Pods start simultaneously and access the same initial data blocks (e.g., the first model layer), they still overload the backend storage. The best practice combines both: **Nydus handles on-demand stream reading, while Nydus fetches chunks via Dragonfly's P2P network**. This achieves second-level cold starts without overloading central storage.
+
+---
+
+### Section 3: VRAM Loading Optimization: Three Schools of Data Paths and Trade-offs
+
+Loading weights from the local filesystem to GPU VRAM involves three solutions:
+
+#### 1. Route 1: `mmap` + Traditional Copy (Single-Threaded Page Triggered)
+
+The default for most engines like vLLM.
+
+*   **Data Path**:
+    Storage Medium -> [DMA] -> Kernel Page Cache (Pageable) -> [CPU Copy] -> CUDA Internal Pinned Buffer -> [DMA] -> GPU VRAM
+*   **Principle**:
+    Engines use `mmap` to map files to virtual memory. Reading triggers page faults, reading data from storage to page cache on demand. `mmap` shares memory between kernel and user space, eliminating the CPU copy from kernel to user space found in traditional `read`. **However, when calling `cudaMemcpy` to send data from `mmap` memory to the GPU, CUDA must first copy data to a hidden pinned buffer (Staging Buffer) because `mmap` memory is pageable. It then moves it to the GPU via DMA.**
+*   **Trade-offs**:
+    *   **Advantages**: No hardware or driver dependencies; works on any Linux system and storage medium.
+    *   **Disadvantages**: Implicit CPU memory copies exist; high page fault overhead; single-threaded reads cannot saturate bandwidth.
+
+#### 2. Route 2: Multi-threaded `pread` + Pinned Memory (e.g., Run:ai Streamer)
+
+An advanced solution in high-performance scenarios leveraging CPU multi-core capabilities.
+
+*   **Data Path**:
+    Storage Medium -> [DMA] -> Kernel Page Cache -> [CPU Copy] -> User Pinned Memory -> [DMA] -> GPU VRAM
+    *(Note: Without O_DIRECT, data still passes through page cache)*
+*   **Principle**:
+    Abandon `mmap` and page fault mechanisms. The application actively requests large blocks of **Pinned Memory**. Using thread-safe **`pread`** system calls, multiple CPU threads read data from different offsets of the file directly into pinned memory, and then push it directly to the GPU via DMA.
+*   **Trade-offs**:
+    *   **Advantages**: **Multi-threaded concurrency** and **pipelining**. Reading files and sending to GPU happen concurrently, perfectly overlapping I/O and H2D transfer, much faster than `mmap`.
+    *   **Disadvantages**: Still involves one CPU-participated memory copy (from page cache to pinned memory), consuming some CPU cycles.
+
+#### 3. Route 3: GPUDirect Storage (GDS) (Ultimate Hardware Direct Path)
+
+A "heavy armor" solution for physical limit performance, common in high-end HPC or proprietary AI clusters.
+
+*   **Data Path**:
+    Storage Medium (Local NVMe or Remote RDMA Storage) -> [Hardware Direct DMA] -> GPU VRAM
+*   **Principle**:
+    Files must be opened with **`O_DIRECT`** (bypassing page cache). Utilizing NVIDIA's GDS technology, data flows directly from the storage controller (or NIC) over the PCIe bus via DMA to GPU VRAM. **The CPU only issues commands and touches no data throughout the process.**
+*   **Trade-offs**:
+    *   **Advantages**: **Zero CPU memory transit, zero CPU compute overhead**; physical limit I/O throughput.
+    *   **Disadvantages**: High threshold. Requires specific hardware (NVMe/RDMA) and drivers, and because of mandatory `O_DIRECT`, it is incompatible with many virtual filesystems (like Nydus) that rely on page cache.
+
+---
+
+**Summary and Linkage**:
+The choice of loading solution is closely related to the "distribution and mounting solution" in the previous section:
+* If you use **Nydus**, a stream distribution system heavily reliant on page cache, Route 2 (Streamer) is the best partner because they both use POSIX interfaces, and Streamer's concurrent reads can trigger Nydus's concurrent pulls.
+* If you pursue extreme performance and use **GDS**, you must give up Nydus and turn to high-performance shared filesystems supporting `O_DIRECT` (e.g., WekaFS/VAST) or HostPath pre-downloading.
