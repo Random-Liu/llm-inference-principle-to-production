@@ -111,10 +111,10 @@ Hugging Face designed Safetensors to solve these pain points:
 *   **Perfect for mmap**: The data section contains continuous, uncompressed raw binary data. The OS reads data from disk only when accessed, eliminating CPU copy overhead and minimizing loading times.
 
 ##### 3. Sharding and On-Demand Loading
-Large models are usually split into shards (e.g., `model-00001-of-00004.safetensors`) with an `index.json` file mapping tensors to shards. For example, in the Hugging Face repository for [google/gemma-2-27b](https://huggingface.co/google/gemma-2-27b/tree/main), the model is stored in shards following this convention.
+Large models are usually split into shards (e.g., `model-00001-of-00004.safetensors`) with an `index.json` file mapping tensors to shards. For example, in the Hugging Face repository for [google/gemma-4-31B](https://huggingface.co/google/gemma-4-31B/tree/main), the model is stored in shards following this convention.
 This sharding enables real optimizations in distributed inference:
 *   In **Pipeline Parallelism**, GPUs only download and read shards containing the layers they need, skipping the rest to save bandwidth.
-*   In **Tensor Parallelism**, all cards read all files, but with `mmap`, the OS only loads accessed data pages into physical memory, achieving on-demand loading implicitly. This is widely used in engines like vLLM.
+*   In **Tensor Parallelism**, all cards read all files, but `mmap` eliminates eager preloading — weights are faulted in on access, spreading load across inference rather than front-loading it at startup. This is widely used in engines like vLLM.
 
 ##### Other Model Formats
 Besides Safetensors, the industry uses other formats for different scenarios:
@@ -136,7 +136,7 @@ Before data reaches containers, we must package it. A battle of packaging protoc
 
 **Background:**
 *   **Git LFS (Large File Storage)**: Git was designed for text code. Storing hundreds of gigabytes of binary files directly would crash repositories. Git LFS solves this by leaving small text pointer files in the Git repo and storing the actual large files on dedicated LFS servers (usually backed by object storage). **Thanks to Hugging Face, Git LFS is the de facto standard for AI asset management.**
-*   **OCI Artifact**: Driven by the **CNCF (Cloud Native Computing Foundation)** under the Linux Foundation. Originally for container images, OCI specifications now extend to any file type (like model weights or Helm Charts). OCI Artifact packages files into specifications similar to Docker images, stored in standard **OCI Registries**. **As a newcomer in cloud-native infrastructure, it represents the future.**
+*   **OCI Artifact**: Driven by the **OCI (Open Container Initiative)** under the Linux Foundation. Originally for container images, OCI specifications now extend to any file type (like model weights or Helm Charts). OCI Artifact packages files into specifications similar to Docker images, stored in standard **OCI Registries**. **As a newcomer in cloud-native infrastructure, it represents the future.**
 
 The table below compares the two approaches:
 
@@ -160,7 +160,7 @@ Delivering weights to containers quickly involves four approaches, each with tra
         *   **Advantages**: Support for stream loading, second-level Pod starts, and transparency to applications.
         *   **Disadvantages**: High operational costs to maintain high-availability cache clusters.
 *   **Route 2: Asset Image-ization (OCI Artifact + Image Volume)**
-    *   **Principle**: Treat models as images. Native Image Volumes (K8s 1.31+) allow CRIs to unpack and mount OCI model images directly as volumes.
+    *   **Principle**: Treat models as images. Native Image Volumes (Beta in K8s 1.33) allow CRIs to unpack and mount OCI model images directly as volumes.
     *   **Trade-offs**:
         *   **Advantages**: Perfect integration with cloud-native distribution networks, reusing concurrent pulls and layer caching.
         *   **Disadvantages**: Incomplete ecosystem adoption.
@@ -179,10 +179,10 @@ Distributing hundreds of gigabytes of model weights to thousands of nodes and mi
 
 *   **Dragonfly: P2P-Based Massive Distribution Acceleration**
     *   **Principle**: Dragonfly is an open-source P2P file distribution system. Traditional pulls hit centralized storage (Object Storage or Registry) simultaneously, bottlenecking the center node's bandwidth. Dragonfly uses a P2P architecture, splitting large files into chunks. Nodes download chunks while acting as seeds to share data with other nodes.
-    *   **Advantages in AI**: For massive model weights, Dragonfly shifts central storage pressure to node-to-node assistance. As node count increases, total distribution bandwidth grows linearly, drastically speeding up weight distribution during massive scale-outs.
+    *   **Advantages in AI**: For massive model weights, Dragonfly shifts central storage pressure to node-to-node assistance. As node count increases, total distribution bandwidth grows significantly, drastically speeding up weight distribution during massive scale-outs.
 
 *   **Nydus: On-Demand Loading Streaming Filesystem**
-    *   **Principle**: Nydus is an open-source container image service by Ant Group that implements "lazy loading." Traditional images/files require full download and decompression before use. Nydus separates file metadata from data, supporting stream loading.
+    *   **Principle**: Nydus is an open-source container image service that implements "lazy loading." Traditional images/files require full download and decompression before use. Nydus separates file metadata from data, supporting stream loading.
     *   **Advantages in AI**: Paired with FUSE (User-space Filesystem) or EROFS (Read-only Filesystem), a Pod only pulls tiny metadata to instantly start the container. Nydus fetches remote data only when the inference engine actually reads a specific weight chunk. This eliminates waiting for full downloads, compressing cold start times from minutes to seconds.
 
 **The Ultimate Combo: Dragonfly + Nydus**
@@ -212,9 +212,8 @@ An advanced solution in high-performance scenarios leveraging CPU multi-core cap
 
 *   **Data Path**:
     Storage Medium -> [DMA] -> Kernel Page Cache -> [CPU Copy] -> User Pinned Memory -> [DMA] -> GPU VRAM
-    *(Note: Without O_DIRECT, data still passes through page cache)*
 *   **Principle**:
-    Abandon `mmap` and page fault mechanisms. The application actively requests large blocks of **Pinned Memory**. Using thread-safe **`pread`** system calls, multiple CPU threads read data from different offsets of the file directly into pinned memory, and then push it directly to the GPU via DMA.
+    Abandon `mmap` and page fault mechanisms. The application actively requests large blocks of **Pinned Memory**. Multiple CPU threads concurrently issue **`pread`** calls at different file offsets; the kernel copies data from the page cache into pinned memory, which is then sent to the GPU via DMA.
 *   **Trade-offs**:
     *   **Advantages**: **Multi-threaded concurrency** and **pipelining**. Reading files and sending to GPU happen concurrently, perfectly overlapping I/O and H2D transfer, much faster than `mmap`.
     *   **Disadvantages**: Still involves one CPU-participated memory copy (from page cache to pinned memory), consuming some CPU cycles.
