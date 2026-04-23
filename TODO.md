@@ -17,3 +17,5 @@ Follows the principles in `GEMINI.md`:
 - [ ] Explore unseen content:
     - [ ] Agent architecture (e.g., OpenClaw)
     - [ ] LoRA principles and inference requirements
+    - [ ] Expert parallel (EP) and MoE inference requirements
+    - [ ] Explore TPU architecture (e.g., topology) and its solutions to Part 5 challenges
