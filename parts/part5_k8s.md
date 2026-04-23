@@ -254,63 +254,83 @@ graph TD
             CPU0["🧠 CPU 0"] --- Switch0["🎛️ PCIe Switch 0"]
             Switch0 --- GPU0["📟 GPU 0"]
             Switch0 --- GPU1["📟 GPU 1"]
-            GPU0 <-->|🚀 NVLink| GPU1
+            GPU0 <-->|🚀 NVLink 600GB/s| GPU1
         end
         
         subgraph NUMA1 ["NUMA 1"]
             CPU1["🧠 CPU 1"] --- Switch1["🎛️ PCIe Switch 1"]
             Switch1 --- GPU2["📟 GPU 2"]
             Switch1 --- GPU3["📟 GPU 3"]
-            GPU2 <-->|🚀 NVLink| GPU3
+            GPU2 <-->|🚀 NVLink 600GB/s| GPU3
         end
         
-        CPU0 <-->|UPI Bus| CPU1
+        CPU0 <-->|🐌 UPI Bus 40GB/s| CPU1
     end
     
-    Pod["📦 Inference Pod (Needs 2 GPUs)"] -.->|Mismatched Allocation| GPU1
+    Pod["📦 2-GPU TP Inference Pod"] -.->|Mismatched Allocation| GPU1
     Pod -.->|Mismatched Allocation| GPU2
-    
-    %% Highlight slow communication path
-    GPU1 -.->|1. Up to Switch| Switch0
-    Switch0 -.->|2. To CPU 0| CPU0
-    CPU0 -.->|3. Cross UPI Bus| CPU1
-    CPU1 -.->|4. To Switch 1| Switch1
-    Switch1 -.->|5. To GPU 2| GPU2
+
+    style GPU1 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
+    style GPU2 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
 ```
 
 ##### 2. GPU-NIC Alignment Mismatch
 Large-scale inference (cross-node TP/PP or disaggregated serving) relies heavily on RDMA.
-*   **Problem**: **GPUDirect RDMA** requires the GPU and RDMA NIC to share the same PCIe Root Complex (same NUMA node) for zero-copy transfers. Mismatching them forces data through the CPU UPI bus and system RAM (Bounce Buffer), destroying the 400Gbps RDMA advantage and spiking cross-node latency.
+*   **Problem**: **GPUDirect RDMA** achieves peak performance when the GPU and RDMA NIC share the same **PCIe Switch**.
+    *   **Worst Case (Cross-NUMA)**: If the scheduler assigns a GPU on NUMA 0 and a NIC on NUMA 1, data must cross the CPU interconnect (e.g., UPI). Since UPI's effective bandwidth (~40GB/s) is less than the 50GB/s needed by a 400G NIC (400Gbps ÷ 8), the bus becomes a bottleneck, destroying the RDMA advantage.
+    *   **Suboptimal Case (Cross-Switch within same NUMA)**: Even within the same NUMA node, pairing devices on different PCIe switches (e.g., GPU 0 and NIC 3) forces data up to the CPU's PCIe Root Complex. This prevents direct forwarding within the switch, adding latency (PCIe Gen5 x16 provides 64GB/s in one direction, perfectly covering the 50GB/s requirement of a 400G NIC).
 
 ```mermaid
 graph TD
-    subgraph Host ["Host"]
+    subgraph "💻 Host (Dual-Socket AI Server)"
+        direction TB
+        
+        subgraph "🟢 NUMA Node 0"
+            direction TB
+            CPU0["🧠 CPU 0"]
+            
+            subgraph "🔲 PCIe Switch A Domain (Optimal)"
+                SwitchA["🎛️ PCIe Switch A"]
+                GPU0["📟 GPU 0"]
+                NIC0["🔌 RDMA NIC 0"]
+                SwitchA ---|"🚀 64GB/s (<1μs)"| GPU0
+                SwitchA ---|"🚀 64GB/s (<1μs)"| NIC0
+            end
+            
+            subgraph "🔲 PCIe Switch B Domain"
+                SwitchB["🎛️ PCIe Switch B"]
+                GPU1["📟 GPU 1"]
+                NIC1["🔌 RDMA NIC 1"]
+                SwitchB ---|"🚀 64GB/s"| GPU1
+                SwitchB ---|"🚀 64GB/s"| NIC1
+            end
+            
+            CPU0 ---|"⏩ 64GB/s (Via CPU)"| SwitchA
+            CPU0 ---|"⏩ 64GB/s (Via CPU)"| SwitchB
+        end
+        
+        subgraph "🔵 NUMA Node 1"
+            direction TB
+            CPU1["🧠 CPU 1"]
+            subgraph "🔲 PCIe Switch C Domain"
+                SwitchC["🎛️ PCIe Switch C"]
+                GPU4["📟 GPU 4"]
+                NIC4["🔌 RDMA NIC 4"]
+                SwitchC ---|"🚀 64GB/s"| GPU4
+                SwitchC ---|"🚀 64GB/s"| NIC4
+            end
+            CPU1 ---|"⏩ 64GB/s"| SwitchC
+        end
+        
+        CPU0 <-->|"🐌 ~40GB/s (Cross-NUMA Latency Doubled) UPI"| CPU1
+    end
+
+    subgraph "Performance Paths for Alignment Scenarios"
         direction LR
-        subgraph NUMA0 ["NUMA Node 0"]
-            direction TB
-            CPU0["CPU 0"] --- Switch0["PCIe Switch 0"]
-            Switch0 --- GPU0["GPU 0"]
-            Switch0 --- NIC0["RDMA NIC 0"]
-        end
-        subgraph NUMA1 ["NUMA Node 1"]
-            direction TB
-            CPU1["CPU 1"] --- Switch1["PCIe Switch 1"]
-            Switch1 --- GPU1["GPU 1"]
-            Switch1 --- NIC1["RDMA NIC 1"]
-        end
-        CPU0 <-->|UPI| CPU1
+        Path1["🌟 Optimal: GPU 0 ↔ NIC 0"] -->|"Intra-Switch Forwarding"| Res1["Max Speed (No CPU)"]
+        Path2["⚠️ Suboptimal: GPU 0 ↔ NIC 1"] -->|"Cross-Switch Forwarding"| Res2["Degraded (Via CPU 0 Root Complex)"]
+        Path3["❌ Disaster: GPU 0 ↔ NIC 4"] -->|"Cross-NUMA Forwarding"| Res3["Collapse (Via UPI Bus)"]
     end
-    
-    subgraph Mismatch ["Scheduling Mismatch"]
-        Pod["Pod"] -.->|Use| GPU0
-        Pod -.->|Use| NIC1
-        GPU0 -.->|Data Stream| CPU0
-        CPU0 -.->|Cross-NUMA crossing| CPU1
-        CPU1 -.-> NIC1
-        NIC1 -.->|Send to Network| Network((RDMA Network))
-    end
-    
-    CPU0 ~~~ Pod
 ```
 
 ##### 3. CPU-GPU Alignment Issues
