@@ -564,21 +564,60 @@ spec:
 
 ### 第四节：跨越单机：集群级网络拓扑与多机协同
 
-在进入传统的跨机架讨论之前，值得注意的是，像 **GB200 NVL72** 这样的机柜级系统已经彻底模糊了单机与集群的边界。随着 NVIDIA 推出 GB200 NVL72 等系统，通过光背板和铜缆将 72 张 GPU 彻底打通为一个巨大的、全互联的显存池（机柜即服务器）。在这种架构下，传统的“单机”边界被彻底打破，K8s 的编排必须从“管理一台服务器”彻底走向“管理一整个机柜的计算资源池”。这使得原本属于“单机战场”的硬件局部性问题直接蔓延到了“集群战场”，对 K8s 的跨节点编排提出了前所未有的挑战。
+然而，在目前的绝大多数数据中心里，超大模型推理（如千亿参数模型的 TP/PP 混合并行）或**分离式推理（Disaggregated Serving）**（详见第四部分[第十九章：打通经脉：大模型推理中的网络通信与高速互联](part4_distributed.cn.md)）依然需要跨越多个物理节点。当推理任务跨越节点时，单机内部的拓扑对齐仅仅是万里长征的第一步，集群级的网络拓扑成为了决定生死的新因素。
 
-在大模型推理（如千亿参数模型的 TP/PP 混合并行）或**分离式推理（Disaggregated Serving）**的场景下，单机内部的拓扑对齐仅仅是万里长征的第一步。当推理任务跨越多个节点时，集群级的网络拓扑成为了新的决定性因素。
+#### 1. 痛点重述：集群级网络拓扑的“随机碰撞”（对应问题 4）
+我们在本章第一节中提到，大规模分布式推理极度依赖节点间的 RDMA 网络通信。如果 K8s 调度器缺乏网络拓扑意识，随机分配节点，会导致以下致命问题：
+*   **网络跳数的代价**：在多机张量并行（TP）中，节点间需要高频同步张量。如果节点被随机分配到不同机柜，数据流必须跨越核心交换机（Spine Switch），长尾延迟会让 NCCL 通信环瞬间变成“堵车现场”。
+*   **KV Cache 搬运难题**：在分离式推理中，Prefill 节点需要将庞大的 KV Cache 瞬间转移给 Decode 节点。如果两类节点在网络拓扑上相隔太远，跨节点的网络瓶颈会显著增加首字延迟（TTFT），大幅削弱“分离”的优势。
 
-#### 1. 网络跳数的代价：跨机架的性能雪崩
-在多机张量并行（TP）中，节点之间需要通过高速 RDMA 网络频繁同步张量。
-*   **同机柜直连**：如果参与推理的机器位于同一个机柜，连接在同一个 TOR（Top-of-Rack）交换机下，RDMA 通信延迟极低。
-*   **跨机架通信**：如果 K8s 调度器缺乏网络拓扑意识，把节点随机分配到了不同的机柜，数据流就必须跨越核心交换机（Spine Switch）。多跳带来的长尾延迟，会让 NCCL 通信环瞬间变成“堵车现场”。
+#### 2. 解决之道：K8s 原生的拓扑感知调度
+为了解决跨节点的网络瓶颈，Kubernetes 提供了原生的**亲和性与反亲和性（Affinity/Anti-Affinity）**机制，配合标签（Labels）和拓扑键（Topology Keys），让调度器具备“位置感”。
 
-#### 2. 分离式推理的“KV Cache 搬运”难题
-在分离式推理中，Prefill 节点算完 Prompt 后，需要将庞大的 KV Cache 瞬间转移给 Decode 节点。
-如果 Prefill 节点和 Decode 节点在网络拓扑上相隔太远，即使单机内部实现了 GPUDirect RDMA，跨节点的网络瓶颈依然会让“分离”的优势荡然无存。
-为了化解这一瓶颈，业界引入了如 **NIXL**（vLLM 中使用的 NixlConnector）等高性能 KV 传输框架，利用 UCX 和 RDMA 实现极速的异步搬运。但要让 NIXL 达到物理极限性能，必须配合极致的**硬件拓扑对齐**（如 **NUMA alignment** 与 **GPU-NIC alignment**）。如果 Prefill/Decode 进程与网卡跨越了 NUMA 边界，或者 GPU 与 RDMA 网卡没有处于同一个 PCIe Root Complex 下，GPUDirect RDMA 就会退化，导致延迟剧增。因此，K8s 调度器不仅要在集群维度拉近节点距离，还要在单机维度实现精细的拓扑亲和。
+在实际部署中，管理员通常会根据物理网络拓扑，为节点打上代表其所在机柜（Rack）或交换机（Switch）的标签，例如 `topology.kubernetes.io/rack=rack-1`。
 
-#### 3. 解决之道：拓扑感知调度与协同
-应对跨节点拓扑，业界目前主要依靠以下组合拳：
-*   **Topology Keys 与亲和性**：在 Pod 调度声明中，利用 `topologyKey`（如 `rack` 或 `switch`）配合亲和性策略，强行要求参与同一个大模型实例的一组 Pod 必须落在同一个机柜或同一个高带宽网络域内。
-*   **原子调度（Gang Scheduling）的配合**：结合 Kueue 或 LeaderWorkerSet 等机制，确保这一组 Pod 不仅拓扑相近，而且能够“同生共死”，防止资源死锁。
+调度器在处理分布式推理的 Pod 组时，可以通过以下方式实现拓扑对齐：
+*   **Pod 亲和性（Pod Affinity）**：通过声明“参与同一个推理任务的 Pod 必须调度到同一个 `topologyKey`（如 `rack`）的节点上”，确保它们之间的通信局限在同一个高带宽、低延迟的物理域内。
+
+#### 3. 配置示例：用 Pod 亲和性实现机柜级对齐
+以下是一个声明了 Pod 亲和性的示例。
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-distributed-worker
+spec:
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: vllm-distributed
+    spec:
+      # 大白话语义：我（当前 Pod）在选节点时，必须（Required）和已经存在的、带有 app=vllm-distributed 标签的 Pod 待在同一个机柜（Rack）里。如果找不到满足条件的机柜，我就一直处于 Pending 状态。
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - vllm-distributed
+            topologyKey: topology.kubernetes.io/rack
+      containers:
+      - name: vllm-worker
+        image: vllm/vllm-openai:latest
+        # ... 资源请求等
+```
+
+> [!NOTE]
+> **第一个 Pod 的“自亲和”机制**
+> 
+> 读者可能会产生一个疑问：如果所有 Pod 都要求“必须和同组的 Pod 在一起”，那么当第一个 Pod 启动时，集群里还没有任何同组 Pod，它该和谁亲和？
+> 
+> Kubernetes 调度器对此有精细的处理：它会检查当前正在调度的 Pod 自身的标签是否能匹配亲和性条件（自亲和）。如果是自亲和，且集群中尚无其他匹配的 Pod，调度器会允许该 Pod 调度（作为首个锚点）。
+> 
+> 请注意，如果亲和条件指向的是**其他**不存在的组件（非自亲和），调度器**不会**忽略该约束，Pod 会保持 Pending 状态。
+
+通过这种方式，K8s 原生调度器就能避免将分布式推理的节点“随机碰撞”在不同的机柜间，从而保护了高频通信的性能。

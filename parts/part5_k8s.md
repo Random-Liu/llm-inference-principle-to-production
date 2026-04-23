@@ -574,21 +574,60 @@ spec:
 
 ### Section 4: Beyond Single Node: Cluster-Level Network Topology and Multi-Machine Synergy
 
-Before diving into traditional cross-rack discussions, note that rack-scale systems like **GB200 NVL72** have completely blurred the boundary between single nodes and clusters. With NVIDIA introducing systems like GB200 NVL72, 72 GPUs are fully interconnected into a massive VRAM pool (rack as a server) via optical backplanes and copper cables. In this architecture, traditional "single-node" boundaries are shattered. K8s orchestration must evolve from "managing a server" to "managing a whole rack as a resource pool." This causes hardware locality problems to spill over from single nodes to clusters, presenting unprecedented challenges to K8s cross-node orchestration.
+However, in most current data centers, large model inference (e.g., hybrid TP/PP) or **Disaggregated Serving** (see Part 4 [Chapter 19: Network Communication and High-Speed Interconnects in LLM Inference](part4_distributed.md)) still requires spanning multiple physical nodes. When inference tasks span nodes, single-node topology alignment is only the first step; cluster-level network topology becomes decisive.
 
-In scenarios like large-scale model inference (e.g., hybrid TP/PP for hundreds of billions of parameters) or **Disaggregated Serving**, aligning topology within a single machine is only the first step. When inference tasks span multiple nodes, cluster-level network topology becomes the new decisive factor.
+#### 1. Problem Restated: Random Collisions of Cluster Network Topology (Problem 4)
+As mentioned in Section 1, large-scale distributed inference relies heavily on RDMA communication. Random node assignment by K8s causes:
+*   **Cost of Network Hops**: In multi-node TP, nodes frequently sync tensors. Random assignment to different racks forces data across the core switch (Spine Switch), causing long-tail latency and traffic jams in NCCL rings.
+*   **KV Cache Transfer Problem**: In disaggregated serving, Prefill nodes instantly transfer massive KV Cache to Decode nodes. If they are far apart, cross-node network bottlenecks will significantly increase Time to First Token (TTFT) and severely weaken the benefits of separation.
 
-#### 1. The Cost of Network Hops: Performance Collapse Across Racks
-In multi-machine Tensor Parallelism (TP), nodes frequently synchronize tensors via high-speed RDMA networks.
-*   **Same-Rack Direct Connection**: If the machines involved in inference are in the same rack and connected to the same TOR (Top-of-Rack) switch, RDMA communication latency is extremely low.
-*   **Cross-Rack Communication**: If the K8s scheduler lacks network topology awareness and randomly assigns nodes to different racks, the data stream must cross the core switch (Spine Switch). The long-tail latency of multiple hops turns NCCL communication rings into traffic jams.
+#### 2. Solution: Native K8s Topology-Aware Scheduling
+To solve cross-node network bottlenecks, Kubernetes provides native **Affinity and Anti-Affinity** mechanisms with labels and Topology Keys to give the scheduler "location awareness."
 
-#### 2. The "KV Cache Transfer" Problem in Disaggregated Serving
-In disaggregated serving, the Prefill node must instantly transfer massive KV Cache to the Decode node after processing the prompt.
-If Prefill and Decode nodes are too far apart in the network topology, even with GPUDirect RDMA enabled within a single machine, the cross-node network bottleneck will render the benefits of separation useless.
-To address this, frameworks adopt high-performance KV transfer libraries like **NIXL** (NixlConnector in vLLM), leveraging UCX and RDMA for fast asynchronous transfers. However, reaching peak NIXL performance requires strict **hardware topology alignment** (like **NUMA alignment** and **GPU-NIC alignment**). Crossing NUMA boundaries or mismatching GPUs and RDMA NICs across different PCIe Root Complexes degrades GPUDirect RDMA and spikes latency. K8s must therefore ensure both cluster-level network proximity and node-level topology affinity.
+Administrators typically label nodes with their physical location (e.g., rack or switch), such as `topology.kubernetes.io/rack=rack-1`.
 
-#### 3. Solutions: Topology-Aware Scheduling and Synergy
-To address cross-node topology, the industry relies on the following combinations:
-*   **Topology Keys and Affinity**: In Pod scheduling declarations, using `topologyKey` (e.g., `rack` or `switch`) with affinity policies forces a group of Pods for the same model instance to land in the same rack or high-bandwidth network domain.
-*   **Synergy with Gang Scheduling**: Combined with mechanisms like Kueue or LeaderWorkerSet, this ensures the group of Pods are not only close in topology but also "live and die together," preventing deadlocks.
+For distributed inference Pod groups, the scheduler aligns topology via:
+*   **Pod Affinity**: Declaring that Pods sharing the same inference task must be scheduled in the same `topologyKey` (e.g., `rack`), ensuring communication stays within a high-bandwidth, low-latency domain.
+
+#### 3. Configuration Example: Rack Alignment via Pod Affinity
+Here is an example declaring Pod affinity.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-distributed-worker
+spec:
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: vllm-distributed
+    spec:
+      # Plain-language semantics: When selecting a node, I (the current Pod) must (Required) be placed in the same rack as existing Pods labeled app=vllm-distributed. If no such rack is found, I will remain Pending.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - vllm-distributed
+            topologyKey: topology.kubernetes.io/rack
+      containers:
+      - name: vllm-worker
+        image: vllm/vllm-openai:latest
+        # ... resource requests, etc.
+```
+
+> [!NOTE]
+> **The "Self-Affinity" Mechanism of the First Pod**
+> 
+> Readers might wonder: if all Pods require being co-located with others in the group, what does the first Pod affiliate with when none exist yet?
+> 
+> The Kubernetes scheduler handles this with fine-grained logic: it checks whether the labels of the Pod currently being scheduled can match the affinity condition (self-affinity). If it is self-affinity, and no matching Pods exist in the cluster yet, the scheduler allows the Pod to be scheduled (acting as the first anchor).
+> 
+> Note that if the affinity condition points to **other** non-existent components (non-self-affinity), the scheduler will **not** ignore the constraint, and the Pod will remain Pending.
+
+This prevents the K8s scheduler from randomly scattering distributed inference nodes across racks, protecting high-frequency communication performance.
