@@ -50,40 +50,32 @@ Before diving into optimization details, let's use a birds-eye view diagram to u
 
 ```mermaid
 graph LR
-    %% Remote Layer
-    subgraph Remote["☁️ Remote Storage Layer"]
-        Registry["📦 OCI Registry / S3"]
+    subgraph Remote["☁️ Remote Storage"]
+        Registry["📦 Model Registry / Object Storage"]
     end
 
-    %% Network Transfer and Distribution
-    Registry -->|"📡 P2P / Stream Transfer (Dragonfly / Nydus)"| Host
+    Registry -->|"📡 Network Distribution"| Host
 
-    %% Local Host Layer
-    subgraph Host["💻 Local Host Machine"]
+    subgraph Host["💻 Local Host"]
         direction TB
-        FS["🗄️ Virtual File System (FUSE / EROFS)"]
-        PageCache["💾 Kernel Page Cache"]
-        CPUMem["🧠 CPU RAM"]
-        
-        FS -->|"mmap Mapping"| PageCache
-        PageCache -->|"On-demand Load"| CPUMem
+        FS["🗄️ Local Filesystem"]
+        CPUMem["🧠 CPU Memory"]
+
+        FS -->|"On-demand Load"| CPUMem
     end
 
-    %% Hardware Bus
-    Host -->|"🚀 H2D Transfer (PCIe Gen5 / GDS)"| GPU
+    Host -->|"🚀 H2D Transfer"| GPU
 
-    %% GPU Layer
     subgraph GPU["📟 GPU Device"]
         VRAM["🔥 GPU VRAM"]
     end
 
-    %% Styles
     classDef remote fill:#f9f,stroke:#333,stroke-width:2px;
     classDef host fill:#bbf,stroke:#333,stroke-width:2px;
     classDef gpu fill:#bfb,stroke:#333,stroke-width:2px;
-    
+
     class Registry remote;
-    class FS,PageCache,CPUMem host;
+    class FS,CPUMem host;
     class VRAM gpu;
 ```
 

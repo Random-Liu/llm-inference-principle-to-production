@@ -50,40 +50,32 @@
 
 ```mermaid
 graph LR
-    %% 远端层
-    subgraph Remote["☁️ 远端存储层 (Remote Storage)"]
-        Registry["📦 OCI Registry / S3"]
+    subgraph Remote["☁️ 远端存储层"]
+        Registry["📦 模型仓库 / 对象存储"]
     end
 
-    %% 网络传输与分发
-    Registry -->|"📡 P2P / 流式传输 (Dragonfly / Nydus)"| Host
-    
-    %% 本地主机层
-    subgraph Host["💻 本地宿主机 (Local Host)"]
+    Registry -->|"📡 网络分发"| Host
+
+    subgraph Host["💻 本地宿主机"]
         direction TB
-        FS["🗄️ 虚拟文件系统 (FUSE / EROFS)"]
-        PageCache["💾 内核页缓存 (Page Cache)"]
-        CPUMem["🧠 CPU 内存 (RAM)"]
-        
-        FS -->|"mmap 映射"| PageCache
-        PageCache -->|"按需加载"| CPUMem
+        FS["🗄️ 本地文件系统"]
+        CPUMem["🧠 CPU 内存"]
+
+        FS -->|"按需加载"| CPUMem
     end
 
-    %% 硬件总线
-    Host -->|"🚀 H2D 传输 (PCIe Gen5 / GDS)"| GPU
+    Host -->|"🚀 H2D 传输"| GPU
 
-    %% GPU层
-    subgraph GPU["📟 GPU 设备 (Device)"]
-        VRAM["🔥 GPU 显存 (VRAM)"]
+    subgraph GPU["📟 GPU 设备"]
+        VRAM["🔥 GPU 显存"]
     end
 
-    %% 样式
     classDef remote fill:#f9f,stroke:#333,stroke-width:2px;
     classDef host fill:#bbf,stroke:#333,stroke-width:2px;
     classDef gpu fill:#bfb,stroke:#333,stroke-width:2px;
-    
+
     class Registry remote;
-    class FS,PageCache,CPUMem host;
+    class FS,CPUMem host;
     class VRAM gpu;
 ```
 
