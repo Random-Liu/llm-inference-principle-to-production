@@ -21,6 +21,7 @@ This file contains instructions and conventions for AI agents working on this re
 
 ## Writing Style Conventions for Language Versions
 - **Chinese Files (`*.cn.md`)**: Follow the user's style. The user maintains the primary content, and AI agents should respect the existing tone and style when making edits.
+  - **Brackets Convention**: Use English half-width brackets `(` and `)` instead of Chinese full-width brackets `（` and `）` to avoid rendering issues (e.g., LaTeX on GitHub). In Chinese text, use ` (` and `) ` to maintain visual separation.
 - **Non-Chinese Files (`*.md`, primarily English)**: Must follow a **strictly concise and direct** style to avoid verbosity. Follow these principles:
   - **Principle**: Adopt an "idiomatic + concise" (意译+精简) strategy rather than word-for-word translation.
   - **Content Preservation**: Only simplify sentences and phrasing; never delete or alter technical content.
