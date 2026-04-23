@@ -7,6 +7,8 @@ This file contains instructions and conventions for AI agents working on this re
   ```
   Co-authored-by: Gemini <gemini@google.com>
   ```
+- **Review and Squash Before Push**: Before pushing, the AI agent MUST review all local commits. Appropriately squash related commits together to maintain a clean history.
+- **Pre-Push Review Summary**: Before pushing, the AI agent MUST send a summary of the pending commits to the user for review. Do not push until the user confirms.
 
 ## Bilingual Maintenance and Translation Workflow
 - **Source Language**: The user will continue writing and updating the book in Chinese, using files marked as `*.cn.md` (e.g., `README.cn.md`, `parts/part1_principles.cn.md`).
