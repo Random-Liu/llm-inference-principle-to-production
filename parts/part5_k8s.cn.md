@@ -326,75 +326,73 @@ graph TD
 ##### 3. CPU 与 GPU 的“跨区投喂”（CPU-GPU Alignment）
 虽然推理主要在 GPU 上，但 CPU 绝非无所事事，以下场景中 CPU-GPU 的亲和性至关重要：
 *   **冷启动与权重加载**：大模型加载时，数据从磁盘/内存搬运到显存，跨 NUMA 会显著拉长冷启动时间（TTFT 变差）。
-*   **KV Cache Offloading（显存卸载）**：在 Continuous Batching 中，当显存爆满时，系统会将部分 KV Cache 临时卸载到 CPU 内存中。如果跨 NUMA，卸载和重新加载的带宽会严重受限，导致请求停滞。
+*   **KV Cache Offloading（显存卸载）**：在推理引擎（如 vLLM）中，当高并发或长上下文导致显存爆满时，系统通常会使用 Swapping（交换）机制将部分 KV Cache 临时卸载到 CPU 内存中以避免 OOM。如果 CPU 和 GPU 跨越了 NUMA 节点，卸载和重新加载的带宽会严重受限，导致推理请求发生停滞（Stall）。
 *   **控制面开销**：推理引擎（如 vLLM）的调度进程运行在 CPU 上，频繁下发 CUDA Kernel。如果 CPU 与 GPU 跨区，CUDA Launch 的延迟会增加，影响极端低延迟场景。
 
 ```mermaid
 graph TD
     subgraph 宿主机
+        direction TB
         subgraph NUMA0 ["NUMA 节点 0"]
-            CPU0["CPU 0 (运行 vLLM 进程)"] --- RAM0["内存 0 (KV Cache 卸载区)"]
+            direction TB
+            CPU0["🧠 CPU 0 (运行 vLLM 进程)"] ---|"🚀 ~200GB/s"| RAM0["🧠 内存 0 (KV Cache 卸载区)"]
         end
         subgraph NUMA1 ["NUMA 节点 1"]
-            CPU1[CPU 1] --- GPU1["GPU 1 (运行模型)"]
+            direction TB
+            CPU1["🧠 CPU 1"] ---|"PCIe ~64GB/s"| GPU1["📟 GPU 1 (运行模型)"]
+            CPU1 ---|"🚀 ~200GB/s"| RAM1["🧠 内存 1 (空闲)"]
         end
-        CPU0 <-->|UPI| CPU1
+        CPU0 <-->|"🐌 UPI ~40GB/s"| CPU1
     end
     
     subgraph "性能瓶颈 (Mismatch)"
         GPU1 -.->|显存满, 卸载 KV Cache| CPU1
-        CPU1 -.->|跨 NUMA 写入| RAM0
-        note["⚠️ 跨 NUMA 带宽减半，导致推理停滞"]
+        CPU1 -.->|"跨 NUMA 写入 🐌 ~40GB/s"| RAM0
+        note["⚠️ 跨 NUMA 带宽仅约 40GB/s，远低于本地的 ~200GB/s"]
     end
+    
+    style CPU0 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
 ```
 
 ##### 4. 集群级网络拓扑的“随机碰撞”（Cluster-Level Network Topology）
 分布式推理不仅看单机，还要看集群网络（RDMA Block）。
-*   **问题**：在多机推理（Multi-host TP/PP）或**分离式推理（Disaggregated Serving）**中，跨机通信频次极高。如果 K8s 调度器缺乏网络拓扑意识，把参与同一个模型的 Pods 随机分配到了不同的机柜（跨 Spine Switch），多跳带来的长尾延迟会让整个 NCCL 通信环被最慢的一跳拖垮。
+*   **问题**：在多机推理（Multi-host TP/PP）或**分离式推理（Disaggregated Serving）**（量化对比详见[第四部分第十九章第三节](part4_distributed.cn.md#第三节并行模式数据量与指标影响)）中，跨机通信频次极高。如果 K8s 调度器缺乏网络拓扑意识，把参与同一个模型的 Pods 随机分配到了不同的机柜（跨 Spine Switch），多跳带来的长尾延迟会让整个 NCCL 通信环被最慢的一跳拖垮。
 
 ```mermaid
 graph TD
     subgraph 集群网络
-        Spine[Spine 核心交换机]
-        Spine --- TOR1[TOR 交换机 1]
-        Spine --- TOR2[TOR 交换机 2]
+        Spine["🔀 Spine 核心交换机"]
+        Spine ---|"🐌 200Gbps (~2μs)"| TOR1["🔌 TOR 交换机 1"]
+        Spine ---|"🐌 200Gbps (~2μs)"| TOR2["🔌 TOR 交换机 2"]
         
         subgraph Rack1 ["机柜 1"]
-            TOR1 --- NodeA[节点 A]
-            TOR1 --- NodeB[节点 B]
+            TOR1 ---|"🚀 400Gbps (<1μs)"| NodeA["🖥️ 节点 A"]
+            TOR1 ---|"🚀 400Gbps (<1μs)"| NodeB["🖥️ 节点 B"]
         end
         subgraph Rack2 ["机柜 2"]
-            TOR2 --- NodeC[节点 C]
-            TOR2 --- NodeD[节点 D]
+            TOR2 ---|"🚀 400Gbps (<1μs)"| NodeC["🖥️ 节点 C"]
+            TOR2 ---|"🚀 400Gbps (<1μs)"| NodeD["🖥️ 节点 D"]
         end
     end
     
     subgraph "调度错误 (Mismatch)"
-        PodA[TP 成员 1] -.->|调度到| NodeA
-        PodB[TP 成员 2] -.->|调度到| NodeC
-        NodeA <-->|"跨机柜多跳, 高延迟"| Spine
-        Spine <--> NodeC
+        PodA["📦 TP 成员 1"] -.->|"📍 调度到"| NodeA
+        PodB["📦 TP 成员 2"] -.->|"📍 调度到"| NodeC
+        NodeA <-->|"🐌 跨机柜多跳 (200Gbps, ~2μs)"| Spine
+        Spine <-->|"🐌 跨机柜多跳 (200Gbps, ~2μs)"| NodeC
     end
+
+    style NodeA fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
+    style NodeC fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
 ```
 
-##### 5. PCIe 链路的“共享带宽争抢”（PCIe Contention）
-*   **问题**：当多个 GPU 或 GPU 与网卡共享同一个 PCIe Switch 的上行链路时，会发生带宽争抢。调度器如果不知道物理链路的共享情况，可能会把高并发的 I/O 任务堆积到同一条链路上，引发局部拥堵。
+> [!NOTE]
+> **关于网络架构与收敛比的说明**：
+> *   **什么是收敛比（Oversubscription Ratio）**：它指交换机**下行总带宽**与**上行总带宽**的比值。它源于数据中心建设的成本权衡——在传统微服务中，并非所有机器都会同时跨机柜满载通信，因此工程师会减少上行链路数量以节省昂贵的光模块和核心交换机成本。但在 AI 分布式计算中，高并发的 Collective 通信要求极高，收敛比会直接导致网络拥塞和性能劣化。
+> *   **架构 A（无损非阻塞网络）**：顶级 AI 集群（如 InfiniBand Fat-Tree）通常采用 1:1 无收敛设计，机柜间带宽与机柜内一致（皆为 400Gbps），核心瓶颈在于跨交换机带来的额外跳数和微秒级延迟。
+> *   **架构 B（有收敛比网络）**：本图为了直观展示“错配”的劣化，假设了 **1:2 的收敛比**（即上行带宽为下行的一半）。此时跨机柜通信不仅要承受更高的延迟（从 <1μs 增至 ~2μs），还会面临带宽砍半（从 400Gbps 降至 200Gbps）的瓶颈。
 
-```mermaid
-graph TD
-    subgraph 宿主机
-        CPU[CPU] --- Switch[PCIe Switch]
-        Switch ---|"共享 PCIe x16 链路 32GB/s"| Up[上行带宽瓶颈]
-        Switch --- GPU["GPU (高并发计算)"]
-        Switch --- NIC["RDMA NIC (400Gbps 传输)"]
-    end
-    
-    subgraph "带宽争抢 (Mismatch)"
-        GPU -.->|并发数据流| Switch
-        NIC -.->|并发数据流| Switch
-        Switch -.->|"挤占 32GB/s 通道"| Up
-    end
-```
+
 
 这种“只数数，不看位置”的调度方式，我们称之为**拓扑黑洞**。
 

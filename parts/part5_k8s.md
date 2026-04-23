@@ -336,80 +336,73 @@ graph TD
 ##### 3. CPU-GPU Alignment Issues
 While inference runs on GPUs, CPU-GPU affinity matters in critical scenarios:
 *   **Cold Starts & Weight Loading**: Loading huge models from disk/RAM to VRAM across NUMA nodes prolongs cold starts and degrades TTFT.
-*   **KV Cache Offloading**: In continuous batching, full VRAM triggers offloading KV cache to CPU RAM. Cross-NUMA bandwidth limits stall requests during offload and reload.
+*   **KV Cache Offloading**: In serving engines (like vLLM), when VRAM is full due to high concurrency or long contexts, systems often use a swapping mechanism to offload KV cache to CPU RAM to avoid OOM. Cross-NUMA bandwidth limits stall requests during this offload and reload process.
 *   **Control Plane Overhead**: The inference engine (e.g., vLLM) scheduler runs on the CPU, launching CUDA kernels frequently. Cross-NUMA placement increases CUDA launch latency, impacting ultra-low latency tasks.
 
 ```mermaid
 graph TD
     subgraph Host ["Host"]
-        direction LR
+        direction TB
         subgraph NUMA0 ["NUMA Node 0"]
             direction TB
-            CPU0["CPU 0 (Running vLLM)"] --- RAM0["Memory 0 (KV Cache Offload)"]
+            CPU0["🧠 CPU 0 (Running vLLM)"] ---|"🚀 ~200GB/s"| RAM0["🧠 Memory 0 (KV Cache Offload)"]
         end
         subgraph NUMA1 ["NUMA Node 1"]
             direction TB
-            CPU1["CPU 1"] --- GPU1["GPU 1 (Running Model)"]
+            CPU1["🧠 CPU 1"] ---|"PCIe ~64GB/s"| GPU1["📟 GPU 1 (Running Model)"]
+            CPU1 ---|"🚀 ~200GB/s"| RAM1["🧠 Memory 1 (Idle)"]
         end
-        CPU0 <-->|UPI| CPU1
+        CPU0 <-->|"🐌 UPI ~40GB/s"| CPU1
     end
     
     subgraph Mismatch ["Performance Bottleneck"]
         GPU1 -.->|VRAM full, offload KV Cache| CPU1
-        CPU1 -.->|Cross-NUMA write| RAM0
-        note["Cross-NUMA bandwidth halved, stalling inference"]
+        CPU1 -.->|"Cross-NUMA write 🐌 ~40GB/s"| RAM0
+        note["⚠️ Cross-NUMA bandwidth only ~40GB/s, far below local ~200GB/s"]
     end
     
-    CPU0 ~~~ GPU1
+    style CPU0 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
 ```
 
 ##### 4. Cluster-Level Network Topology Collision
 Distributed inference also depends on cluster networks (RDMA blocks).
-*   **Problem**: Multi-node TP/PP or disaggregated serving requires frequent cross-node communication. Schedulers lacking network topology awareness might scatter Pods for the same model across racks (crossing Spine switches). Long-tail latency from multiple hops drags down the entire NCCL ring.
+*   **Problem**: Multi-node TP/PP or **disaggregated serving** (for quantitative comparison, see [Part 4 Chapter 19 Section 3](part4_distributed.md#section-3-parallel-modes-data-volumes-and-metric-impacts)) requires frequent cross-node communication. Schedulers lacking network topology awareness might scatter Pods for the same model across racks (crossing Spine switches). Long-tail latency from multiple hops drags down the entire NCCL ring.
 
 ```mermaid
-graph TD
+    graph TD
     subgraph Network ["Cluster Network"]
-        Spine["Spine Switch"]
-        Spine --- TOR1["TOR Switch 1"]
-        Spine --- TOR2["TOR Switch 2"]
+        Spine["🔀 Spine Switch"]
+        Spine ---|"🐌 200Gbps (~2μs)"| TOR1["🔌 TOR Switch 1"]
+        Spine ---|"🐌 200Gbps (~2μs)"| TOR2["🔌 TOR Switch 2"]
         
         subgraph Rack1 ["Rack 1"]
-            TOR1 --- NodeA["Node A"]
-            TOR1 --- NodeB["Node B"]
+            TOR1 ---|"🚀 400Gbps (<1μs)"| NodeA["🖥️ Node A"]
+            TOR1 ---|"🚀 400Gbps (<1μs)"| NodeB["🖥️ Node B"]
         end
         subgraph Rack2 ["Rack 2"]
-            TOR2 --- NodeC["Node C"]
-            TOR2 --- NodeD["Node D"]
+            TOR2 ---|"🚀 400Gbps (<1μs)"| NodeC["🖥️ Node C"]
+            TOR2 ---|"🚀 400Gbps (<1μs)"| NodeD["🖥️ Node D"]
         end
     end
     
     subgraph Mismatch ["Scheduling Mismatch"]
-        PodA["TP Member 1"] -.->|Schedule to| NodeA
-        PodB["TP Member 2"] -.->|Schedule to| NodeC
-        NodeA <-->|Cross-rack multi-hop, high latency| Spine
-        Spine <--> NodeC
+        PodA["📦 TP Member 1"] -.->|"📍 Schedule to"| NodeA
+        PodB["📦 TP Member 2"] -.->|"📍 Schedule to"| NodeC
+        NodeA <-->|"🐌 Cross-rack multi-hop (200Gbps, ~2μs)"| Spine
+        Spine <-->|"🐌 Cross-rack multi-hop (200Gbps, ~2μs)"| NodeC
     end
+
+    style NodeA fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
+    style NodeC fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
 ```
 
-##### 5. PCIe Link Bandwidth Contention
-*   **Problem**: Multiple GPUs or a GPU and a NIC sharing the same PCIe switch uplink compete for bandwidth. Without link awareness, schedulers might stack high-I/O tasks on the same link, causing local congestion.
+> [!NOTE]
+> **Note on Network Architecture and Oversubscription Ratio**:
+> *   **What is Oversubscription Ratio**: It is the ratio of the total **downlink bandwidth** (to servers) to the total **uplink bandwidth** (to upper switches) of a switch. It stems from cost-performance trade-offs in data center design. In traditional microservices, not all servers communicate across racks at full speed simultaneously, so engineers reduce uplink counts to save costs on expensive optical modules and core switches. However, in AI distributed computing, concurrent collective communication demands are extremely high, making oversubscription a direct cause of network congestion and performance degradation.
+> *   **Architecture A (Non-blocking Network)**: Top-tier AI clusters (like InfiniBand Fat-Tree) typically use a 1:1 non-blocking design where cross-rack bandwidth is identical to intra-rack bandwidth (both 400Gbps). The main penalty is the extra hops and microsecond-level latency.
+> *   **Architecture B (Oversubscribed Network)**: To visually illustrate the penalty of scheduling mismatch, this diagram assumes a **1:2 oversubscription ratio** (uplink bandwidth is half of the downlink). In this case, cross-rack communication suffers from both higher latency (from <1μs to ~2μs) and reduced bandwidth (from 400Gbps to 200Gbps).
 
-```mermaid
-graph TD
-    subgraph Host ["Host"]
-        CPU["CPU"] --- Switch["PCIe Switch"]
-        Switch ---|Shared PCIe x16 link 32GB/s| Up["Uplink Bandwidth Bottleneck"]
-        Switch --- GPU["GPU (High-concurrency compute)"]
-        Switch --- NIC["RDMA NIC (400Gbps transfer)"]
-    end
-    
-    subgraph Mismatch ["Bandwidth Contention"]
-        GPU -.->|Concurrent data stream| Switch
-        NIC -.->|Concurrent data stream| Switch
-        Switch -.->|Overcrowd 32GB/s channel| Up
-    end
-```
+
 
 We call this "count-only" scheduling the **Topology Black Hole**.
 
