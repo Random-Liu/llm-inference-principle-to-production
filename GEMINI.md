@@ -26,3 +26,8 @@ This file contains instructions and conventions for AI agents working on this re
   - **Clarity**: Remove redundant phrasing and filler words.
   - **Causal Mask Awareness**: In explanations of Transformer mechanics, ensure the language strictly respects the causal mask (i.e., queries attend to past/current tokens, not future ones).
   - **Heading Format**: Maintain a consistent "Title: Subtitle" format for section headers (e.g., `### Section X: Title: Subtitle`). Keep headings as concise as possible while maintaining structural clarity.
+
+## Mermaid Diagram Conventions
+- **Use Emojis in Labels**: Add relevant emojis to node labels to make diagrams more engaging and visually clear (e.g., 🧠 for CPU, 📟 for GPU, 📦 for Pod, 🚀 for high-speed links).
+- **Quoting for Safety**: When using emojis or spaces in labels, always enclose the label in double quotes inside the brackets (e.g., `NodeID["🧠 Label"]`) to prevent rendering syntax errors.
+- **Layout Compatibility**: Prefer `flowchart` over `graph` for complex layouts with cross-subgraph links. If using `graph`, ensure nodes are defined inside their primary subgraphs to avoid layout crashes.
