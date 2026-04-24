@@ -234,7 +234,7 @@ Safetensors 完美地解决了“文件在本地如何高效读取”的问题�
 在分布式 LLM 推理场景下，由于对拓扑的漠视，标量计数调度会引发以下几个维度的严重问题：
 
 ##### 1. 单机内 GPU 互联拓扑的“盲区”（Intra-node GPU Topology）
-在张量并行（TP）中，模型层被切分 to 多张 GPU 上，每前向传播一层就需要进行一次高频的 `All-Reduce`。
+在张量并行（TP）中，模型层被切分到多张 GPU 上，每前向传播一层就需要进行一次高频的 `All-Reduce`。
 *   **问题**：如果 K8s 随机分配了 4 张卡，而它们分属于不同的 PCIe Switch 或跨越了 NUMA 节点（在没有 NVSwitch 的 PCIe 服务器上），跨卡通信将无法走高速的 NVLink，而是被迫回退到极慢的跨 CPU 内存总线，导致推理性能雪崩。
 
 ```mermaid
@@ -244,21 +244,21 @@ graph TD
             CPU0["🧠 CPU 0"] --- Switch0["🎛️ PCIe Switch 0"]
             Switch0 --- GPU0["📟 GPU 0"]
             Switch0 --- GPU1["📟 GPU 1"]
-            GPU0 <-->|🚀 NVLink 600GB/s| GPU1
+            GPU0 <-->|"🚀 NVLink 600GB/s"| GPU1
         end
         
         subgraph NUMA1 ["NUMA 1"]
             CPU1["🧠 CPU 1"] --- Switch1["🎛️ PCIe Switch 1"]
             Switch1 --- GPU2["📟 GPU 2"]
             Switch1 --- GPU3["📟 GPU 3"]
-            GPU2 <-->|🚀 NVLink 600GB/s| GPU3
+            GPU2 <-->|"🚀 NVLink 600GB/s"| GPU3
         end
         
-        CPU0 <-->|🐌 UPI 总线 40GB/s| CPU1
+        CPU0 <-->|"🐌 UPI 总线 40GB/s"| CPU1
     end
     
-    Pod["📦 2-GPU TP 推理 Pod"] -.->|错误分配| GPU1
-    Pod -.->|错误分配| GPU2
+    Pod["📦 2-GPU TP 推理 Pod"] -.->|"错误分配"| GPU1
+    Pod -.->|"错误分配"| GPU2
 
     style GPU1 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
     style GPU2 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
@@ -268,7 +268,7 @@ graph TD
 大规模推理（如跨机 TP、PP 或分离式推理）极度依赖 RDMA 网络。
 *   **问题**：**GPUDirect RDMA** 追求极致性能，最理想的情况是 GPU 和 RDMA 网卡挂载在**同一个 PCIe Switch（交换机）**下。
     *   **灾难情况（跨 NUMA）**：如果调度器分配了 NUMA 0 的 GPU 和 NUMA 1 的 NIC，数据流必须穿过 CPU 之间的互联总线（如 UPI）。由于 UPI 的有效带宽（通常约 40GB/s）小于 400G 网卡所需的 50GB/s（400Gbps ÷ 8），总线瞬间成为瓶颈，400Gbps 的 RDMA 优势荡然无存。
-    *   **次优情况（同 NUMA 跨 Switch）**：即使在同一个 NUMA 节点内，如果分配了不同 PCIe Switch 下 a GPU 和 NIC（例如 GPU 0 和 NIC 3），数据虽不跨越 CPU，但仍需上行到 CPU 的 PCIe 根复合体（Root Complex）去“拐个弯”，无法享受在同一个 Switch 内部直接转发的极致性能（PCIe Gen5 x16 单向提供 64GB/s，能完美喂饱 400G 网卡的 50GB/s 需求）。
+    *   **次优情况（同 NUMA 跨 Switch）**：即使在同一个 NUMA 节点内，如果分配了不同 PCIe Switch 下的 GPU 和 NIC（例如 GPU 0 和 NIC 3），数据虽不跨越 CPU，但仍需上行到 CPU 的 PCIe 根复合体（Root Complex）去“拐个弯”，无法享受在同一个 Switch 内部直接转发的极致性能（PCIe Gen5 x16 单向提供 64GB/s，能完美喂饱 400G 网卡的 50GB/s 需求）。
 
 ```mermaid
 graph TD
@@ -346,7 +346,7 @@ graph TD
     end
     
     subgraph "性能瓶颈 (Mismatch)"
-        GPU1 -.->|显存满, 卸载 KV Cache| CPU1
+        GPU1 -.->|"显存满, 卸载 KV Cache"| CPU1
         CPU1 -.->|"跨 NUMA 写入 🐌 ~40GB/s"| RAM0
         note["⚠️ 跨 NUMA 带宽仅约 40GB/s，远低于本地的 ~200GB/s"]
     end

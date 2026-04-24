@@ -254,21 +254,21 @@ graph TD
             CPU0["🧠 CPU 0"] --- Switch0["🎛️ PCIe Switch 0"]
             Switch0 --- GPU0["📟 GPU 0"]
             Switch0 --- GPU1["📟 GPU 1"]
-            GPU0 <-->|🚀 NVLink 600GB/s| GPU1
+            GPU0 <-->|"🚀 NVLink 600GB/s"| GPU1
         end
         
         subgraph NUMA1 ["NUMA 1"]
             CPU1["🧠 CPU 1"] --- Switch1["🎛️ PCIe Switch 1"]
             Switch1 --- GPU2["📟 GPU 2"]
             Switch1 --- GPU3["📟 GPU 3"]
-            GPU2 <-->|🚀 NVLink 600GB/s| GPU3
+            GPU2 <-->|"🚀 NVLink 600GB/s"| GPU3
         end
         
-        CPU0 <-->|🐌 UPI Bus 40GB/s| CPU1
+        CPU0 <-->|"🐌 UPI Bus 40GB/s"| CPU1
     end
     
-    Pod["📦 2-GPU TP Inference Pod"] -.->|Mismatched Allocation| GPU1
-    Pod -.->|Mismatched Allocation| GPU2
+    Pod["📦 2-GPU TP Inference Pod"] -.->|"Mismatched Allocation"| GPU1
+    Pod -.->|"Mismatched Allocation"| GPU2
 
     style GPU1 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
     style GPU2 fill:#fff0f2,stroke:#ff4d6d,stroke-width:2px
@@ -356,7 +356,7 @@ graph TD
     end
     
     subgraph Mismatch ["Performance Bottleneck"]
-        GPU1 -.->|VRAM full, offload KV Cache| CPU1
+        GPU1 -.->|"VRAM full, offload KV Cache"| CPU1
         CPU1 -.->|"Cross-NUMA write 🐌 ~40GB/s"| RAM0
         note["⚠️ Cross-NUMA bandwidth only ~40GB/s, far below local ~200GB/s"]
     end
