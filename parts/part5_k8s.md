@@ -777,3 +777,87 @@ spec:
           image: vllm/vllm-openai:v0.8.5
 ```
 
+## Chapter 24: All-or-Nothing: Gang Scheduling and Resource Deadlocks
+
+In large-scale distributed LLM inference (TP, PP), tightly coupled tasks face a scheduling challenge: **All-or-Nothing**. If a group of Pods cannot get all required resources simultaneously, the partially scheduled Pods become "zombies" holding resources, leading to deadlocks. This chapter explores Gang Scheduling principles and implementations in cloud-native AI.
+
+### Section 1: From Loose to Tight Coupling: Limitations of Native K8s Scheduling
+
+For highly regular **distributed inference tasks** on **static dedicated resources** (e.g., long-term job monopoly), the system might still operate normally without special scheduling.
+
+However, in **dynamic** and **shared** environments, problems quickly emerge. Specifically, three scenarios in distributed inference expose the flaws of native scheduling:
+
+1.  **Dynamic Scaling and Automatic Recovery**: Failures or traffic spikes trigger dynamic Pod creation. Without all-or-nothing guarantees, new Pods easily deadlock by grabbing partial resources, failing scaling or self-healing.
+2.  **Multi-Tenant Shared Clusters**: With concurrent competition and preemption, resources fluctuate constantly. Schedulers without a global atomic view cause deadlocks or leave preempted resources unusable.
+3.  **Mixed Tasks Generating Fragmented Resources**: Mixing inference, fine-tuning, and processing creates fragmented demands (1, 2, or 4 GPUs). Over time, clusters fill with fragments. Deadlocks and queue thrashing become reality.
+
+In these scenarios, the microservice-oriented view of the default K8s scheduler (a greedy "fit what you can" algorithm) causes three disasters:
+
+1.  **Resource Deadlock**:
+    *   **Scenario**: Cluster has 4 free GPUs. Task A and Task B both need 4 GPUs.
+    *   **Result**: Scheduler allocates 2 to A and 2 to B. Both wait for more, holding resources indefinitely. Deadlock.
+2.  **Resource Fragmentation & Waste**:
+    *   **Scenario**: A task needs 100 CPUs. Cluster has only 90.
+    *   **Result**: Default scheduler schedules the 90 Pods. They run or init, consuming resources but doing no work without the full group.
+3.  **Job Starvation (Head-of-Line Blocking)**:
+    *   **Scenario**: A large task needs 64 GPUs.
+    *   **Result**: Small tasks (1 GPU) consume newly freed resources immediately. The large task never finds 64 free GPUs simultaneously and starves.
+
+### Section 2: Return of a Classic Strategy: How Gang Scheduling Breaks Deadlocks
+
+To solve the limitations of native Kubernetes scheduling, **Gang Scheduling** (or Coscheduling) — a classic strategy — has returned to the center stage in the AI era.
+
+Its core semantics are simple: **when a job consists of multiple collaborative tasks (Pods), the scheduler must ensure that either all tasks get resources and are scheduled simultaneously, or none are.** Think of it as forming a raid team: you need tanks, healers, and DPS to start. If only tanks and healers get in while DPS are locked out, the raid fails, and those inside waste time waiting.
+
+To implement this, Gang Scheduling introduces the concept of treating a **"group of Pods" as the atomic scheduling unit**. The scheduler evaluates resources for the "group" rather than individual Pods:
+
+*   **All or Nothing (Full Bind)**: If free resources meet the group's **minimum available count (MinAvailable)**, all Pods are bound to nodes at once.
+*   **Wait in Queue (No Fragment Hogging)**: If resources are insufficient, the entire group waits in the global queue (Pending) and **never preemptively occupies scattered resources**, avoiding deadlocks.
+*   **Group Preemption (Atomic Eviction)**: In systems supporting preemption, a high-priority group short on resources will **atomically preempt** resources of a lower-priority job as a whole, rather than evicting Pods piecemeal, preventing new deadlocks.
+
+By elevating the scheduling unit from a single Pod to a Pod group, Gang Scheduling eliminates deadlocks caused by partial allocation and enables efficient resource flow.
+
+### Section 3: Gang Scheduling Implementations in Kubernetes
+
+Three ways to implement Gang Scheduling in cloud-native AI:
+
+#### 1. Volcano (Independent Batch Scheduler)
+*   **Principle**: A separate scheduler designed for AI/HPC workloads.
+*   **Pros**: Native support for strict Gang Scheduling, priority preemption, and fair-share queues.
+*   **Cons**: Split from default `kube-scheduler`, missing out on its evolving features like topology awareness and DRA.
+
+#### 2. Coscheduling Plugin (via Scheduler Framework)
+*   **Principle**: Extends `kube-scheduler` using plugins (in `kubernetes-sigs/scheduler-plugins`).
+*   **Mechanism**: Intercepts Pods at the `Permit` stage. Pods pause until `minAvailable` are ready.
+*   **Pros**: Low intrusion, extending the default scheduler and integrating well with topology-aware plugins.
+*   **Cons**: High deployment cost (requires custom images or dual-scheduler setup); poor preemption support (per-Pod preemption causes thrashing); ecosystem fragmentation due to custom CRD usage.
+
+#### 3. Native Kubernetes Gang Scheduling (Evolving)
+*   **Principle**: To solve batch scheduling pain points in cloud-native environments, Kubernetes introduced native Gang Scheduling support in **v1.35/v1.36** (based on [KEP-4671](https://github.com/kubernetes/enhancements/issues/4671)), bringing "All-or-Nothing" logic directly into the core `kube-scheduler`. It **treats multiple Pods as a single unit for resource admission and scheduling evaluation**, abandoning the greedy "fit what you can" strategy, ensuring the entire group's resource demands are atomically met via the core scheduler's global snapshot view.
+*   **Mechanism**: Uses a **Barrier** sync mechanism. The scheduler snapshots cluster state; if the `minCount` in `PodGroup` is met, all Pods cross the barrier for atomic binding. Otherwise, the whole group pends and backs off.
+*   **API Definitions & Workflow**:
+    *   **API Definitions**: Introduces `Workload` (long-lifecycle policy declaration defining intent) and `PodGroup` (runtime scheduling state tracking execution) APIs.
+    *   **Component Interaction (e.g., LWS)**:
+        1.  **LWS Controller**: Automatically creates a `Workload` (declaring Gang policy) and a `PodGroup` instance, and **creates StatefulSet(s) that reference this `PodGroup`**. This process is transparent to users.
+        2.  **Core Scheduler**: Traces Pods back to `PodGroup` and `Workload`, evaluating resources at the Barrier to bind them only if `minCount` is met.
+*   **Status & Future Plans**:
+    *   **Status**: Currently in **Alpha** stage in Kubernetes **v1.35/v1.36**.
+    *   **Future Plans**: Pushing **Workload-Aware Preemption ([KEP-5710](https://github.com/kubernetes/enhancements/issues/5710))** for group-level preemption; integrating with Autoscaler for precise scaling; and providing a standard interface for frameworks like Spark and Ray.
+
+### Section 4: Kueue: Job Queuing and Quota Management
+
+After exploring low-level Gang Scheduling, we must introduce **Kueue**, another core component of cloud-native AI scheduling. Beginners often confuse Kueue with Gang Scheduling. From first principles, they belong to the **control plane policy** and **scheduling execution layer** respectively, and usually need to be used together in production.
+
+#### 1. Problems Solved by Kueue
+In multi-tenant shared large AI clusters, traditional K8s resource management faces the following pain points:
+* **Lack of Job-Perspective Queuing**: The native K8s scheduler treats Pods as the smallest unit. When a Job containing 100 Pods is submitted, K8s processes Pods individually. If resources are insufficient, it leads to a deadlock where some Pods start while others are pending, causing resource idling and waste.
+* **Limitations of Static Quotas (ResourceQuota)**: Native ResourceQuota imposes rigid hard limits. It cannot achieve cross-namespace **resource borrowing**, **dynamic reclamation**, or **priority-based fair-share**.
+
+#### 2. Relationship with Gang Scheduling
+* **Kueue Handles Admission Control**: As the cluster's gatekeeper, Kueue does not directly bind Pods to nodes. Instead, it controls the **Workload status**, determining *when* a job is allowed to instantiate. Kueue releases the job (via the Suspend mechanism) only when the quota meets the needs of the entire job.
+* **Gang Scheduling Handles Atomic Scheduling**: Once Kueue releases a job, the underlying scheduler handles the micro-level **atomic scheduling**. Although Kueue enables job-level queuing, it cannot handle resource fragmentation competition during the scheduling instant. Therefore, **Kueue handles macro quota admission, while Gang Scheduling handles micro execution synchronization**.
+
+#### 3. Typical Use Cases for Kueue
+* **Multi-Tenancy and Elastic Quotas**: When multiple teams share expensive GPU pools and need elastic sharing mechanisms like 'borrow when idle, return when busy'.
+* **Large-Scale Distributed Job Management**: Managing global queues for bulk jobs to prevent massive Pods from flooding the scheduler and causing system overload (Thrashing/Churn).
+* **Heterogeneous Resource Topology Management**: Working with compute topologies (defined by ClusterQueue) to manage quotas for different types of acceleration hardware more gracefully.
