@@ -18,6 +18,7 @@ This file contains instructions and conventions for AI agents working on this re
   - `README.md` (English) must link to English files (`*.md`).
   - `README.cn.md` (Chinese) must link to Chinese files (`*.cn.md`).
 - **Verification**: Ensure that technical terms are translated accurately and consistently across both versions.
+- **Language for Non-Bilingual Files**: Files without a corresponding `*.cn.md` file (e.g., `TODO.md`, `GEMINI.md`) MUST be written in English only.
 
 ## Writing Style Conventions for Language Versions
 - **Chinese Files (`*.cn.md`)**: Follow the user's style. The user maintains the primary content, and AI agents should respect the existing tone and style when making edits.

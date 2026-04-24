@@ -20,3 +20,4 @@ Follows the principles in `GEMINI.md`:
     - [ ] Expert parallel (EP) and MoE inference requirements
     - [ ] Explore TPU architecture (e.g., topology) and its solutions to Part 5 challenges
     - [ ] Research GB series hardware topology
+    - [ ] Understand how `DisaggregatedSet` works in LeaderWorkerSet (for Disaggregated Serving). Ref KEP: https://github.com/kubernetes-sigs/lws/pull/773
