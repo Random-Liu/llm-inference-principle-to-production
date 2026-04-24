@@ -361,7 +361,6 @@ Whether implementing model slicing in distributed inference or performing data m
 
 This chapter will analyze the core interconnect technologies and bandwidth characteristics relied upon in large model inference, and their adaptation relationships with various parallel modes.
 
-
 #### Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch
 
 Inside a single server, the interconnect technology between multiple GPUs has undergone tremendous evolution:
@@ -414,7 +413,6 @@ To give you a global, quantitative understanding of network communication under 
 
 > [!NOTE]
 > **Parameter Description**: $L$ is the number of model layers; $N$ is sequence length; $d$ is the hidden layer dimension; $P$ is the number of pipeline stages ($P \le L$); $M$ is the number of machines (or GPUs) for Context Parallelism. **"Step"** refers to a single forward propagation iteration. Taking Llama 3 405B ($d=16384$) as an example, at $B=1, N=1024$, the size of $O(N \cdot d)$ FP16 activations is about $32$ MB.
-
 
 **Dimensional Difference (Core Insight)**: The key to understanding the above table is to distinguish the **"Time Scale"**. TP and PP are **normalized (step-level)**, bound to the scale of a single forward propagation, so the high frequency of TP will extremely squeeze network latency; while CP and Disaggregated Serving are **eventized (request-level)**, bound to the lifecycle of the entire request (triggered only at a specific phase), so although their single data volume is huge, they will not choke the GPU during continuous text generation (Decode) like TP does.
 

@@ -11,8 +11,6 @@ To break the deadlock, system engineers and algorithmic scientists have launched
 
 Now, let's first cut into the first battlefield—slimming down VRAM from the model architecture level.
 
-
-
 ### Chapter 9: VRAM Slimming at the Model Architecture Level: GQA
 
 #### Section 1: The Evolution from MHA to GQA
@@ -489,7 +487,6 @@ It must be pointed out that, although there is the absolute authority of the lar
 In production environments, speculative decoding is not turned on blindly:
 *   **When concurrency is low / pursuing ultimate latency** (e.g., Batch Size = 1, real-time conversation): Turn on speculative decoding. GPU compute is idle; use the surplus compute to trade for faster generation speeds.
 *   **When concurrency is high / pursuing ultimate throughput** (peak times): **Turn off or dial down** speculative decoding. Because at this point, the GPU's compute cores are already stuffed full by massive Batches, doing speculative decoding is pure waste and will actually lead to longer queue times. At this point, it's more profitable to batch a few more requests than to guess a few more words.
-
 
 In Part Three, we ventured to the absolute forefront of single-node inference optimization, witnessing how "tactical" marvels like GQA, PagedAttention, Continuous Batching, and Speculative Decoding each show their prowess to squeeze the performance of a single graphics card to its limits. These optimizations have successfully brought large models out of the lab, giving them the confidence to serve millions of users.
 

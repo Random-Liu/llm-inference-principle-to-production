@@ -402,8 +402,6 @@ Distributed inference also depends on cluster networks (RDMA blocks).
 > *   **Architecture A (Non-blocking Network)**: Top-tier AI clusters (like InfiniBand Fat-Tree) typically use a 1:1 non-blocking design where cross-rack bandwidth is identical to intra-rack bandwidth (both 400Gbps). The main penalty is the extra hops and microsecond-level latency.
 > *   **Architecture B (Oversubscribed Network)**: To visually illustrate the penalty of scheduling mismatch, this diagram assumes a **1:2 oversubscription ratio** (uplink bandwidth is half of the downlink). In this case, cross-rack communication suffers from both higher latency (from <1μs to ~2μs) and reduced bandwidth (from 400Gbps to 200Gbps).
 
-
-
 We call this "count-only" scheduling the **Topology Black Hole**.
 
 ### Section 2: Evolution: DRA (Dynamic Resource Allocation) and Resource Management Paradigm Revolution
@@ -570,8 +568,6 @@ spec:
     resourceClaimName: numa-aligned-claim  # References the claim from Scenario A
 ```
 
-
-
 ### Section 4: Beyond Single Node: Cluster-Level Network Topology and Multi-Machine Synergy
 
 However, in most current data centers, large model inference (e.g., hybrid TP/PP) or **Disaggregated Serving** (see Part 4 [Chapter 19: Network Communication and High-Speed Interconnects in LLM Inference](part4_distributed.md)) still requires spanning multiple physical nodes. When inference tasks span nodes, single-node topology alignment is only the first step; cluster-level network topology becomes decisive.
@@ -649,7 +645,6 @@ Deployments cannot express this "group" concept. StatefulSets provide stable net
 
 ### Section 2: NCCL: The Fragile Lifeline of Distributed Inference
 
-
 #### 1. What is NCCL and Why is it Important?
 NCCL is NVIDIA's custom acceleration library for multi-GPU collective communications.
 In distributed LLM inference, especially in Tensor Parallelism (TP), computing each layer requires data synchronization among GPUs (e.g., `All-Reduce`). Using traditional CPU memory for transfer yields extremely low bandwidth and high latency.
@@ -683,6 +678,11 @@ This cruel "guilt by association" restart requirement is the core driver shiftin
 To fill this gap, the Kubernetes community introduced [LeaderWorkerSet (LWS)](https://github.com/kubernetes-sigs/leaderworkerset), a custom controller for tightly coupled AI/HPC workloads.
 
 LWS introduces the concept of a **"Group"**, binding a Leader Pod and a set of Worker Pods as an indivisible unit.
+
+To understand this visually, let's look at the overall architecture and Pod composition of LWS (referenced from [official LWS documentation](https://lws.sigs.k8s.io/docs/overview/)):
+
+![LWS Conceptual Architecture](../images/lws_concept.png)
+
 
 #### 1. Core Policies: Taming Tightly Coupled Lifecycles
 
@@ -776,5 +776,4 @@ spec:
         - name: vllm-worker
           image: vllm/vllm-openai:v0.8.5
 ```
-
 

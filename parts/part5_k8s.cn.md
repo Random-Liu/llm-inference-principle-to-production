@@ -392,8 +392,6 @@ graph TD
 > *   **架构 A（无损非阻塞网络）**：顶级 AI 集群（如 InfiniBand Fat-Tree）通常采用 1:1 无收敛设计，机柜间带宽与机柜内一致（皆为 400Gbps），核心瓶颈在于跨交换机带来的额外跳数和微秒级延迟。
 > *   **架构 B（有收敛比网络）**：本图为了直观展示“错配”的劣化，假设了 **1:2 的收敛比**（即上行带宽为下行的一半）。此时跨机柜通信不仅要承受更高的延迟（从 <1μs 增至 ~2μs），还会面临带宽砍半（从 400Gbps 降至 200Gbps）的瓶颈。
 
-
-
 这种“只数数，不看位置”的调度方式，我们称之为**拓扑黑洞**。
 
 ### 第二节：进化之路：DRA（动态资源分配）与资源管理范式革命
@@ -560,8 +558,6 @@ spec:
     resourceClaimName: numa-aligned-claim  # 引用上面场景 A 中创建的 Claim
 ```
 
-
-
 ### 第四节：跨越单机：集群级网络拓扑与多机协同
 
 然而，在目前的绝大多数数据中心里，超大模型推理（如千亿参数模型的 TP/PP 混合并行）或**分离式推理（Disaggregated Serving）**（详见第四部分[第十九章：打通经脉：大模型推理中的网络通信与高速互联](part4_distributed.cn.md)）依然需要跨越多个物理节点。当推理任务跨越节点时，单机内部的拓扑对齐仅仅是万里长征的第一步，集群级的网络拓扑成为了决定生死的新因素。
@@ -639,7 +635,6 @@ spec:
 
 ### 第二节：NCCL：分布式推理的脆弱生命线
 
-
 #### 1. NCCL 是干什么的，为什么重要？
 
 NCCL 是 NVIDIA 专门为多 GPU 集合通信（Collective Communications）打造的加速库。
@@ -676,6 +671,11 @@ NCCL 的作用就是**将主板上的 NVLink、PCIe Switch 以及集群中的 In
 为了填补这一空白，Kubernetes 社区推出了 [LeaderWorkerSet (LWS)](https://github.com/kubernetes-sigs/leaderworkerset)。它是一个专门为紧耦合的 AI/HPC 工作负载设计的自定义控制器。
 
 LWS 的核心思想是引入了**“组（Group）”**的概念。它将一个 Leader Pod 和一组 Worker Pods 绑定为一个不可分割的执行单元。
+
+为了更直观地理解，我们可以通过下图（引用自 [LWS 官方文档](https://lws.sigs.k8s.io/docs/overview/)）看看 LWS 的整体架构与 Pod 组成：
+
+![LWS 概念架构图](../images/lws_concept.png)
+
 
 #### 1. 核心策略：驯服紧耦合的生命周期
 
@@ -771,5 +771,4 @@ spec:
           image: vllm/vllm-openai:v0.8.5
           # Worker 只负责计算
 ```
-
 
