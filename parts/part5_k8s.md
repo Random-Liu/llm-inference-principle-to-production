@@ -861,3 +861,64 @@ In multi-tenant shared large AI clusters, traditional K8s resource management fa
 * **Multi-Tenancy and Elastic Quotas**: When multiple teams share expensive GPU pools and need elastic sharing mechanisms like 'borrow when idle, return when busy'.
 * **Large-Scale Distributed Job Management**: Managing global queues for bulk jobs to prevent massive Pods from flooding the scheduler and causing system overload (Thrashing/Churn).
 * **Heterogeneous Resource Topology Management**: Working with compute topologies (defined by ClusterQueue) to manage quotas for different types of acceleration hardware more gracefully.
+
+## Chapter 25: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference
+
+Large-scale distributed LLM inference traffic is highly bursty. To guarantee low latency while controlling expensive compute costs, autoscaling is indispensable.
+
+Autoscaling in LLM inference occurs at two levels: **Pod Autoscaling** and **Node Autoscaling**.
+
+### Section 1: Pod Autoscaling: Shifting from Metrics to Events
+
+#### 1. Failure of Native HPA: Why CPU/Memory Metrics Fail in LLM Scenarios
+Kubernetes native Horizontal Pod Autoscaler (HPA) defaults to CPU or memory utilization. This fails in LLM inference:
+*   **Bottleneck Mismatch**: The bottleneck is usually **GPU memory bandwidth** and **KV Cache utilization**, not CPU. When concurrency spikes, CPU might remain low while VRAM is full.
+*   **Reactive Lag**: Native HPA is reactive. For LLM Pods with long cold starts, reacting after CPU spikes causes request timeouts.
+
+#### 2. Custom Metrics and KEDA: Event-Driven Scaling
+To reflect congestion accurately, the industry uses custom metrics from inference engines.
+
+**KEDA (Kubernetes Event-driven Autoscaling)** acts as an extension to HPA. It implements the Custom Metrics API and simplifies configuration.
+
+Key advantages of KEDA:
+*   **Rich Scalers**: It integrates with Prometheus to pull vLLM metrics like queue length and KV Cache hit rate.
+*   **Zero-to-One Scaling**: Native HPA cannot scale from 0 to 1. KEDA's Operator monitors event sources (like queues) and forces the first Pod creation when events > 0. HPA then handles 1-to-N scaling.
+
+#### 3. Group Scaling: LWS + HPA Synergy
+In distributed inference (e.g., multi-node TP), scaling individual Pods breaks NCCL rings.
+
+By targeting **LeaderWorkerSet (LWS)** instead of Deployments:
+*   HPA scales the number of LWS `replicas`.
+*   LWS controller creates or destroys Pods atomically as a group, ensuring atomicity.
+
+### Section 2: Node Autoscaling: Just-In-Time Provisioning
+
+When Pod scaling exhausts physical resources, Node Autoscaling triggers.
+
+#### 1. Evolution: From Cluster Autoscaler to Karpenter
+*   **Cluster Autoscaler (CA)**: Operates on Node Groups. It adds nodes to groups when Pods are Pending. It lacks flexibility and causes fragmentation.
+*   **Karpenter (and GKE NAP)**: Open-sourced by AWS, it brings "Group-less" provisioning. It reads Pending Pod specs and provisions the most cost-effective instance type dynamically. It maximizes bin-packing efficiency.
+
+#### 2. The Latency Obstacle: Inevitable Cold Starts
+Both CA and Karpenter face a critical flaw in LLM scenarios: **Latency**.
+
+Triggering node expansion involves:
+1.  Cloud provider provisioning VMs (seconds to minutes).
+2.  Node bootstrapping and driver installation (minutes).
+3.  Pulling massive model weights (minutes).
+4.  Engine startup and NCCL ring building (seconds).
+
+This total cold start time can reach minutes, causing timeouts during spikes.
+
+#### 3. Pragmatic Mitigations (No Perfect Solution)
+The industry relies on two pragmatic workarounds to mitigate cold starts:
+
+##### ① Capacity Buffers (Balloon Pods)
+*   **Concept**: Deploy low-priority placeholder Pods (sleep Pods) to hold capacity. High-priority inference Pods preempt them instantly.
+*   **Evolution**: To avoid churn, cloud providers introduce native APIs like GKE's **`CapacityBuffer`** (creating virtual demand in memory) or Kueue's **Provisioning Request** (forcing node creation before releasing jobs from the queue).
+
+##### ② Accelerating Node Startup
+*   **Concept**: Compress the time of the 4 steps above.
+*   **Reality**: **No single silver bullet exists**. Teams use pre-baked AMIs with drivers, P2P distribution (Dragonfly) with stream loading (Nydus), or experimental GPU memory snapshots (like gVisor). However, physical overheads remain.
+
+Ultimately, teams combine capacity buffers to absorb bursts with accelerated startup to replenish buffers quickly.
