@@ -821,18 +821,21 @@ By elevating the scheduling unit from a single Pod to a Pod group, Gang Scheduli
 
 Three ways to implement Gang Scheduling in cloud-native AI:
 
-#### 1. Volcano (Independent Batch Scheduler)
-*   **Principle**: A separate scheduler designed for AI/HPC workloads.
+#### 1. Standalone Schedulers
+*   **Principle**: Bypass the native `kube-scheduler` entirely, using a new scheduling engine for complex batch and AI tasks.
 *   **Pros**: Native support for strict Gang Scheduling, priority preemption, and fair-share queues.
-*   **Cons**: Split from default `kube-scheduler`, missing out on its evolving features like topology awareness and DRA.
+*   **Cons**: Split from the native ecosystem, missing out on evolving features like topology awareness and DRA.
+*   **Typical Implementations**:
+    *   **Volcano**: [Volcano](https://volcano.sh/) is the first CNCF cloud-native batch system, designed for AI/HPC workloads.
+    *   **KAI Scheduler**: [KAI Scheduler](https://github.com/kai-scheduler/KAI-Scheduler) is a CNCF Sandbox project maintained by NVIDIA, combining Gang Scheduling with Topology-Aware Scheduling (TAS).
 
 #### 2. Coscheduling Plugin (via Scheduler Framework)
-*   **Principle**: Extends `kube-scheduler` using plugins (in `kubernetes-sigs/scheduler-plugins`).
-*   **Mechanism**: Intercepts Pods at the `Permit` stage. Pods pause until `minAvailable` are ready.
-*   **Pros**: Low intrusion, extending the default scheduler and integrating well with topology-aware plugins.
-*   **Cons**: High deployment cost (requires custom images or dual-scheduler setup); poor preemption support (per-Pod preemption causes thrashing); ecosystem fragmentation due to custom CRD usage.
+*   **Principle**: Kubernetes introduced the Scheduler Framework, allowing developers to extend the native `kube-scheduler` via plugins. The community provides a [coscheduling plugin](https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/pkg/coscheduling) in `kubernetes-sigs/scheduler-plugins`.
+*   **Mechanism**: The plugin intercepts Pods at the `Permit` stage. Pods pause until `minAvailable` Pods arrive, triggering atomic cross-node binding.
+*   **Pros**: Low intrusion; integrates seamlessly with other plugins like topology awareness.
+*   **Cons**: High deployment costs requiring a dual-scheduler architecture; insufficient preemption support (per-Pod preemption causes thrashing); fragmented API ecosystem due to custom CRD usage.
 
-#### 3. Native Kubernetes Gang Scheduling (Evolving)
+#### 3. Native Kubernetes Gang Scheduling (Native Support, Evolving)
 *   **Principle**: To solve batch scheduling pain points in cloud-native environments, Kubernetes introduced native Gang Scheduling support in **v1.35/v1.36** (based on [KEP-4671](https://github.com/kubernetes/enhancements/issues/4671)), bringing "All-or-Nothing" logic directly into the core `kube-scheduler`. It **treats multiple Pods as a single unit for resource admission and scheduling evaluation**, abandoning the greedy "fit what you can" strategy, ensuring the entire group's resource demands are atomically met via the core scheduler's global snapshot view.
 *   **Mechanism**: Uses a **Barrier** sync mechanism. The scheduler snapshots cluster state; if the `minCount` in `PodGroup` is met, all Pods cross the barrier for atomic binding. Otherwise, the whole group pends and backs off.
 *   **API Definitions & Workflow**:
@@ -872,16 +875,16 @@ Autoscaling in LLM inference occurs at two levels: **Pod Autoscaling** and **Nod
 
 #### 1. Failure of Native HPA: Why CPU/Memory Metrics Fail in LLM Scenarios
 Kubernetes native Horizontal Pod Autoscaler (HPA) defaults to CPU or memory utilization. This fails in LLM inference:
-*   **Bottleneck Mismatch**: The bottleneck is usually **GPU memory bandwidth** and **KV Cache utilization**, not CPU. When concurrency spikes, CPU might remain low while VRAM is full.
-*   **Reactive Lag**: Native HPA is reactive. For LLM Pods with long cold starts, reacting after CPU spikes causes request timeouts.
+*   **Bottleneck Mismatch**: The bottleneck is usually **GPU memory bandwidth** and **KV Cache occupancy**, not CPU. When concurrency spikes, CPU might remain low while VRAM is full.
+*   **Reactive Lag**: Native HPA is reactive. For LLM Pods with long cold starts, reacting to metric spikes causes request timeouts.
 
 #### 2. Custom Metrics and KEDA: Event-Driven Scaling
 To reflect congestion accurately, the industry uses custom metrics from inference engines.
 
-**KEDA (Kubernetes Event-driven Autoscaling)** acts as an extension to HPA. It implements the Custom Metrics API and simplifies configuration.
+**KEDA (Kubernetes Event-driven Autoscaling)** acts as an extension to HPA. While native HPA supports Custom/External Metrics, configuring adapters for different sources is complex. KEDA shields this complexity by providing a unified, pluggable framework that maps external events to HPA-consumable metrics and automatically manages HPA lifecycles.
 
 Key advantages of KEDA:
-*   **Rich Scalers**: It integrates with Prometheus to pull vLLM metrics like queue length and KV Cache hit rate.
+*   **Rich Scalers**: With over 60 built-in scalers (including Prometheus), it easily pulls real vLLM business metrics like waiting requests (`vllm:num_requests_waiting`) and KV Cache usage (`vllm:gpu_cache_usage_perc`).
 *   **Zero-to-One Scaling**: Native HPA cannot scale from 0 to 1. KEDA's Operator monitors event sources (like queues) and forces the first Pod creation when events > 0. HPA then handles 1-to-N scaling.
 
 #### 3. Group Scaling: LWS + HPA Synergy
@@ -895,18 +898,19 @@ By targeting **LeaderWorkerSet (LWS)** instead of Deployments:
 
 When Pod scaling exhausts physical resources, Node Autoscaling triggers.
 
-#### 1. Evolution: From Cluster Autoscaler to Karpenter
+#### 1. Two Approaches to Node Autoscaling: Cluster Autoscaler and Karpenter
 *   **Cluster Autoscaler (CA)**: Operates on Node Groups. It adds nodes to groups when Pods are Pending. It lacks flexibility and causes fragmentation.
-*   **Karpenter (and GKE NAP)**: Open-sourced by AWS, it brings "Group-less" provisioning. It reads Pending Pod specs and provisions the most cost-effective instance type dynamically. It maximizes bin-packing efficiency.
+*   **Karpenter (and GKE NAP, Node Auto-Provisioning)**: Brings "Group-less" provisioning. It reads Pending Pod specs and provisions the most cost-effective instance type dynamically, maximizing bin-packing efficiency.
 
 #### 2. The Latency Obstacle: Inevitable Cold Starts
-Both CA and Karpenter face a critical flaw in LLM scenarios: **Latency**.
+Both CA and Karpenter face a critical flaw in LLM scenarios: **Latency**. This stems from their **reactive nature of only triggering on pending Pods**. Node provisioning starts only after resources are exhausted, making the subsequent minutes of node booting and weight pulling fatal to incoming requests.
 
 Triggering node expansion involves:
-1.  Cloud provider provisioning VMs (seconds to minutes).
-2.  Node bootstrapping and driver installation (minutes).
-3.  Pulling massive model weights (minutes).
-4.  Engine startup and NCCL ring building (seconds).
+1.  **HPA Metric Sensing**: HPA polls metrics periodically (default every 15s). The delay from a traffic spike to HPA deciding to scale and creating pending Pods adds tens of seconds.
+2.  Cloud provider provisioning VMs (seconds to minutes).
+3.  Node bootstrapping and driver installation (minutes).
+4.  Pulling massive model weights (minutes).
+5.  Engine startup and NCCL ring building (seconds).
 
 This total cold start time can reach minutes, causing timeouts during spikes.
 

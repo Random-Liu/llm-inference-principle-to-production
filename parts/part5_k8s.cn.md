@@ -817,20 +817,23 @@ K8s 原生调度器（kube-scheduler）的微服务视角（“能塞一个是�
 
 ### 第三节：Gang Scheduling 在 Kubernetes 中的实现
 
-在云原生 AI 生态中，实现 Gang Scheduling 主要有以下三种具体的实现方式：
+在云原生 AI 生态中，实现 Gang Scheduling 主要有以下三种具体的做法：
 
-#### 1. Volcano（独立的批处理调度器）
-*   **原理**：[Volcano](https://volcano.sh/) 是 CNCF 的首个云原生批处理系统。它完全重写了一套调度器，专门用于解决 AI/HPC 的复杂调度问题。
+#### 1. 独立的调度器（Standalone Schedulers）
+*   **原理**：完全跳出 Kubernetes 原生的 `kube-scheduler`，使用一套全新的调度引擎来处理复杂的 Batch 和 AI 任务。
 *   **优势**：原生支持极度严格的 Gang Scheduling、优先级抢占、队列公平共享（Fair-share）。
 *   **劣势**：作为独立的调度器，它与 K8s 原生 `kube-scheduler` 存在生态割裂，无法享受原生调度器不断演进的拓扑感知、DRA 等新特性。
+*   **典型实现**：
+    *   **Volcano**：[Volcano](https://volcano.sh/) 是 CNCF 的首个云原生批处理系统，专门用于解决 AI/HPC 的复杂调度问题。
+    *   **KAI Scheduler**：[KAI Scheduler](https://github.com/kai-scheduler/KAI-Scheduler) 是 CNCF 的 Sandbox 项目，由 NVIDIA 团队维护，特色在于将 Gang Scheduling 与硬件拓扑感知（TAS）深度结合。
 
 #### 2. Coscheduling 插件（基于 Scheduler Framework）
-*   **原理**：Kubernetes 官方从 1.15 开始引入了调度器框架（Scheduler Framework），允许开发者通过插件扩展原生的 `kube-scheduler`。社区在 `kubernetes-sigs/scheduler-plugins` 中提供了一个 [coscheduling 插件](https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/pkg/coscheduling)。
+*   **原理**：Kubernetes 官方引入了调度器框架（Scheduler Framework），允许开发者通过插件扩展原生的 `kube-scheduler`。社区在 `kubernetes-sigs/scheduler-plugins` 中提供了一个 [coscheduling 插件](https://github.com/kubernetes-sigs/scheduler-plugins/tree/master/pkg/coscheduling)。
 *   **机制**：插件在调度的 `Permit`（准许）阶段拦截 Pod。当一个组的 Pod 陆续到达时，它们会在这里“暂停”等待，直到凑齐了 `minAvailable` 个 Pod，调度器才会触发真正的跨节点绑定。
 *   **优势**：侵入性小，作为插件扩展能与拓扑感知等其他插件无缝结合。
-*   **劣势**：部署与维护成本高，需要自行编译镜像或采用双调度器架构；抢占逻辑支持不足，逐个 Pod 抢占易导致互相踩踏；API 生态碎片化，使用特有的 CRD 缺乏统一标准。
+*   **劣势**：部署与维护成本高，需要采用双调度器架构；抢占逻辑支持不足，逐个 Pod 抢占易导致互相踩踏；API 生态碎片化，使用特有的 CRD 缺乏统一标准。
 
-#### 3. Kubernetes 原生 Gang Scheduling（演进中）
+#### 3. Kubernetes 原生 Gang Scheduling（原生支持，演进中）
 *   **原理**：为了彻底解决批处理任务在云原生环境下的调度痛点，Kubernetes 社区在 **v1.35/v1.36** 中引入了原生的 Gang Scheduling 支持（基于 [KEP-4671](https://github.com/kubernetes/enhancements/issues/4671)），将“全有或全无”的逻辑直接拉回了核心 `kube-scheduler`。它**将多个 Pod 作为一个整体进行资源准入和调度评估**，摒弃了“能塞一个是一个”的贪婪策略，通过核心调度器的全局快照视角，确保整组任务的资源诉求能够被原子性地满足。
 *   **机制**：基于 **Barrier（屏障）** 同步等待机制。调度器对集群状态进行快照评估，只有当满足 `PodGroup` 中定义的最小数量（`minCount`）时，所有 Pod 才会越过 Barrier 进行原子绑定；否则全组 Pending 退避，不预先圈占任何零散资源。
 *   **API 定义与工作流**：
@@ -871,17 +874,17 @@ LLM 推理的自动伸缩可以分为两个层面：**Pod 水平伸缩（Pod Aut
 #### 1. 原生 HPA 的死穴：为什么 CPU/Mem 指标在 LLM 场景下失效？
 
 Kubernetes 原生的水平 Pod 伸缩器（HPA）默认基于 CPU 或内存利用率进行扩缩容。这在传统的微服务场景下工作良好，但在 LLM 推理场景下却完全偏离了核心瓶颈：
-*   **瓶颈错位**：LLM 推理的瓶颈通常不在 CPU，而在 **GPU 显存带宽（Memory Bandwidth）** 和 **KV Cache 的利用率**。当并发请求增加时，CPU 利用率可能变化不大，但 GPU 显存可能已经爆满，或者队列已经积压。
-*   **响应式滞后**：原生 HPA 是“响应式”的。当它发现 CPU 飙升时，用户的请求早就因为超时而失败了。对于冷启动动辄数分钟的 LLM Pod 来说，这种滞后是致命的。
+*   **瓶颈错位**：LLM 推理的瓶颈通常不在 CPU，而在 **GPU 显存带宽（Memory Bandwidth）** 和 **KV Cache 的显存占用**。当并发请求增加时，CPU 利用率可能变化不大，但 GPU 显存可能已经爆满，或者队列已经积压。
+*   **响应式滞后**：原生 HPA 是“响应式”的。当它发现指标飙升时，用户的请求早就因为超时而失败了。对于冷启动动辄数分钟的 LLM Pod 来说，这种滞后是致命的。
 
-#### 2. 破局者：Custom Metrics 与 KEDA 的降维打击
+#### 2. Custom Metrics 与 KEDA
 
 为了真实反映业务的拥塞程度，业界转向了基于推理引擎内部业务指标的扩缩容（Custom Metrics Autoscaling）。
 
-目前的主流做法是引入 **KEDA（Kubernetes Event-driven Autoscaling）**。KEDA 并没有取代原生 HPA，而是作为 HPA 的“外挂引擎”，它通过实现 Custom Metrics API，屏蔽了复杂的 API 转换，提供了插拔式的配置。
+目前的主流做法是引入 **KEDA（Kubernetes Event-driven Autoscaling）**。KEDA 并没有取代原生 HPA，而是作为 HPA 的“外挂引擎”。虽然 Kubernetes 原生 HPA 本身就支持 Custom/External Metrics，但为不同的事件源编写和配置适配器（Adapter）非常繁琐。KEDA 屏蔽了这些底层复杂性，提供了插拔式的架构。
 
 KEDA 相比传统 Custom Metrics HPA 的核心优势在于：
-*   **丰富的 Scaler**：内置了 Prometheus 等 60 多种 Scaler，可以轻松拉取 vLLM 暴露的业务指标（如请求队列长度 `Queue Length`、KV Cache 命中率等）。
+*   **丰富的 Scaler**：内置了 Prometheus 等 60 多种 Scaler，可以轻松拉取 vLLM 暴露的真实业务指标（如等待队列长度 `vllm:num_requests_waiting`、KV Cache 使用率 `vllm:gpu_cache_usage_perc` 等）。
 *   **事件驱动与 0 ↔ 1 的飞跃**：原生 HPA 无法将实例从 0 扩容到 1。KEDA 采用“双脑架构”，其 Operator 直接监听事件源（如 Redis 队列或 Prometheus），在发现有待处理请求时（Event > 0），直接微操将实例从 0 拉起到 1。随后再交由 HPA 进行 1 到 N 的平滑扩容。这种“基于积压事件”的哲学更贴近 AI 场景。
 
 #### 3. 强强联合：LWS + HPA 的组级伸缩
@@ -897,21 +900,22 @@ KEDA 相比传统 Custom Metrics HPA 的核心优势在于：
 
 当 Pod 扩容发现集群物理资源不足时，就必须触发底层的节点自动伸缩（Node Autoscaling）。
 
-#### 1. Cluster Autoscaler 与 Karpenter 的演进
+#### 1. 节点扩缩容的两种流派：Cluster Autoscaler 与 Karpenter
 
-在节点伸缩领域，存在着两代技术的演进：
-*   **第一代：Cluster Autoscaler（CA）**：传统的 CA 基于“节点组（Node Group / Auto Scaling Group）”。当有 Pod 处于 Pending 状态时，CA 会增加节点组的期望大小，由云厂商拉起标准规格的机器。这就像是“买固定套餐”，缺乏灵活性，且容易产生资源碎片。
-*   **第二代：Karpenter（及 GKE 的 NAP）**：Karpenter 彻底抛弃了“节点组”的概念，开创了“无组化（Group-less）”革命。它直接读取 Pending Pod 的 Spec（如需要 8 张 GPU、特定可用区），像精算师一样在云厂商的数百种实例中计算出最便宜、最契合的型号，然后直接调用云 API “按需装配”拉起机器。这就像是“去菜市场精准采购食材”，极大地提升了资源利用率和装箱率（Bin-packing）。
+在节点伸缩领域，主要存在着两种不同的实现方式：
+*   **Cluster Autoscaler（CA）**：基于“节点组（Node Group / Auto Scaling Group）”的分配方式。当有 Pod 处于 Pending 状态时，CA 会增加节点组的期望大小，由云厂商拉起标准规格的机器。这就像是“买固定套餐”，缺乏灵活性，且容易产生资源碎片。
+*   **Karpenter（及 GKE 的 NAP，Node Auto-Provisioning）**：开创了“无组化（Group-less）”的按需装配方式。它直接读取 Pending Pod 的 Spec（如需要 8 张 GPU、特定可用区），像精算师一样在云厂商的数百种实例中计算出最便宜、最契合的型号，然后直接调用云 API “按需装配”拉起机器。这就像是“去菜市场精准采购食材”，极大地提升了资源利用率和装箱率（Bin-packing）。
 
 #### 2. 绕不过去的暗礁：节点扩容的滞后性
 
-无论是老旧的 Cluster Autoscaler，还是前沿的 Karpenter，在大模型推理场景下都面临着一个共同的死穴：**滞后性（Latency）**。
+无论是 Cluster Autoscaler 还是 Karpenter，在大模型推理场景下都面临着一个共同的死穴：**滞后性（Latency）**。这种滞后性在本质上是因为**它们都是基于“Pending Pod”触发的被动响应式扩容**——只有当集群资源耗尽、Pod 陷入 Pending 状态时，它们才会开始拉起节点，而随后的节点启动、权重拉取和引擎初始化又极其耗时。
 
-当流量洪峰到来，系统决定扩容时，需要经历以下漫长的物理过程：
-1.  云厂商调用 API 创建虚拟机（几十秒到数分钟）。
-2.  节点引导、安装驱动、挂载 GPU（数分钟）。
-3.  拉取动辄数百 GB 的模型权重文件（数分钟，即使有 P2P/流式加载也需要时间）。
-4.  推理引擎启动，建立 NCCL 通信环（几十秒）。
+当流量洪峰到来，系统决定扩容时，需要经历以下漫长的过程：
+1.  **HPA 指标感应**：HPA 周期性轮询指标（默认每 15 秒），从流量飙升到 HPA 决定扩容并创建出 Pending Pod，本身就存在几十秒的滞后。
+2.  云厂商调用 API 创建虚拟机（几十秒到数分钟）。
+3.  节点引导、安装驱动、挂载 GPU（数分钟）。
+4.  拉取动辄数百 GB 的模型权重文件（数分钟，即使有 P2P/流式加载也需要时间）。
+5.  推理引擎启动，建立 NCCL 通信环（几十秒）。
 
 整个冷启动时间可能长达数分钟甚至十分钟。在瞬息万变的在线推理场景下，等新节点 Ready，用户的请求早就全部超时了。
 
