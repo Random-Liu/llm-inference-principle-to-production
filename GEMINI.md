@@ -12,7 +12,7 @@ This file contains instructions and conventions for AI agents working on this re
 - **Detailed Commit Message**: AI agents SHOULD include a detailed summary of the changes in the commit message body (in English), listing the main modifications, before the co-author signature.
 
 ## Bilingual Maintenance and Translation Workflow
-- **Source Language**: The user will continue writing and updating the book in Chinese, using files marked as `*.cn.md` (e.g., `README.cn.md`, `parts/part1_principles.cn.md`).
+- **Source Language**: The user will continue writing and updating the book and proposals in Chinese, using files marked as `*.cn.md` (e.g., `README.cn.md`, `parts/part1_principles.cn.md`, and `parts/proposals/*.cn.md`).
 - **Automatic Translation**: Every time the user updates a Chinese file (`*.cn.md`), the AI agent MUST automatically translate the updates and update the corresponding English file (`*.md`) BEFORE committing the changes. The English version serves as the default version.
 - **Link Consistency**:
   - `README.md` (English) must link to English files (`*.md`).

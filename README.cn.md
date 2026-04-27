@@ -1,18 +1,20 @@
-# LLM 从原理到生产级推理：系统化电子书
+# LLM 从原理到生产级推理
 
 ## 前言
 
-本书是大语言模型（LLM）推理技术的系统化整理，源于作者的学习笔记与实践思考。
-
-**本书的核心目标** ：
-1.  **沉淀学习笔记** ：将零散的知识点串联成线，形成体系。
-2.  **构建心智模型** ：帮助读者理解大模型底层的核心原理，从而对大模型推理（Inference）的优化建立起完整的全局认知与思维模式（Mindset）。
+本书是大语言模型（LLM）推理技术的系统化整理，源于作者在休产假陪伴二宝 Emerson 期间的学习笔记与实践思考（顺便在这里热烈欢迎 Emerson 降临这个世界！👶🍼🧸）。由于作者平时的精力主要在支持推理等内部业务的集群（Cluster）层面，较少有时间追踪开源进展，因此本书的核心目标是：
+1.  **构建心智模型（End-to-End）**：将零散的知识点串联成线，帮助自己端到端地理解 LLM 推理的核心原理与 Serving Framework，从而建立起全局认知与思维模式（Mindset）。
+2.  **追踪开源社区现状**：梳理和跟进开源界的前沿进展，跳出日常工作的局限。
+3.  **探索 Kubernetes 层的演进**：了解 Kubernetes 层的开源进展，思考未来如何让其更好地适应大模型推理。
+4.  **建立可持续更新的框架**：以此为起点，在未来能够更轻松地持续迭代，让自己保持与时俱进。
 
 **免责与定位** ：
-本书不是一本深奥的数学推导书，也不是追踪每日最新论文的“前沿追踪”。我们不会在复杂的数学公式 and 过于琐碎的代码细节中过度纠缠。我们的重点在于 **揭示技术背后的本质逻辑** 。
+本书不是一本深奥的数学推导书，也不是追踪每日最新论文的“前沿追踪”。我们不会在复杂的数学公式和过于琐碎的代码细节中过度纠缠。我们的重点在于 **揭示技术背后的本质逻辑** 。
+
+另外，这本书不出意外地得到了 Gemini 和 Claude 的深度辅助。没有 AI 的帮助，作者绝无可能在一个月内学习并了解如此广阔的领域。在此一方面向 AI 致谢；另一方面，这也让作者更坚定了“必须好好做 Inference”的决心——只有把推理基建做好，才能让 AI 惠及更多人。
 
 **目标读者** ：
-本书主要面向需要建立端到端（End-to-End）理解的读者，例如系统架构师、后端工程师、AI 产品经理，以及所有对大模型底层运转机制感兴趣的开发者。如果你希望知道大模型是如何从一行行代码变成高效服务的，这本书将是你的绝佳向导。
+本书的首要受众其实是 **作者自己** 。将其开源在 GitHub 上，一方面是为了方便进行版本控制和在不同机器间切换，另一方面也希望能够惠及更多对该领域感兴趣的同行（如系统架构师、后端工程师、AI 产品经理，以及所有对大模型底层运转机制感兴趣的开发者）。如果你也希望建立对大模型推理从原理到生产级服务的全局认知，希望这些内容能对你有所启发。如果书中内容有误，欢迎随时指正。
 
 ---
 
@@ -64,6 +66,8 @@
   - [第十章：精度降维：KV Cache 量化（FP8/INT8）](parts/part3_single_node.cn.md#第十章精度降维kv-cache-量化fp8int8)
     - [第一节：以计算换带宽的划算买卖](parts/part3_single_node.cn.md#第一节以计算换带宽的划算买卖)
     - [第二节：为什么这很划算？](parts/part3_single_node.cn.md#第二节为什么这很划算)
+    - [第三节：INT8 与 FP8：截然不同的量化范式](parts/part3_single_node.cn.md#第三节int8-与-fp8截然不同的量化范式)
+    - [第四节：动态与静态：与模型权重量化的对比](parts/part3_single_node.cn.md#第四节动态与静态与模型权重量化的对比)
   - [第十一章：引擎层面的显存管理：PagedAttention](parts/part3_single_node.cn.md#第十一章引擎层面的显存管理pagedattention)
     - [第一节：碎片化危机：包场浪费](parts/part3_single_node.cn.md#第一节碎片化危机包场浪费)
     - [第二节：OS 的灵感：虚拟内存分页](parts/part3_single_node.cn.md#第二节os-的灵感虚拟内存分页)
@@ -127,15 +131,12 @@
     - [第二节：经典策略的回归：Gang Scheduling 的破局之道](parts/part5_k8s.cn.md#第二节经典策略的回归gang-scheduling-的破局之道)
     - [第三节：Gang Scheduling 在 Kubernetes 中的实现](parts/part5_k8s.cn.md#第三节gang-scheduling-在-kubernetes-中的实现)
     - [第四节：Kueue：作业排队与配额管理的艺术](parts/part5_k8s.cn.md#第四节kueue作业排队与配额管理的艺术)
-  - [第二十五章：算力池的呼吸：Pod 与 Node 扩容的实战挑战](parts/part5_k8s.cn.md#第二十五章算力池的呼吸pod-与-node-扩容的实战挑战)
-  - [第二十六章：刀尖上的舞者：大模型集群的升级与维护](parts/part5_k8s.cn.md#第二十六章刀尖上的舞者大模型集群的升级与维护)
-  - [第二十七章（占位符）：演进的终局：分离式推理与 AI 原生网关](parts/part5_k8s.cn.md#第二十七章占位符演进的终局分离式推理与-ai-原生网关)
-- [第六部分：前沿篇 —— 现代 LLM 推理的复杂场景与极限挑战](parts/part6_frontier.cn.md)
-  - [第二十五章：计算与推理范式的突变：MoE 架构与 CoT 思考](parts/part6_frontier.cn.md#第二十五章计算与推理范式的突变moe-架构与-cot-思考)
-    - [第一节：混合专家模型（MoE）的混乱](parts/part6_frontier.cn.md#第一节混合专家模型moe的混乱)
-    - [第二节：思考模式（CoT）与 KV Cache 爆炸](parts/part6_frontier.cn.md#第二节思考模式cot与-kv-cache-爆炸)
-  - [第二十六章：大模型“操作系统”化：智能体、检索增强与动态适配](parts/part6_frontier.cn.md#第二十六章大模型操作系统化智能体检索增强与动态适配)
-    - [第一节：Agent 与 MCP 的长链路阻断](parts/part6_frontier.cn.md#第一节agent-与-mcp-的长链路阻断)
-    - [第二节：RAG 与外部记忆的“冷启动”与碎片化](parts/part6_frontier.cn.md#第二节rag-与外部记忆的冷启动与碎片化)
-    - [第三节：Multi-LoRA 适配器的“千人千面”](parts/part6_frontier.cn.md#第三节multi-lora-适配器的千人千面)
-    - [第四节：安全护栏（Guardrails）的瀑布延迟](parts/part6_frontier.cn.md#第四节安全护栏guardrails的瀑布延迟)
+  - [第二十五章：动态伸缩：Pod 与 Node 的 Autoscaling 艺术](parts/part5_k8s.cn.md#第二十五章动态伸缩pod-与-node-的-autoscaling-艺术)
+    - [第一节：Pod Autoscaling：从指标到事件的进化](parts/part5_k8s.cn.md#第一节pod-autoscaling从指标到事件的进化)
+    - [第二节：Node Autoscaling：从“买套餐”到“去菜市场”](parts/part5_k8s.cn.md#第二节node-autoscaling从买套餐到去菜市场)
+    - [第三节：虽不完美但务实的解法](parts/part5_k8s.cn.md#第三节虽不完美但务实的解法)
+  - [第二十六章：运维与升级：业务连续性与重资产的博弈](parts/part5_k8s.cn.md#第二十六章运维与升级业务连续性与重资产的博弈)
+    - [第一节：传统 K8s 升级范式在 LLM 场景的“水土不服”](parts/part5_k8s.cn.md#第一节传统-k8s-升级范式在-llm-场景的水土不服)
+    - [第二节：实现无感知的优雅升级](parts/part5_k8s.cn.md#第二节实现无感知的优雅升级)
+    - [第三节：深水区挑战：Upgrade 场景的“冷启动”与状态保持](parts/part5_k8s.cn.md#第三节深水区挑战upgrade-场景的冷启动与状态保持)
+  - [本部分总结：LLM 在 K8s 中的两大核心矛盾与破局之道](parts/part5_k8s.cn.md#本部分总结llm-在-k8s-中的两大核心矛盾与破局之道)

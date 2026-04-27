@@ -44,7 +44,7 @@ We can compare this to **simultaneous interpretation**:
     *   **Workflow**:
         *   **Masked Self-Attention**: The decoder's core mechanism. It restricts the model to look only at preceding words when predicting the next, preventing it from "peeking" at the future. This maintains causality: during inference, future words do not exist yet; during training, peeking would prevent the model from learning true predictive capabilities.
         *   **Multi-Head Cross-Attention**: The Decoder uses its current Query to search for matching Keys and Values in the Encoder's output.
-    *   **Output**: Softmax converts outputs to probabilities for the next word (e.g., "est").
+    *   **Output**: Softmax converts outputs to probabilities for the next word (e.g., "est" based on the previously translated "Le chat").
 
 **Summary**: The Encoder understands the input (bidirectional), while the Decoder generates output (unidirectional).
 

@@ -1,18 +1,21 @@
-# LLM from Principles to Production Inference: A Systematic E-book
+# LLM Inference from Principles to Production
 
 ## Foreword
 
-This book is a systematic organization of Large Language Model (LLM) inference technology, originating from the author's study notes and practical reflections.
-
-**Core Objectives of This Book**:
-1. **Consolidate Study Notes**: Connect scattered knowledge points into a coherent system.
-2. **Build Mental Models**: Help readers understand the core principles underlying large models, thereby establishing a complete global understanding and mindset for optimizing LLM inference.
+This book is a systematic organization of Large Language Model (LLM) inference technology, originating from the author's study notes and reflections during paternity leave (and welcoming my second baby, Emerson! 👶🍼🧸). With daily work focused on internal clusters supporting inference and other business, the author rarely had time to follow open-source progress. Therefore, the core objectives of this book are:
+1. **Build Mental Models (End-to-End)**: Connect scattered knowledge points to help myself understand core LLM inference principles and serving frameworks end-to-end, establishing a global mindset.
+2. **Track Open-Source Progress**: Survey and follow the state and frontier progress of the open-source community.
+3. **Explore Kubernetes Evolution**: Understand open-source progress at the Kubernetes layer and how it should better adapt to LLM inference in the future.
+4. **Establish a Sustainable Framework**: Serve as a foundation for easier continuous updates in the future to stay up-to-date myself.
 
 **Disclaimer and Positioning**:
 This book is not a profound mathematical derivation book, nor is it a "frontier tracking" that follows the latest daily papers. We will not get overly entangled in complex mathematical formulas and overly trivial code details. Our focus is on **revealing the essential logic behind the technology**.
 
+Additionally, this book was deeply assisted by Gemini and Claude. Without AI, it would have been impossible for the author to learn and understand such a broad field in a single month. I would like to thank AI on one hand; on the other hand, this has reinforced my determination to "do inference well" — only by building efficient inference infrastructure can we make AI benefit more people.
+
 **Target Audience**:
-This book is primarily aimed at readers who need to establish an end-to-end understanding, such as system architects, backend engineers, AI product managers, and all developers interested in the underlying operating mechanisms of large models. If you want to know how large models turn from lines of code into efficient services, this book will be your excellent guide.
+The primary audience for this book is **the author themselves**. It is open-sourced on GitHub for convenient version control, switching between machines, and to potentially benefit other peers interested in this field (such as system architects, backend engineers, AI product managers, and developers curious about underlying mechanisms). If you also hope to establish a global understanding of large model inference from principles to production services, I hope these notes can offer some inspiration. Feel free to point out any errors.
+
 
 ---
 
@@ -64,6 +67,8 @@ This book is primarily aimed at readers who need to establish an end-to-end unde
   - [Chapter 10: Precision Dimensionality Reduction: KV Cache Quantization (FP8/INT8)](parts/part3_single_node.md#chapter-10-precision-dimensionality-reduction-kv-cache-quantization-fp8int8)
     - [Section 1: A Good Deal of Trading Compute for Bandwidth](parts/part3_single_node.md#section-1-a-good-deal-of-trading-compute-for-bandwidth)
     - [Section 2: Why is this a good deal?](parts/part3_single_node.md#section-2-why-is-this-a-good-deal)
+    - [Section 3: INT8 vs. FP8: Strikingly Different Paradigms](parts/part3_single_node.md#section-3-int8-vs-fp8-strikingly-different-paradigms)
+    - [Section 4: Dynamic vs. Static: Contrasting with Model Weight Quantization](parts/part3_single_node.md#section-4-dynamic-vs-static-contrasting-with-model-weight-quantization)
   - [Chapter 11: VRAM Management at the Engine Level: PagedAttention](parts/part3_single_node.md#chapter-11-vram-management-at-the-engine-level-pagedattention)
     - [Section 1: Fragmentation Crisis: Waste of Booking the Whole Venue](parts/part3_single_node.md#section-1-fragmentation-crisis-waste-of-booking-the-whole-venue)
     - [Section 2: Inspiration from OS: Virtual Memory Paging](parts/part3_single_node.md#section-2-inspiration-from-os-virtual-memory-paging)
@@ -127,15 +132,12 @@ This book is primarily aimed at readers who need to establish an end-to-end unde
     - [Section 2: Return of a Classic Strategy: How Gang Scheduling Breaks Deadlocks](parts/part5_k8s.md#section-2-return-of-a-classic-strategy-how-gang-scheduling-breaks-deadlocks)
     - [Section 3: Gang Scheduling Implementations in Kubernetes](parts/part5_k8s.md#section-3-gang-scheduling-implementations-in-kubernetes)
     - [Section 4: Kueue: Job Queuing and Quota Management](parts/part5_k8s.md#section-4-kueue-job-queuing-and-quota-management)
-  - [Chapter 25: Breathing of the Compute Pool: Practical Challenges of Pod and Node Scaling](parts/part5_k8s.md#chapter-25-breathing-of-the-compute-pool-practical-challenges-of-pod-and-node-scaling)
-  - [Chapter 26: Dancer on the Blade's Edge: Upgrading and Maintenance of Large Model Clusters](parts/part5_k8s.md#chapter-26-dancer-on-the-blades-edge-upgrading-and-maintenance-of-large-model-clusters)
-  - [Chapter 27 (Placeholder): The End of Evolution: Disaggregated Serving and AI-Native Gateways](parts/part5_k8s.md#chapter-27-placeholder-the-end-of-evolution-disaggregated-serving-and-ai-native-gateways)
-- [Part Six: Frontier —— Complex Scenarios and Extreme Challenges of Modern LLM Inference](parts/part6_frontier.md)
-  - [Chapter 25: Mutation of Compute and Inference Paradigms: MoE Architecture and CoT Thinking](parts/part6_frontier.md#chapter-25-mutation-of-compute-and-inference-paradigms-moe-architecture-and-cot-thinking)
-    - [Section 1: The Chaos of Mixture of Experts (MoE)](parts/part6_frontier.md#section-1-the-chaos-of-mixture-of-experts-moe)
-    - [Section 2: Chain of Thought (CoT) and KV Cache Explosion](parts/part6_frontier.md#section-2-chain-of-thought-cot-and-kv-cache-explosion)
-  - [Chapter 26: Large Model "Operating System"ization: Agents, Retrieval Augmentation, and Dynamic Adaptation](parts/part6_frontier.md#chapter-26-large-model-operating-systemization-agents-retrieval-augmentation-and-dynamic-adaptation)
-    - [Section 1: Long-Link Interruption of Agent and MCP](parts/part6_frontier.md#section-1-long-link-interruption-of-agent-and-mcp)
-    - [Section 2: "Cold Start and Fragmentation" of RAG and External Memory](parts/part6_frontier.md#section-2-cold-start-and-fragmentation-of-rag-and-external-memory)
-    - [Section 3: "A Thousand People, A Thousand Faces" of Multi-LoRA Adapters](parts/part6_frontier.md#section-3-a-thousand-people-a-thousand-faces-of-multi-lora-adapters)
-    - [Section 4: Waterfall Latency of Guardrails](parts/part6_frontier.md#section-4-waterfall-latency-of-guardrails)
+  - [Chapter 25: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference](parts/part5_k8s.md#chapter-25-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference)
+    - [Section 1: Pod Autoscaling: Shifting from Metrics to Events](parts/part5_k8s.md#section-1-pod-autoscaling-shifting-from-metrics-to-events)
+    - [Section 2: Node Autoscaling: Just-In-Time Provisioning](parts/part5_k8s.md#section-2-node-autoscaling-just-in-time-provisioning)
+  - [Chapter 26: Operations and Upgrades: Continuity vs. Heavy Assets](parts/part5_k8s.md#chapter-26-operations-and-upgrades-continuity-vs-heavy-assets)
+    - [Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference](parts/part5_k8s.md#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference)
+    - [Section 2: Seamless Upgrades: Engineering Practices](parts/part5_k8s.md#section-2-seamless-upgrades-engineering-practices)
+    - [Section 3: Upgrade Cold Starts: State Retention Challenges](parts/part5_k8s.md#section-3-upgrade-cold-starts-state-retention-challenges)
+  - [Part 5 Summary: Core Contradictions and Breakthroughs in LLM Orchestration](parts/part5_k8s.md#part-5-summary-core-contradictions-and-breakthroughs-in-llm-orchestration)
+

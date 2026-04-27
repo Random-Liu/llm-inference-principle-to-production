@@ -12,6 +12,8 @@ Follows the principles in `GEMINI.md`:
 ## Content Creation
 - [ ] Complete Part 5: Orchestration ([part5_k8s.md](file:///Users/lantaol/Documents/blog/parts/part5_k8s.md))
 - [ ] Complete Part 6: Frontier ([part6_frontier.md](file:///Users/lantaol/Documents/blog/parts/part6_frontier.md))
+- [ ] Add evaluation for new challenges: MoE, CoT, Agent
+
 
 ## Research & Learning
 - [ ] Explore unseen content:
@@ -21,3 +23,4 @@ Follows the principles in `GEMINI.md`:
     - [ ] Explore TPU architecture (e.g., topology) and its solutions to Part 5 challenges
     - [ ] Research GB series hardware topology
     - [ ] Understand how `DisaggregatedSet` works in LeaderWorkerSet (for Disaggregated Serving). Ref KEP: https://github.com/kubernetes-sigs/lws/pull/773
+    - [ ] Learn the complete CUDA software stack to understand its dependencies
