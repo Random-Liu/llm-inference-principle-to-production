@@ -1,4 +1,6 @@
-# LLM Inference from Principles to Production
+# LLM Inference from Principles to Production (LLM 从原理到生产级推理)
+
+[🌐 View Chinese Version / 中文版](README.cn.md)
 
 ## Foreword
 
@@ -14,7 +16,6 @@ Additionally, this book was deeply assisted by Gemini and Claude. Without AI, it
 
 **Target Audience**:
 The primary audience for this book is **the author themselves**. It is open-sourced on GitHub for convenient version control, switching between machines, and to potentially benefit other peers interested in this field (such as system architects, backend engineers, AI product managers, and developers curious about underlying mechanisms). If you also hope to establish a global understanding of large model inference from principles to production services, I hope these notes can offer some inspiration. Feel free to point out any errors.
-
 
 ---
 
@@ -40,24 +41,24 @@ The primary audience for this book is **the author themselves**. It is open-sour
   - [Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation](parts/part1_principles.md#chapter-3-the-art-of-operation-autoregressive-decoding-and-text-generation)
     - [Section 1: Prefill Phase: Handling Input Context](parts/part1_principles.md#section-1-prefill-phase-handling-input-context)
     - [Section 2: Decode Phase: The Autoregressive Loop](parts/part1_principles.md#section-2-decode-phase-the-autoregressive-loop)
-- [Part Two: Bottlenecks —— Why LLM Inference is So Hard](parts/part2_bottlenecks.md)
-  - [Chapter 4: The "Ruler" for Measuring Large Model Inference: Core Metrics Analysis](parts/part2_bottlenecks.md#chapter-4-the-ruler-for-measuring-large-model-inference-core-metrics-analysis)
-  - [Chapter 5: From Scratch: How Does the Most Naive LLM Inference Work?](parts/part2_bottlenecks.md#chapter-5-from-scratch-how-does-the-most-naive-llm-inference-work)
-    - [Section 1: Unoptimized Inference Flow](parts/part2_bottlenecks.md#section-1-unoptimized-inference-flow)
-    - [Section 2: Bottleneck Analysis: Computational Complexity Explosion](parts/part2_bottlenecks.md#section-2-bottleneck-analysis-computational-complexity-explosion)
-    - [Section 3: Leading to Optimization: Can we "remember" past computations?](parts/part2_bottlenecks.md#section-3-leading-to-optimization-can-we-remember-past-computations)
-  - [Chapter 6: Game Changer KV Cache and Its Resulting "VRAM Tsunami"](parts/part2_bottlenecks.md#chapter-6-game-changer-kv-cache-and-its-resulting-vram-tsunami)
-    - [Section 1: Trading Space for Time: Caching K and V](parts/part2_bottlenecks.md#section-1-trading-space-for-time-caching-k-and-v)
-    - [Section 2: Why Only K and V?](parts/part2_bottlenecks.md#section-2-why-only-k-and-v)
-    - [Section 3: VRAM Tsunami: A TB-Class Math Problem](parts/part2_bottlenecks.md#section-3-vram-tsunami-a-tb-class-math-problem)
-  - [Chapter 7: Maximizing GPU Utilization: The Evolution of Batching](parts/part2_bottlenecks.md#chapter-7-maximizing-gpu-utilization-the-evolution-of-batching)
-    - [Section 1: Compute-Bound vs Memory-Bound](parts/part2_bottlenecks.md#section-1-compute-bound-vs-memory-bound)
-    - [Section 2: Batched Matrix Multiplication (BMM)](parts/part2_bottlenecks.md#section-2-batched-matrix-multiplication-bmm)
-    - [Section 3: Padding Problem: The Flaws of "Static Batching"](parts/part2_bottlenecks.md#section-3-padding-problem-the-flaws-of-static-batching)
-  - [Chapter 8: Core Asymmetry: Prefill and Decode](parts/part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-and-decode)
-    - [Section 1: Prefill Stage —— A "Blitzkrieg" Devouring Compute (Compute-Bound)](parts/part2_bottlenecks.md#section-1-prefill-stage--a-blitzkrieg-devouring-compute-compute-bound)
-    - [Section 2: Decode Stage —— A "War of Attrition" Crushing Bandwidth (Memory-Bandwidth Bound)](parts/part2_bottlenecks.md#section-2-decode-stage--a-war-of-attrition-crushing-bandwidth-memory-bandwidth-bound)
-    - [Section 3: "Asymmetry" from a Data Perspective](parts/part2_bottlenecks.md#section-3-asymmetry-from-a-data-perspective)
+- [Part 2: Bottlenecks — Why LLM Inference is Hard](parts/part2_bottlenecks.md)
+  - [Chapter 4: Performance Metrics: Measuring Inference Speed](parts/part2_bottlenecks.md#chapter-4-performance-metrics-measuring-inference-speed)
+  - [Chapter 5: Naive Inference: How Unoptimized Systems Work](parts/part2_bottlenecks.md#chapter-5-naive-inference-how-unoptimized-systems-work)
+    - [Section 1: The Unoptimized Process](parts/part2_bottlenecks.md#section-1-the-unoptimized-process)
+    - [Section 2: Complexity Analysis: The Computational Explosion](parts/part2_bottlenecks.md#section-2-complexity-analysis-the-computational-explosion)
+    - [Section 3: The Solution: Caching Past Computations](parts/part2_bottlenecks.md#section-3-the-solution-caching-past-computations)
+  - [Chapter 6: KV Cache: Solving the Compute Bottleneck](parts/part2_bottlenecks.md#chapter-6-kv-cache-solving-the-compute-bottleneck)
+    - [Section 1: The Principle: Caching K and V](parts/part2_bottlenecks.md#section-1-the-principle-caching-k-and-v)
+    - [Section 2: The Scope: Why Only K and V?](parts/part2_bottlenecks.md#section-2-the-scope-why-only-k-and-v)
+    - [Section 3: The Cost: The VRAM Tsunami](parts/part2_bottlenecks.md#section-3-the-cost-the-vram-tsunami)
+  - [Chapter 7: Batching: Maximizing GPU Utilization](parts/part2_bottlenecks.md#chapter-7-batching-maximizing-gpu-utilization)
+    - [Section 1: The Bottleneck: Memory Bandwidth](parts/part2_bottlenecks.md#section-1-the-bottleneck-memory-bandwidth)
+    - [Section 2: The Solution: Batched Matrix Multiplication (BMM)](parts/part2_bottlenecks.md#section-2-batched-matrix-multiplication-bmm)
+    - [Section 3: The Flaw: Static Batching and Padding](parts/part2_bottlenecks.md#section-3-the-flaw-static-batching-and-padding)
+  - [Chapter 8: Core Asymmetry: Prefill vs. Decode](parts/part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-vs-decode)
+    - [Section 1: Prefill Phase: The Compute-Bound Phase](parts/part2_bottlenecks.md#section-1-prefill-phase-the-compute-bound-phase)
+    - [Section 2: Decode Phase: The Memory-Bound Phase](parts/part2_bottlenecks.md#section-2-decode-phase-the-memory-bound-phase)
+    - [Section 3: The Asymmetry: Data Perspective Comparison](parts/part2_bottlenecks.md#section-3-the-asymmetry-data-perspective-comparison)
 - [Part Three: Single-Node —— High-Performance Engines Squeezing Every Inch of VRAM](parts/part3_single_node.md)
   - [Chapter 9: VRAM Slimming at the Model Architecture Level: GQA](parts/part3_single_node.md#chapter-9-vram-slimming-at-the-model-architecture-level-gqa)
     - [Section 1: Evolution from MHA to GQA](parts/part3_single_node.md#section-1-evolution-from-mha-to-gqa)
