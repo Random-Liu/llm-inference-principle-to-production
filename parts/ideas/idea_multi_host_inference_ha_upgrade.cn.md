@@ -1,4 +1,4 @@
-# 思路：基于委托就绪与 PDB 的多机推理通用高可用升级
+# 思路：基于升级域与委托就绪的多机推理集群高可用升级
 
 ## 概述
 本思路旨在解决 Kubernetes 节点升级过程中，多机推理工作负载（如 LWS、Ray 等）的通用、解耦的高可用性问题，而无需引入自定义 Webhook 或沉重的 AI 特定的调度器。
@@ -19,7 +19,7 @@
 4. **原生组级 PDB 缺失**：Kubernetes 目前还没有原生支持 PodGroup 维度的驱逐和 Disruption Budget。虽然在前沿提案（如 **[KEP-4563: Eviction Request API](https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/4563-eviction-request-api/README.md#workload-api-support)**）中已经开始讨论未来对上层 Workload 的支持，但目前仍处于早期阶段。本思路的目标是在**仅利用现有 Kubernetes 原生机制**的前提下，解决组级高可用升级的问题。
 
 ## 核心概念
-本思路利用 Kubernetes 的原生基元与机制（如**拓扑标签 Topology Labels**、**Pod 就绪探针 Readiness Probe** 和 **PodDisruptionBudget**），并引入常见的**“升级域”（Upgrade Domain, UD）**拓扑概念。通过建立一个契约，让指定的 Pod（例如 Leader）聚合整个组的健康状态，我们可以使用标准的 PDB 来保护滚动升级期间组的可用性。
+本思路利用 Kubernetes 的原生基元与机制（如**拓扑标签 Topology Labels**、**Pod 就绪探针 Readiness Probe** 和 **PodDisruptionBudget**），并引入常见的 **“升级域”（Upgrade Domain, UD）** 拓扑概念。通过建立一个契约，让指定的 Pod（例如 Leader）聚合整个组的健康状态，我们可以使用标准的 PDB 来保护滚动升级期间组的可用性。
 
 ## 三层契约
 为了接入平台并享受自动、安全的升级，工作负载必须遵守以下契约。**注意：该契约仅适用于在升级过程中对可用性（Uptime）有强要求的工作负载。如果业务可以在维护窗口（Maintenance Window）内完全下线，则无需遵守此契约。**

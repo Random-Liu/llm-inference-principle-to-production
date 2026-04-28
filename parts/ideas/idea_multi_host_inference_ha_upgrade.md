@@ -1,4 +1,4 @@
-# Idea: Generic HA for Multi-Host Inference Upgrades via Delegated Readiness and PDB
+# Idea: HA Upgrade for Multi-Host Inference Clusters via Upgrade Domains and Delegated Readiness
 
 ## Overview
 The goal is to achieve generic, decoupled high availability during Kubernetes node upgrades for multi-host inference workloads (like LWS, Ray, etc.) without introducing custom webhooks or heavy AI-specific schedulers.
