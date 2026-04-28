@@ -19,7 +19,6 @@
   - [Section 2: Radix Trees: Sharing Physical Memory](#section-2-radix-trees-sharing-physical-memory)
 - [Chapter 13: The Train That Never Stops: Continuous Batching and Chunked Prefill](#chapter-13-the-train-that-never-stops-continuous-batching-and-chunked-prefill)
   - [Section 1: Continuous Batching: The Revolving Door Mechanism](#section-1-continuous-batching-the-revolving-door-mechanism)
-  - [The Underlying Workflow and Three Major Data Structures of Continuous Batching](#the-underlying-workflow-and-three-major-data-structures-of-continuous-batching)
   - [Section 2: Chunked Prefill: The Perfect Complement](#section-2-chunked-prefill-the-perfect-complement)
 - [Chapter 14: When VRAM Bursts: Preemption and Scheduling](#chapter-14-when-vram-bursts-preemption-and-scheduling)
   - [Section 1: The Scheduler's Dilemma](#section-1-the-schedulers-dilemma)
@@ -31,6 +30,7 @@
   - [Section 2: The "Reverse Trade" of Arithmetic Intensity](#section-2-the-reverse-trade-of-arithmetic-intensity)
   - [Section 3: From Dual Models to External Heads: The Evolution of Architecture](#section-3-from-dual-models-to-external-heads-the-evolution-of-architecture)
   - [Section 4: Tree Attention and Trade-offs in Production Environments](#section-4-tree-attention-and-trade-offs-in-production-environments)
+
 
 In the second part, we dissected the physical and mathematical bottlenecks of LLM inference: **the VRAM tsunami triggered by KV Cache**, and **the core asymmetry between Prefill and Decode**. These bottlenecks directly paralyze the concurrency capability and response speed of large models in production environments.
 
