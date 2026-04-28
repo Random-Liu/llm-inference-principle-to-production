@@ -137,7 +137,7 @@ $$V = X W_V$$
 > $W_Q, W_K, W_V$ are **static model weights** fixed in VRAM. Q, K, and V are **dynamically generated data**, calculated on the fly for each specific input. This enables the same word to yield different semantics in different contexts.
 
 #### 2. Calculating Similarity and Attention Weights
-To determine how much attention the current word (Query) gives to others (Keys), the model computes the dot product of Q and K:
+To determine how much attention the current word (Query) gives to preceding words (Keys), the model computes the dot product of the current word's Q and preceding words' K:
 
 $$\text{Score} = Q \cdot K^T$$
 
@@ -155,7 +155,7 @@ $$\text{Output} = \sum (\text{Attention Weights} \times V)$$
 
 ---
 
-### Section 5: Feed-Forward Network: Highway and Knowledge Base
+### Section 5: Feed-Forward Network: Knowledge Base
 
 After the self-attention mechanism completes the information exchange between words, the vector enters the **Feed-Forward Network (FFN)**. If the attention mechanism is responsible for "finding relationships between words", then the FFN is responsible for each word's "closed-door thinking".
 
@@ -218,7 +218,11 @@ Language is complex; a word plays multiple roles simultaneously.
 *   **Emotion Head**: Captures emotional adjectives.
 *   **Coreference Head**: Resolves pronouns (like "he" or "it").
 
-MHA observes sentences from dozens of perspectives in parallel. It concatenates parallel outputs and integrates them via a linear layer.
+MHA observes sentences from dozens of perspectives in parallel. It concatenates parallel outputs.
+
+> [!IMPORTANT]
+> **The Fourth Matrix: $W_O$**
+> Besides replicating $W_Q$, $W_K$, and $W_V$ for multiple heads, MHA introduces a fourth matrix: the **Output Projection Matrix $W_O$**. It integrates the concatenated outputs and fuses information across heads back to the original dimension.
 
 **Llama 3 405B MHA Workflow**:
 1.  **Input**: Sentence matrix of shape `[N, 16384]` ($N$ words, 16384 dimensions).
@@ -252,6 +256,8 @@ When a token enters:
 3.  **Fusion**: Fuses results from active experts based on weights.
 
 **Summary**: MoE enables a massive total parameter count (broad knowledge) with a small active parameter count per forward pass (cheap compute). This is the secret to DeepSeek's efficiency.
+
+Note that MoE only reduces **compute cost** by activating fewer experts. It does not save **VRAM**; all expert weights must remain in memory to handle any topic instantly. Loading these massive parameters still demands extreme VRAM capacity. We will discuss these VRAM challenges in detail in the Inference part.
 
 ---
 
@@ -310,9 +316,10 @@ After embedding, the word vector begins climbing the Transformer skyscraper. Mod
 This stacking enables **Hierarchical Feature Extraction**:
 
 1.  **Single Layer Limits**: A single layer only recognizes superficial associations (e.g., "apple" and "supermarket"). It cannot perform deep reasoning.
-2.  **Bottom Layers**: Extract grammar and local relationships (e.g., identifying subjects and modifiers).
-3.  **Middle Layers**: Capture entity relationships and common sense. The FFN consults its "soft memory base" to add background knowledge.
-4.  **Top Layers**: Handle abstract concepts and logical reasoning, distilling the sentence into an abstract intent to answer the prompt.
+2.  **Multi-Layer Emergence**:
+    *   **Bottom Layers**: Extract grammar and local relationships (e.g., identifying subjects and modifiers).
+    *   **Middle Layers**: Capture entity relationships and common sense. The FFN consults its "soft memory base" to add background knowledge.
+    *   **Top Layers**: Handle abstract concepts and logical reasoning, distilling the sentence into an abstract intent to answer the prompt.
 
 This layer-by-layer progression from concrete to abstract is key to LLM "intelligence".
 
