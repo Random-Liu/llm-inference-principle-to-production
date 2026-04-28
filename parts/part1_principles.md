@@ -1,5 +1,25 @@
 # Part One: Principles — The Foundational Engine of Transformers and LLMs
 
+## Table of Contents
+- [Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V](#chapter-1-demystifying-the-transformer-the-magic-of-q-k-and-v)
+  - [Section 1: A Bird's-Eye View: Classic Transformer Architecture](#section-1-a-birds-eye-view-classic-transformer-architecture)
+  - [Section 2: Evolution: Decoder-Only Architecture](#section-2-evolution-decoder-only-architecture)
+  - [Section 3: The Library Analogy: Intuitive Meaning of QKV](#section-3-the-library-analogy-intuitive-meaning-of-qkv)
+  - [Section 4: Mathematical Principles: Matrix Computation of QKV](#section-4-mathematical-principles-matrix-computation-of-qkv)
+  - [Section 5: Feed-Forward Network: Knowledge Base](#section-5-feed-forward-network-knowledge-base)
+  - [Section 6: Multi-Head Attention: Parallel Perspectives](#section-6-multi-head-attention-parallel-perspectives)
+  - [Section 7: Mixture of Experts: Sparse Activation](#section-7-mixture-of-experts-sparse-activation)
+- [Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow](#chapter-2-building-the-skyscraper-stacking-layers-and-data-flow)
+  - [Section 1: Input Stage: Embeddings and Positional Encoding](#section-1-input-stage-embeddings-and-positional-encoding)
+  - [Section 2: Wisdom of Stacking: Hierarchical Feature Extraction](#section-2-wisdom-of-stacking-hierarchical-feature-extraction)
+  - [Section 3: The Translator: LM Head](#section-3-the-translator-lm-head)
+  - [Section 4: Logits and Softmax: Probabilistic Normalization](#section-4-logits-and-softmax-probabilistic-normalization)
+  - [Section 5: Parameter Breakdown: What Makes Up 8B/70B Models](#section-5-parameter-breakdown-what-makes-up-8b70b-models)
+  - [Section 6: Data Flow: End-to-End Pipeline](#section-6-data-flow-end-to-end-pipeline)
+- [Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation](#chapter-3-the-art-of-operation-autoregressive-decoding-and-text-generation)
+  - [Section 1: Prefill Phase: Handling Input Context](#section-1-prefill-phase-handling-input-context)
+  - [Section 2: Decode Phase: The Autoregressive Loop](#section-2-decode-phase-the-autoregressive-loop)
+
 ## Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V
 
 In Large Language Models (LLMs), all magic stems from the **Transformer** architecture, and its core is the **Self-Attention mechanism**. This chapter breaks down the three most famous letters in self-attention: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the soul of the model's ability to understand context.

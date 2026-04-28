@@ -1,5 +1,25 @@
 # Part Four: Distributed Chapter — The Concerto Across Single Nodes: Parallel Strategies and High-Speed Interconnects
 
+## Table of Contents
+- [Chapter 16: Slicing the Giant: Tensor, Pipeline, and Context Parallelism](#chapter-16-slicing-the-giant-tensor-pipeline-and-context-parallelism)
+  - [Section 1: The Necessity of Multiple Machines: The Giant That Doesn't Fit](#section-1-the-necessity-of-multiple-machines-the-giant-that-doesnt-fit)
+  - [Section 2: TP and PP: Vertical and Horizontal Slicing](#section-2-tp-and-pp-vertical-and-horizontal-slicing)
+  - [Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory](#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory)
+  - [Section 4: The Impact of TP and PP on Core Metrics](#section-4-the-impact-of-tp-and-pp-on-core-metrics)
+  - [Section 5: Breaking the Sequence Wall: Context Parallelism](#section-5-breaking-the-sequence-wall-context-parallelism)
+  - [Chapter 17: The Perfect Division of Labor: Disaggregated Serving](#chapter-17-the-perfect-division-of-labor-disaggregated-serving)
+    - [Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma](#section-1-irreconcilable-contradiction-hardware-mismatch-and-management-dilemma)
+    - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](#section-2-physical-separation-decoupling-hardware-simplifying-management)
+    - [Section 3: Typical Workflow of Disaggregated Serving](#section-3-typical-workflow-of-disaggregated-serving)
+  - [Chapter 18: The Omniscient Traffic Police: Content-Aware Routing](#chapter-18-the-omniscient-traffic-police-content-aware-routing)
+    - [Section 1: AI Gateway: The Traffic Police That Knows the Business](#section-1-ai-gateway-the-traffic-police-that-knows-the-business)
+    - [Section 2: Cache-Aware Routing and Dynamic Replication](#section-2-cache-aware-routing-and-dynamic-replication)
+    - [Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3](#section-3-sglangs-system-level-implementation-gateway-approximate-tree-and-shared-l3)
+  - [Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference](#chapter-19-opening-the-meridians-network-communication-and-high-speed-interconnects-in-large-model-inference)
+    - [Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch](#section-1-the-bloodline-within-a-single-machine-pcie-nvlink-and-nvswitch)
+    - [Section 2: The Cross-Machine Bridge: RDMA and Its Implementations](#section-2-the-cross-machine-bridge-rdma-and-its-implementations)
+    - [Section 3: Parallel Modes, Data Volumes, and Metric Impacts](#section-3-parallel-modes-data-volumes-and-metric-impacts)
+
 The final part zooms out to cluster-level architecture and how top tech companies serve billions of requests.
 
 ## Chapter 16: Slicing the Giant: Tensor, Pipeline, and Context Parallelism

@@ -1,6 +1,26 @@
 ## Part 2: Bottlenecks — Why LLM Inference is Hard
 
+## Table of Contents
+- [Chapter 4: Performance Metrics: Measuring Inference Speed](#chapter-4-performance-metrics-measuring-inference-speed)
+- [Chapter 5: Naive Inference: How Unoptimized Systems Work](#chapter-5-naive-inference-how-unoptimized-systems-work)
+  - [Section 1: The Unoptimized Process](#section-1-the-unoptimized-process)
+  - [Section 2: Complexity Analysis: The Computational Explosion](#section-2-complexity-analysis-the-computational-explosion)
+  - [Section 3: The Solution: Caching Past Computations](#section-3-the-solution-caching-past-computations)
+- [Chapter 6: KV Cache: Solving the Compute Bottleneck](#chapter-6-kv-cache-solving-the-compute-bottleneck)
+  - [Section 1: The Principle: Caching K and V](#section-1-the-principle-caching-k-and-v)
+  - [Section 2: The Scope: Why Only K and V?](#section-2-the-scope-why-only-k-and-v)
+  - [Section 3: The Cost: The VRAM Tsunami](#section-3-the-cost-the-vram-tsunami)
+- [Chapter 7: Batching: Maximizing GPU Utilization](#chapter-7-batching-maximizing-gpu-utilization)
+  - [Section 1: The Bottleneck: Memory Bandwidth](#section-1-the-bottleneck-memory-bandwidth)
+  - [Section 2: The Solution: Batched Matrix Multiplication (BMM)](#section-2-the-solution-batched-matrix-multiplication-bmm)
+  - [Section 3: The Flaw: Static Batching and Padding](#section-3-the-flaw-static-batching-and-padding)
+- [Chapter 8: Core Asymmetry: Prefill vs. Decode](#chapter-8-core-asymmetry-prefill-vs-decode)
+  - [Section 1: Prefill Phase: The Compute-Bound Phase](#section-1-prefill-phase-the-compute-bound-phase)
+  - [Section 2: Decode Phase: The Memory-Bound Phase](#section-2-decode-phase-the-memory-bound-phase)
+  - [Section 3: The Asymmetry: Data Perspective Comparison](#section-3-the-asymmetry-data-perspective-comparison)
+
 This part explains the physical and mathematical limits engineers face when putting LLMs into production.
+
 
 ### Chapter 4: Performance Metrics: Measuring Inference Speed
 

@@ -1,5 +1,37 @@
 ## Part Three: Single Node — High-Performance Engines Squeezing Every Inch of VRAM
 
+## Table of Contents
+- [Chapter 9: VRAM Slimming at the Model Architecture Level: GQA](#chapter-9-vram-slimming-at-the-model-architecture-level-gqa)
+  - [Section 1: The Evolution from MHA to GQA](#section-1-the-evolution-from-mha-to-gqa)
+  - [Section 2: Deep Thinking — Why Does Trimming Only $K$ and $V$ Work?](#section-2-deep-thinking--why-does-trimming-only-k-and-v-work)
+  - [Section 3: A Hundred Flowers Blooming: Other Frontier Progress in Compressing KV](#section-3-a-hundred-flowers-blooming-other-frontier-progress-in-compressing-kv)
+- [Chapter 10: Precision Reduction: KV Cache Quantization (FP8/INT8)](#chapter-10-precision-reduction-kv-cache-quantization-fp8int8)
+  - [Section 1: A Cost-Effective Trade of Compute for Bandwidth](#section-1-a-cost-effective-trade-of-compute-for-bandwidth)
+  - [Section 2: Why Is This Cost-Effective?](#section-2-why-is-this-cost-effective)
+  - [Section 3: INT8 vs. FP8: Strikingly Different Paradigms](#section-3-int8-vs-fp8-strikingly-different-paradigms)
+  - [Section 4: Dynamic vs. Static: Contrasting with Model Weight Quantization](#section-4-dynamic-vs-static-contrasting-with-model-weight-quantization)
+- [Chapter 11: VRAM Management at the Engine Level: PagedAttention](#chapter-11-vram-management-at-the-engine-level-pagedattention)
+  - [Section 1: The Fragmentation Crisis: Wasted by "Booking the Whole Venue"](#section-1-the-fragmentation-crisis-wasted-by-booking-the-whole-venue)
+  - [Section 2: Inspiration from OS: Virtual Memory Paging](#section-2-inspiration-from-os-virtual-memory-paging)
+  - [Section 3: Block Tables: Near-Zero Memory Waste](#section-3-block-tables-near-zero-memory-waste)
+- [Chapter 12: Memory Time Machine: Prefix Caching (RadixAttention)](#chapter-12-memory-time-machine-prefix-caching-radixattention)
+  - [Section 1: The Dilemma of RAG and Multi-Turn Dialogues](#section-1-the-dilemma-of-rag-and-multi-turn-dialogues)
+  - [Section 2: Radix Trees: Sharing Physical Memory](#section-2-radix-trees-sharing-physical-memory)
+- [Chapter 13: The Train That Never Stops: Continuous Batching and Chunked Prefill](#chapter-13-the-train-that-never-stops-continuous-batching-and-chunked-prefill)
+  - [Section 1: Continuous Batching: The Revolving Door Mechanism](#section-1-continuous-batching-the-revolving-door-mechanism)
+  - [The Underlying Workflow and Three Major Data Structures of Continuous Batching](#the-underlying-workflow-and-three-major-data-structures-of-continuous-batching)
+  - [Section 2: Chunked Prefill: The Perfect Complement](#section-2-chunked-prefill-the-perfect-complement)
+- [Chapter 14: When VRAM Bursts: Preemption and Scheduling](#chapter-14-when-vram-bursts-preemption-and-scheduling)
+  - [Section 1: The Scheduler's Dilemma](#section-1-the-schedulers-dilemma)
+  - [Section 2: Eviction and Tiered Offloading of Inactive Cache](#section-2-eviction-and-tiered-offloading-of-inactive-cache)
+  - [Section 3: Preemption of Active Requests: Swap vs. Recompute](#section-3-preemption-of-active-requests-swap-vs-recompute)
+  - [Section 4: SGLang's Tree-based Management: Integrating Preemption and Eviction](#section-4-sglangs-tree-based-management-integrating-preemption-and-eviction)
+- [Chapter 15: Trading "Idle Compute" for "Ultimate Latency": Speculative Decoding](#chapter-15-trading-idle-compute-for-ultimate-latency-speculative-decoding)
+  - [Section 1: The Professor and the Assistant — The Core Logic of Speculative Decoding](#section-1-the-professor-and-the-assistant--the-core-logic-of-speculative-decoding)
+  - [Section 2: The "Reverse Trade" of Arithmetic Intensity](#section-2-the-reverse-trade-of-arithmetic-intensity)
+  - [Section 3: From Dual Models to External Heads: The Evolution of Architecture](#section-3-from-dual-models-to-external-heads-the-evolution-of-architecture)
+  - [Section 4: Tree Attention and Trade-offs in Production Environments](#section-4-tree-attention-and-trade-offs-in-production-environments)
+
 In the second part, we dissected the physical and mathematical bottlenecks of LLM inference: **the VRAM tsunami triggered by KV Cache**, and **the core asymmetry between Prefill and Decode**. These bottlenecks directly paralyze the concurrency capability and response speed of large models in production environments.
 
 To break the deadlock, system engineers and algorithmic scientists have launched a saturated, hardware-software co-designed rescue mission. This part will delve into how modern inference engines (such as vLLM and SGLang) and model architectures themselves solve the aforementioned bottlenecks. We will unfold from two core battlefields:
