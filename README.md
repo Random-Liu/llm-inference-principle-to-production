@@ -4,9 +4,8 @@
 
 This book is a systematic organization of Large Language Model (LLM) inference technology, originating from the author's study notes and reflections during paternity leave (and welcoming my second baby, Emerson! 👶🍼🧸). With daily work focused on internal clusters supporting inference and other business, the author rarely had time to follow open-source progress. Therefore, the core objectives of this book are:
 1. **Build Mental Models (End-to-End)**: Connect scattered knowledge points to help myself understand core LLM inference principles and serving frameworks end-to-end, establishing a global mindset.
-2. **Track Open-Source Progress**: Survey and follow the state and frontier progress of the open-source community.
-3. **Explore Kubernetes Evolution**: Understand open-source progress at the Kubernetes layer and how it should better adapt to LLM inference in the future.
-4. **Establish a Sustainable Framework**: Serve as a foundation for easier continuous updates in the future to stay up-to-date myself.
+2. **Track Open-Source Progress**: Follow frontier progress in the open-source community to look beyond daily work, focusing especially on Kubernetes evolution and how it can better adapt to LLM inference.
+3. **Establish a Sustainable Framework**: Serve as a foundation for easier continuous updates in the future to stay up-to-date myself.
 
 **Disclaimer and Positioning**:
 This book is not a profound mathematical derivation book, nor is it a "frontier tracking" that follows the latest daily papers. We will not get overly entangled in complex mathematical formulas and overly trivial code details. Our focus is on **revealing the essential logic behind the technology**.
