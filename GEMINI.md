@@ -23,7 +23,7 @@ This file contains instructions and conventions for AI agents working on this re
 ## Writing Style Conventions for Language Versions
 - **Chinese Files (`*.cn.md`)**: Follow the user's style. The user maintains the primary content, and AI agents should respect the existing tone and style when making edits.
   - **LaTeX Spacing**: Ensure all inline math formulas `$formula$` are separated from adjacent CJK characters or Chinese punctuation by a space (e.g., `文本 $formula$ 文本` or `公式： $formula$`) to prevent GitHub from failing to render the LaTeX.
-  - **Bolding and Quotes Spacing**: When using bolding on text enclosed in Chinese quotes (e.g., `**“内容”**`), ensure there are spaces around the bold markers if they are adjacent to CJK characters (e.g., `文本 **“内容”** 文本`) to ensure correct rendering in Markdown parsers. Avoid splitting the bolding or moving quotes outside the bold markers unless necessary.
+  - **Bolding Spacing**: When using bolding on text enclosed in Chinese quotes (e.g., `**“内容”**`) or containing text in parentheses (e.g., `**词语（Annotation）**`), ensure there are spaces around the bold markers if they are adjacent to CJK characters (e.g., `文本 **“内容”** 文本` or `文本 **词语（Annotation）** 文本`) to ensure correct rendering in Markdown parsers. Avoid splitting the bolding or moving quotes outside the bold markers unless necessary.
 - **Non-Chinese Files (`*.md`, primarily English)**: Must follow a **strictly concise and direct** style to avoid verbosity. Follow these principles:
   - **Principle**: Adopt an "idiomatic + concise" (意译+精简) strategy rather than word-for-word translation.
   - **Content Preservation**: Only simplify sentences and phrasing; never delete or alter technical content.

@@ -31,7 +31,6 @@
   - [Section 3: From Dual Models to External Heads: The Evolution of Architecture](#section-3-from-dual-models-to-external-heads-the-evolution-of-architecture)
   - [Section 4: Tree Attention and Trade-offs in Production Environments](#section-4-tree-attention-and-trade-offs-in-production-environments)
 
-
 In the second part, we dissected the physical and mathematical bottlenecks of LLM inference: **the VRAM tsunami triggered by KV Cache**, and **the core asymmetry between Prefill and Decode**. These bottlenecks directly paralyze the concurrency capability and response speed of large models in production environments.
 
 To break the deadlock, system engineers and algorithmic scientists have launched a saturated, hardware-software co-designed rescue mission. This part will delve into how modern inference engines (such as vLLM and SGLang) and model architectures themselves solve the aforementioned bottlenecks. We will unfold from two core battlefields:
@@ -48,7 +47,7 @@ Now, let's first cut into the first battlefield—slimming down VRAM from the mo
 #### Section 1: The Evolution from MHA to GQA
 
 In the early designs of Transformer, **MHA (Multi-Head Attention)** was adopted.
-*   **MHA**: If there are $H$ Query heads, there must be $H$ corresponding Key heads and $H$ Value heads. As we discussed in Section 3 of Chapter 6, the space complexity of KV Cache is $O(L \cdot N \cdot d)$. In MHA, although the hidden dimension $d$ is partitioned into $H$ heads (i.e., $d = H \times d_k$), because the number of KV heads equals the number of Query heads, the total KV Cache size is still determined by the full dimension $d$. For models with hundreds of billions of parameters, to ensure expressive power, $d$ is usually set very large (e.g., Llama 3 405B's $d = 16384$), which directly leads to an extremely massive KV Cache.
+*   **MHA**: If there are $H$ Query heads, there must be $H$ corresponding Key heads and $H$ Value heads. As we discussed in [Section 3 of Chapter 6](part2_bottlenecks.md#section-3-the-cost-the-vram-tsunami), the space complexity of KV Cache is $O(L \cdot N \cdot d)$. In MHA, although the hidden dimension $d$ is partitioned into $H$ heads (i.e., $d = H \times d_k$), because the number of KV heads equals the number of Query heads, the total KV Cache size is still determined by the full dimension $d$. For hundred-billion-parameter models, $d$ is typically very large (e.g., $16384$ for Llama 3 405B) to maintain expressiveness. Combined with a massive sequence length $N$ in long-context scenarios, this leads to an enormous KV Cache.
 
 To shrink the KV Cache, researchers proposed **MQA (Multi-Query Attention)**:
 *   **MQA**: All Query heads **share the same single group** of Key and Value heads. This directly shrinks the KV Cache size to $1/H$ of its original size! The VRAM pressure drops dramatically, but at the cost of a certain decrease in the model's expressive power.
@@ -90,7 +89,7 @@ In the Attention mechanism, $Q$, $K$, and $V$ play completely different roles:
 > [!NOTE]
 > **Analogy: Researchers in a Library**
 > Imagine a scenario: There are **128 researchers** in a library (representing 128 $Q$ heads), and each of them is researching a different topic and asking different questions.
-> *   **In ordinary MHA**: The system is extremely extravagant. To serve these 128 researchers, the library not only provides 128 researchers but also photocopies 128 identical sets of encyclopedias for everyone (128 $K$ and $V$ heads). Each researcher only looks at the set on their own desk. This obviously causes a massive waste of space.
+> *   **In ordinary MHA**: The system is extremely extravagant. To serve these 128 researchers, the library equips everyone with a dedicated set of "encyclopedias" (128 $K$ and $V$ heads). Although they all record the same facts with massive overlap, they are compiled into 128 slightly different "versions." Each researcher only reads their own set, wasting massive space.
 > *   **In GQA**: The system is optimized. There are still **128 researchers** in the library, but now only **8 sets of encyclopedias** (8 $K$ and $V$ heads) are purchased. Every 16 researchers share one set of books.
 > 
 > Although the 16 researchers ask all sorts of weird questions (different $Q$s), the **historical background and objective facts ($K$ and $V$) they want to look up are exactly the same**. One set of books is enough to answer all their questions. This is why the $Q$ heads cannot be reduced (to ensure diversity of thought), while the $K$ and $V$ heads can be reduced (shared knowledge base).
@@ -132,15 +131,15 @@ If GQA pushes the **spatial structure** to the extreme (reducing data volume), t
 
 #### Section 1: A Cost-Effective Trade of Compute for Bandwidth
 
-Readers might ask: **Isn't this just using extra computation to compress KV Cache storage?**
-
-The answer is: **Absolutely correct! But this is definitely a highly profitable trade-off during the Decode phase.**
-
-In standard inference, both K and V are stored at 16-bit precision (FP16 or BF16), with each element occupying 2 bytes. The core idea of KV Cache quantization is to compress them to 8 bits (FP8 or INT8), where each element only occupies 1 byte.
+In standard inference, K and V are stored at 16-bit precision (FP16 or BF16), occupying 2 bytes per element. The core idea of **KV Cache quantization** is to compress them to 8 bits (FP8 or INT8), reducing the size to 1 byte per element and halving the VRAM footprint.
 
 This does introduce additional computational overhead:
 1. **On Write**: When a new Token is generated during the Decode phase, its K and V vectors must first undergo Scaling and Truncation to convert from 16 bits to 8 bits before they can be stored in VRAM.
 2. **On Read**: When calculating Attention, the GPU reads these 8-bit K and V from VRAM, and must first "dequantize" them back to 16 bits (or calculate directly on hardware that supports lower precision).
+
+Seeing this, readers might ask: **Isn't this just using extra computation to compress KV Cache storage?**
+
+The answer is: **Absolutely correct! But this is a highly profitable trade-off during the Decode phase.**
 
 #### Section 2: Why Is This Cost-Effective?
 
@@ -149,7 +148,7 @@ As we discussed in depth in Chapter 8, the Decode phase is a classic **Memory-Bo
 * **Without Quantization**: The data volume is large, movement is slow, and GPU cores are starved.
 * **With Quantization**: Despite the few extra steps of computation for quantization conversion, **the volume of data that needs to be moved is cut right in half**! The pressure on VRAM bandwidth is halved, and the data feeds the GPU cores much faster.
 
-On modern GPUs like the NVIDIA H100, hardware natively supports FP8 tensor calculations, making the compute overhead of this quantization conversion almost negligible. Therefore, trading insignificant computational cost for halved VRAM usage and doubled transfer speeds has become standard in modern high-performance inference engines.
+On modern GPUs like the NVIDIA H100, hardware natively supports FP8 tensor calculations, making the compute overhead of this quantization conversion almost negligible. Therefore, trading insignificant computational cost for halved VRAM usage and doubled transfer speeds has become standard in modern high-performance inference engines. More importantly, compressing the KV Cache to 8-bit (FP8/INT8) typically results in an accuracy loss of less than 0.5%—virtually negligible in real-world applications—while doubling the concurrent user capacity.
 
 #### Section 3: INT8 vs. FP8: Strikingly Different Paradigms
 
@@ -254,7 +253,7 @@ You upload a 100,000-word manual, and then continuously ask questions against it
 In enterprise applications or Agents, a lengthy and fixed System Prompt or Few-Shot examples are usually stuffed in before every request. Without optimization, even if 1000 users access the system concurrently, the system would repeatedly calculate the exact same KV Cache 1000 times for these 1000 independent requests, causing extreme waste of compute and VRAM.
 
 **Scenario 4: Parallel Sampling and Beam Search**
-In code generation (where the model is asked to output multiple candidate solutions) or when using Beam Search, the system needs to generate multiple different continuations for the same Prompt. Without optimization, the system needs to copy and repeatedly compute the Prompt's KV Cache for each branch. But in a Radix Tree, the shared Prompt naturally becomes a parent node, and each generation branch only needs to bifurcate from that node, avoiding redundant calculations.
+In code generation (where the model is asked to output multiple candidate solutions) or when using Beam Search, the system needs to generate multiple different continuations for the same Prompt. Without optimization, the system needs to copy and repeatedly compute the Prompt's KV Cache for each branch.
 
 ---
 
@@ -278,8 +277,8 @@ Through this method, the historical records of multi-turn dialogues, public docu
 > **Deep Dive Details: How Tokens Are Indexed and Engine Differences**
 > 1. **How are tokens indexed?**: The indexing on the Radix Tree is **by no means a text comparison**. Large models have already converted text into **Token IDs** (integers) long before processing. The edges of the tree store these integer sequences. During matching, the system performs highly efficient **integer sequence comparisons**, or calculates a **Hash** on the token sequence (e.g., vLLM relies on hashes to quickly anchor Blocks).
 > 2. **Implementation differences between vLLM and SGLang**: Although both utilize radix trees for prefix caching, their granularity differs. **SGLang's** RadixAttention is at the **Token level**, making matching highly flexible (an edge can represent any length of token sequence); whereas **vLLM's** APC (Automatic Prefix Caching) inherits the DNA of PagedAttention and operates at the **Block level** (typically managing and hashing in fixed chunks of 16 tokens).
-> 3. **The Relationship between Radix Tree and Block Table**: Your understanding is very accurate. The radix tree does not replace the Block Table; they ultimately both point to the same Physical Blocks, just from different index dimensions:
->    *   **Block Table** is an index based on **`Request -> Logical Block -> Physical Block`**. It serves a single request and is flattened on the GPU side for execution.
+> 3. **The Relationship between Radix Tree and Block Table**: The radix tree does not replace the Block Table; they ultimately both point to the same Physical Blocks, just from different index dimensions:
+>    *   **Block Table**: A mapping from `Request -> Logical Block -> Physical Block` maintained by the **Block Manager on the CPU**. During inference execution, it is passed as a tensor to the **GPU** for the Attention Kernel to locate physical VRAM blocks.
 >    *   **Radix Tree** is an index based on **`Deduplicated Token Sequence Prefix -> Physical Block`**. It is global, living on the CPU side for cross-request cache sharing and LRU eviction.
 >    *   **Collaborative Workflow**: The CPU scheduler uses the radix tree to find reusable physical blocks, adds newly allocated blocks, assembles them into a Block Table for a specific request, and passes it to the GPU. The GPU's lookup logic doesn't need to change at all.
 > 
@@ -288,29 +287,31 @@ Through this method, the historical records of multi-turn dialogues, public docu
 > ```mermaid
 > graph TD
 >     subgraph CPU ["CPU Management Plane"]
->         RadixTree["Radix Tree<br>Index: Token Sequence ➔ Physical Block ID"]
+>         RadixTree["🌲 Radix Tree<br>Index: Token Sequence ➔ Physical Block ID"]
+>         BlockManager["⚙️ Block Manager<br>(Manages mapping & allocation)"]
 >     end
 > 
 >     subgraph GPU_Mem ["GPU VRAM (Data Plane)"]
->         BlockTable["Block Table (Organized by Request)<br>Index: Request ➔ Logical Block ➔ Physical Block ID"]
+>         BlockTableTensor["📋 Block Table Tensor<br>(For GPU execution lookup)"]
 >         
 >         subgraph KV_Cache ["Physical Blocks Pool"]
->             B10["Physical Block 10<br>Cache: 'System Prompt...'"]
->             B11["Physical Block 11<br>Cache: 'User Question...'"]
+>             B10["📦 Physical Block 10<br>Cache: 'System Prompt...'"]
+>             B11["📦 Physical Block 11<br>Cache: 'User Question...'"]
 >         end
 >     end
 > 
 >     RadixTree -->|Maps to| B10
 >     
->     RequestA["Request A (Prefix Hit)"] -->|1. Query Tree| RadixTree
->     RequestA -->|2. Assemble| BT_A["Block Table A: [10, 11]"]
+>     RequestA["👤 Request A (Prefix Hit)"] -->|1. Query Tree| RadixTree
+>     RadixTree -->|2. Return matched blocks| BlockManager
+>     BlockManager -->|3. Assemble| BT_A["📋 Request A's Block Table: [10, 11]"]
 >     
->     BT_A -->|3. Pass to GPU| BlockTable
+>     BT_A -->|4. Pass to GPU| BlockTableTensor
 >     
->     BlockTable -->|4. Points to| B10
->     BlockTable -->|4. Points to| B11
+>     BlockTableTensor -->|5. Points to| B10
+>     BlockTableTensor -->|5. Points to| B11
 >     
->     GPU_Kernel["GPU Attention Kernel"] -->|5. Reads| BlockTable
+>     GPU_Kernel["⚡ GPU Attention Kernel"] -->|6. Reads| BlockTableTensor
 > ```
 
 ---
@@ -328,6 +329,24 @@ Imagine a high-speed train that is always running. At every station (every model
 *   **Dynamic Entry and Exit**: The system no longer waits rigidly for a whole batch of requests to finish generating completely. In the gaps between generating each token, the scheduler checks: Which request hit the end-of-sequence token (EOS)? Kick it out of the Batch immediately (get off); Are there new requests queuing up? Stuff them into the Batch immediately (get on).
 *   **Eliminating Padding**: Under the hood, vLLM relies on advanced operators like FlashAttention to flatten the tokens of different requests into a one-dimensional continuous data stream and feed it to the GPU. By passing in the "boundary signposts" (`cu_seqlens` array) for each request, the GPU is able to physically isolate the computations of different requests, **completely eliminating Padding**.
 
+**Diagram: Matrix vs. Vector**
+
+**1. Static Batching — Padded into a 'Matrix'**
+
+| | Col 1 | Col 2 | Col 3 | Col 4 |
+| :--- | :--- | :--- | :--- | :--- |
+| **Row 1 (🔵)** | 🔵 T1 | 🔵 T2 | 🔵 T3 | ❌ PAD |
+| **Row 2 (🟢)** | 🟢 T1 | 🟢 T2 | ❌ PAD | ❌ PAD |
+| **Row 3 (🟡)** | 🟡 T1 | 🟡 T2 | 🟡 T3 | 🟡 T4 |
+
+**2. Continuous Batching — Concatenated into a 'Vector'**
+
+| | Col 1 | Col 2 | Col 3 | Col 4 | Col 5 | Col 6 | Col 7 | Col 8 | Col 9 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Row 1** | 🔵 T1 | 🔵 T2 | 🔵 T3 | 🟢 T1 | 🟢 T2 | 🟡 T1 | 🟡 T2 | 🟡 T3 | 🟡 T4 |
+
+> [!NOTE]
+> `cu_seqlens = [0, 3, 5, 9]` (Physically isolates computations via offsets)
 This iteration-level scheduling keeps the GPU compute saturated at all times, boosting **Throughput** several times over compared to static batching, while ensuring relatively stable **Time Between Tokens (TBT)** for each request, avoiding the awkward situation of short requests being blocked by long ones.
 
 #### The Underlying Workflow and Three Major Data Structures of Continuous Batching
@@ -348,7 +367,7 @@ To enable the "train that never stops" to run efficiently, and precisely identif
 
 This design of "CPU prepares the ledgers, GPU simply smashes them directly into VRAM addresses purely via Tensor Indexing" is the ultimate password to achieving high concurrency and low latency.
 
-**Introducing a Special Case: Head-of-Line Blocking and Long Prompts**
+**Special Case: Head-of-Line Blocking and Long Prompts**
 The continuous batching mechanism described above is perfect when handling Decode requests (spitting out 1 token at a time, memory-access intensive). However, when a request with a long prompt containing tens of thousands of words is suddenly jammed into the queue, if the system honestly computes all of its Prefill in a single iteration, it will occupy the GPU for a long time, forcing other old requests "on the train" that are currently decoding to "stall" and stop spitting out words. This "head-of-line blocking" awkwardness directly precipitated what we will discuss in the next section—installment-plan style **Chunked Prefill**.
 
 ---
@@ -405,7 +424,7 @@ It applies the classic computer Memory Hierarchy to KV Cache management:
 *   **Warm Data (CPU RAM)**: Connected via PCIe bus, bandwidth is an order of magnitude lower than GPU, but capacity is large and cheap. The least recently used physical blocks are **Offloaded** here.
 *   **Cold Data (NVMe SSD)**: Capacity is near infinite, but access speed is the slowest. In scenarios with extreme long context or massive historical dialogues, data can sink further down to the SSD.
 
-When the user asks another question and hits these historical caches, the system asynchronously pulls the data back from SSD/CPU memory to GPU VRAM. This granular management of "trading space for time" endows the system with near-infinite "short-term memory" capacity.
+When the user asks another question and hits these historical caches, the system asynchronously pulls the data back from SSD/CPU memory to GPU VRAM. This granular management of "trading space for time" greatly expands the system's "short-term memory" capacity.
 
 ---
 
@@ -451,6 +470,10 @@ SGLang's core idea is to completely unify **cache sharing, eviction, and preempt
 3.  **Ultimate Simplicity**:
     This design avoids explicit Swap state machines and complex cross-device memory scheduling. If VRAM is truly insufficient, the tree's LRU mechanism will naturally prune the least recently used leaf nodes, and the evicted requests will automatically fall back to Recompute upon recovery. This "govern by doing nothing" design performs exceptionally elegantly when handling complex scenarios like multi-turn dialogues and agent branching.
 
+> [!NOTE]
+> **Evolution of SGLang: From Pure Recompute to Tiered Offload**
+> It is worth noting that the above design describes the core logic of early SGLang (eviction implies discard and recompute). In the latest developments, SGLang has also introduced a hierarchical cache offloading mechanism (such as the HiCache architecture), allowing inactive nodes in the Radix Tree to be offloaded to CPU memory or SSD, thus combining the elegance of tree management with the capacity advantages of multi-tier storage. For details, refer to [LMSYS Blog: SGLang HiCache](https://www.lmsys.org/blog/2025-09-10-sglang-hicache/).
+
 ---
 
 ### Chapter 15: Trading "Idle Compute" for "Ultimate Latency": Speculative Decoding
@@ -459,7 +482,7 @@ On the battlefield of large model inference, we have solved the "land enclosure 
 
 As we described in Chapter 8, the Decode phase is like "driving a heavy truck to deliver a single screw." To generate just 1 Token, the GPU must move hundreds of GBs of model weights from VRAM to the compute cores completely once. The GPU's mighty Tensor Core compute power is "sleeping soundly" waiting for data the vast majority of the time.
 
-Since the hardware VRAM bandwidth is locked, can the large model **do a bit more work** each time it moves the weights? System engineers and algorithm scientists jointly launched a clever technology—**Speculative Decoding**. Its core idea is: **It does not try to change the physical limitation of VRAM bandwidth, but through a strategy of "trading space (increased computation) for time (reduced latency)", it fully leverages the GPU's idle compute power to increase the Arithmetic Intensity of a single memory access, thereby drastically reducing generation latency at low concurrency and significantly shrinking TBT (boosting single-user TPS). But it's important to note that under extremely high concurrency, it might compete for compute resources, paradoxically having a negative impact on the system's overall Throughput.**
+Since the hardware VRAM bandwidth is locked, can the large model **do a bit more work** each time it moves the weights? System engineers and algorithm scientists jointly launched a clever technology—**Speculative Decoding**. Its core idea is: **It does not try to change the physical limitation of VRAM bandwidth, but through a strategy of trading extra computation for reduced latency, it fully leverages the GPU's idle compute power to increase the Arithmetic Intensity of a single memory access, thereby drastically reducing generation latency at low concurrency and significantly shrinking TBT (boosting single-user TPS). But it's important to note that under extremely high concurrency, it might compete for compute resources, paradoxically having a negative impact on the system's overall Throughput.**
 
 #### Section 1: The Professor and the Assistant — The Core Logic of Speculative Decoding
 
@@ -479,9 +502,9 @@ You might keenly observe: The small model computes once, and the large model ver
 
 **Yes, the total computation definitely increases. But this is absolutely a highly profitable trade.**
 
-We calculated in Chapter 8 that the arithmetic intensity of the Decode phase is extremely low (e.g., 1.9 FLOPs/Byte), far below the hardware inflection point. The GPU's compute cores are in a state of severe starvation.
+We calculated in [Chapter 8](part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-vs-decode) that the arithmetic intensity of the Decode phase is extremely low (e.g., 1.9 FLOPs/Byte), far below the hardware inflection point. The GPU's compute cores are in a state of severe starvation.
 Although speculative decoding increases the computational load, it allows the large model to **process multiple tokens at once**. The weights the large model needs to read to verify 5 words are **exactly the same** as the weights it needs to read to generate 1 word (both are hundreds of GBs). We only moved the building (weights) once, but incidentally processed 5 jobs.
-Although this does not physically alter the limitation of VRAM bandwidth, it significantly boosts the arithmetic density of a single memory access, allowing the originally starved GPU cores to feast, "moving the needle," and trading idle compute for shorter elapsed times.
+Although this does not physically alter the limitation of VRAM bandwidth, it significantly boosts the arithmetic intensity of a single memory access, allowing the originally starved GPU cores to be more fully utilized, trading idle compute for shorter elapsed times.
 
 #### Section 3: From Dual Models to External Heads: The Evolution of Architecture
 
