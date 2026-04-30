@@ -1,40 +1,40 @@
 # Part Five: Orchestration —— Taming the Supercomputer: Leveraging Kubernetes for AI Compute
 
 ## Table of Contents
-- [Chapter 20: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles](#chapter-20-when-loose-coupling-meets-tight-coupling-the-collision-of-k8s-and-llm-lifecycles)
+- [Chapter 21: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles](#chapter-21-when-loose-coupling-meets-tight-coupling-the-collision-of-k8s-and-llm-lifecycles)
   - [Section 1: First Principles: Examining Lifecycle Contradictions under Distributed Inference](#section-1-first-principles-examining-lifecycle-contradictions-under-distributed-inference)
   - [Section 2: Workload Lifecycle: Core Contradictions Throughout](#section-2-workload-lifecycle-core-contradictions-throughout)
   - [Section 3: Cluster Lifecycle: Heterogeneous Hardware Bootstrapping and Expensive Graceful Termination](#section-3-cluster-lifecycle-heterogeneous-hardware-bootstrapping-and-expensive-graceful-termination)
-- [Chapter 21: Racing Against Time: Model Distribution and Cold Start Optimization](#chapter-21-racing-against-time-model-distribution-and-cold-start-optimization)
+- [Chapter 22: Racing Against Time: Model Distribution and Cold Start Optimization](#chapter-22-racing-against-time-model-distribution-and-cold-start-optimization)
   - [Section 1: Separation of Image and Weights: Choice of Model Formats](#section-1-separation-of-image-and-weights-choice-of-model-formats)
   - [Section 2: Mass Data Distribution: Packaging Protocols and Pod Mounting](#section-2-mass-data-distribution-packaging-protocols-and-pod-mounting)
   - [Section 3: VRAM Loading Optimization: Three Schools of Data Paths and Trade-offs](#section-3-vram-loading-optimization-three-schools-of-data-paths-and-trade-offs)
-- [Chapter 22: Tentacles Reaching into the Motherboard: DRA and Hardware Topology Aware Scheduling](#chapter-22-tentacles-reaching-into-the-motherboard-dra-and-hardware-topology-aware-scheduling)
+- [Chapter 23: Tentacles Reaching into the Motherboard: DRA and Hardware Topology Aware Scheduling](#chapter-23-tentacles-reaching-into-the-motherboard-dra-and-hardware-topology-aware-scheduling)
   - [Section 1: Topology Black Hole: Why Scalar Counting Fails in Distributed Inference](#section-1-topology-black-hole-why-scalar-counting-fails-in-distributed-inference)
   - [Section 2: Evolution: DRA (Dynamic Resource Allocation) and Resource Management Paradigm Revolution](#section-2-evolution-dra-dynamic-resource-allocation-and-resource-management-paradigm-revolution)
   - [Section 3: Single-Node Battle: Facing Hardware Locality](#section-3-single-node-battle-facing-hardware-locality)
   - [Section 4: Beyond Single Node: Cluster-Level Network Topology and Multi-Machine Synergy](#section-4-beyond-single-node-cluster-level-network-topology-and-multi-machine-synergy)
-- [Chapter 23: Breaking Silos: LeaderWorkerSet and Distributed LLM Orchestration](#chapter-23-breaking-silos-leaderworkerset-and-distributed-llm-orchestration)
+- [Chapter 24: Breaking Silos: LeaderWorkerSet and Distributed LLM Orchestration](#chapter-24-breaking-silos-leaderworkerset-and-distributed-llm-orchestration)
   - [Section 1: Limitations of Traditional Controllers: Why the Microservices Paradigm Fails](#section-1-limitations-of-traditional-controllers-why-the-microservices-paradigm-fails)
   - [Section 2: NCCL: The Fragile Lifeline of Distributed Inference](#section-2-nccl-the-fragile-lifeline-of-distributed-inference)
   - [Section 3: The Birth of LeaderWorkerSet: Primitives Tailored for AI](#section-3-the-birth-of-leaderworkerset-primitives-tailored-for-ai)
   - [Section 4: Practical Exercise: Deploying Distributed vLLM with LWS](#section-4-practical-exercise-deploying-distributed-vllm-with-lws)
-- [Chapter 24: All-or-Nothing: Gang Scheduling and Resource Deadlocks](#chapter-24-all-or-nothing-gang-scheduling-and-resource-deadlocks)
+- [Chapter 25: All-or-Nothing: Gang Scheduling and Resource Deadlocks](#chapter-25-all-or-nothing-gang-scheduling-and-resource-deadlocks)
   - [Section 1: From Loose to Tight Coupling: Limitations of Native K8s Scheduling](#section-1-from-loose-to-tight-coupling-limitations-of-native-k8s-scheduling)
   - [Section 2: Return of a Classic Strategy: How Gang Scheduling Breaks Deadlocks](#section-2-return-of-a-classic-strategy-how-gang-scheduling-breaks-deadlocks)
   - [Section 3: Gang Scheduling Implementations in Kubernetes](#section-3-gang-scheduling-implementations-in-kubernetes)
   - [Section 4: Kueue: Job Queuing and Quota Management](#section-4-kueue-job-queuing-and-quota-management)
-- [Chapter 25: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference](#chapter-25-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference)
+- [Chapter 26: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference](#chapter-26-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference)
   - [Section 1: Pod Autoscaling: Shifting from Metrics to Events](#section-1-pod-autoscaling-shifting-from-metrics-to-events)
   - [Section 2: Node Autoscaling: Just-In-Time Provisioning](#section-2-node-autoscaling-just-in-time-provisioning)
-- [Chapter 26: Operations and Upgrades: Continuity vs. Heavy Assets](#chapter-26-operations-and-upgrades-continuity-vs-heavy-assets)
+- [Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets](#chapter-27-operations-and-upgrades-continuity-vs-heavy-assets)
   - [Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference](#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference)
   - [Section 2: Seamless Upgrades: Engineering Practices](#section-2-seamless-upgrades-engineering-practices)
   - [Section 3: Upgrade Cold Starts: State Retention Challenges](#section-3-upgrade-cold-starts-state-retention-challenges)
 - [Part 5 Summary: Core Contradictions and Breakthroughs in LLM Orchestration](#part-5-summary-core-contradictions-and-breakthroughs-in-llm-orchestration)
 
 
-## Chapter 20: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles
+## Chapter 21: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles
 
 ### Section 1: First Principles: Examining Lifecycle Contradictions under Distributed Inference
 
@@ -78,7 +78,7 @@ The cluster lifecycle includes infrastructure provisioning, node bootstrapping, 
 
 ---
 
-## Chapter 21: Racing Against Time: Model Distribution and Cold Start Optimization
+## Chapter 22: Racing Against Time: Model Distribution and Cold Start Optimization
 
 Before diving into optimization details, let's use a birds-eye view diagram to understand the complete lifecycle of model weights from remote cloud storage straight to GPU VRAM, including physical boundaries and bus transfers:
 
@@ -265,7 +265,7 @@ The choice of loading solution is closely related to the "distribution and mount
 
 ---
 
-## Chapter 22: Tentacles Reaching into the Motherboard: DRA and Hardware Topology Aware Scheduling
+## Chapter 23: Tentacles Reaching into the Motherboard: DRA and Hardware Topology Aware Scheduling
 
 Traditional Kubernetes abstracts hardware as a flat "resource pool" (CPU, memory, disk). Schedulers perform simple addition and subtraction: if a node has 4 CPUs left and a Pod requests 2, it schedules it there. This works well for microservices. However, in the era of large language model (LLM) distributed inference, this disregard for underlying hardware topology kills performance.
 
@@ -400,7 +400,7 @@ graph TD
 
 ##### 4. Cluster-Level Network Topology Collision
 Distributed inference also depends on cluster networks (RDMA blocks).
-*   **Problem**: Multi-node TP/PP or **disaggregated serving** (for quantitative comparison, see [Part 4 Chapter 19 Section 3](part4_distributed.md#section-3-parallel-modes-data-volumes-and-metric-impacts)) requires frequent cross-node communication. Schedulers lacking network topology awareness might scatter Pods for the same model across racks (crossing Spine switches). Long-tail latency from multiple hops drags down the entire NCCL ring.
+*   **Problem**: Multi-node TP/PP or **disaggregated serving** (for quantitative comparison, see [Part 4 Chapter 20 Section 3](part4_distributed.md#section-3-parallel-modes-data-volumes-and-metric-impacts)) requires frequent cross-node communication. Schedulers lacking network topology awareness might scatter Pods for the same model across racks (crossing Spine switches). Long-tail latency from multiple hops drags down the entire NCCL ring.
 
 ```mermaid
     graph TD
@@ -604,7 +604,7 @@ spec:
 
 ### Section 4: Beyond Single Node: Cluster-Level Network Topology and Multi-Machine Synergy
 
-However, in most current data centers, large model inference (e.g., hybrid TP/PP) or **Disaggregated Serving** (see Part 4 [Chapter 19: Network Communication and High-Speed Interconnects in LLM Inference](part4_distributed.md)) still requires spanning multiple physical nodes. When inference tasks span nodes, single-node topology alignment is only the first step; cluster-level network topology becomes decisive.
+However, in most current data centers, large model inference (e.g., hybrid TP/PP) or **Disaggregated Serving** (see Part 4 [Chapter 20: Network Communication and High-Speed Interconnects in LLM Inference](part4_distributed.md)) still requires spanning multiple physical nodes. When inference tasks span nodes, single-node topology alignment is only the first step; cluster-level network topology becomes decisive.
 
 #### 1. Problem Restated: Random Collisions of Cluster Network Topology (Problem 4)
 As mentioned in Section 1, large-scale distributed inference relies heavily on RDMA communication. Random node assignment by K8s causes:
@@ -662,7 +662,7 @@ spec:
 
 This prevents the K8s scheduler from randomly scattering distributed inference nodes across racks, protecting high-frequency communication performance.
 
-## Chapter 23: Breaking Silos: LeaderWorkerSet and Distributed LLM Orchestration
+## Chapter 24: Breaking Silos: LeaderWorkerSet and Distributed LLM Orchestration
 
 Large-scale distributed LLM inference often requires deploying a model across multiple GPUs or nodes (e.g., Tensor Parallelism TP or Pipeline Parallelism PP). This brings entirely new challenges to traditional Kubernetes workload controllers like Deployment or StatefulSet.
 
@@ -811,7 +811,7 @@ spec:
           image: vllm/vllm-openai:v0.8.5
 ```
 
-## Chapter 24: All-or-Nothing: Gang Scheduling and Resource Deadlocks
+## Chapter 25: All-or-Nothing: Gang Scheduling and Resource Deadlocks
 
 In large-scale distributed LLM inference (TP, PP), tightly coupled tasks face a scheduling challenge: **All-or-Nothing**. If a group of Pods cannot get all required resources simultaneously, the partially scheduled Pods become "zombies" holding resources, leading to deadlocks. This chapter explores Gang Scheduling principles and implementations in cloud-native AI.
 
@@ -899,7 +899,7 @@ In multi-tenant shared large AI clusters, traditional K8s resource management fa
 * **Large-Scale Distributed Job Management**: Managing global queues for bulk jobs to prevent massive Pods from flooding the scheduler and causing system overload (Thrashing/Churn).
 * **Heterogeneous Resource Topology Management**: Working with compute topologies (defined by ClusterQueue) to manage quotas for different types of acceleration hardware more gracefully.
 
-## Chapter 25: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference
+## Chapter 26: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference
 
 Large-scale distributed LLM inference traffic is highly bursty. To guarantee low latency while controlling expensive compute costs, autoscaling is indispensable.
 
@@ -999,7 +999,7 @@ Reserving resources (Capacity Buffer) is effective for both latency and atomicit
 
 In practice, engineering teams combine these: **buffers handle sudden bursts (ensuring core experience), accelerated startup shortens buffer replenishment time, and dynamic elasticity handles long-tail traffic.**
 
-## Chapter 26: Operations and Upgrades: Continuity vs. Heavy Assets
+## Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets
 
 In large-scale distributed LLM inference clusters, cluster upgrades and maintenance (e.g., OS patches, driver updates, K8s version upgrades) face unique challenges compared to traditional microservices. Abrupt evictions and restarts cause severe service disruptions and waste expensive compute resources.
 
