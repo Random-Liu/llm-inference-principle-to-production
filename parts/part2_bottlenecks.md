@@ -179,12 +179,20 @@ Models absorb **$N$ input tokens** in one shot.
 This anchors around **Arithmetic Intensity** (FLOPs computed per Byte fetched).
 $$\text{Intensity} = \frac{\text{Linear Compute} + \text{Attention Compute}}{\text{Model Weight Size} + \text{KV Cache Writes}}$$
 
-Evaluating Llama 3 405B at $N = 100,000$:
-*   **Total Compute**: $\approx 1.64 \times 10^{17}$ FLOPs.
-*   **VRAM Traffic**: 810 GB (Weights) + 51.6 GB (KV Cache) $\approx 861.6$ GB.
-*   **Final Intensity**: $1.64 \times 10^{17} / 861.6 \times 10^9 \approx \mathbf{190,000 \text{ FLOPs/Byte}}$.
+Evaluating Llama 3 405B at $N = 100,000$ (100,000 context):
+1. **Total Compute**:
+   *   **Linear Layer**: $2 \times N \times P = 2 \times 10^5 \times 405 \times 10^9 = 8.1 \times 10^{16}$ FLOPs.
+   *   **Attention**: $4 \times L \times N^2 \times d = 4 \times 126 \times (10^5)^2 \times 16384 \approx 8.26 \times 10^{16}$ FLOPs.
+   *   **Summation**: Approx. **$1.64 \times 10^{17}$ FLOPs** (Attention compute is now on par with linear layers).
+2. **Total VRAM Traffic**:
+   *   **Reading Weights**: **$810$ GB** (405B model weights in FP16).
+   *   **Writing KV Cache**: Approx. **$51.6$ GB**.
+   *   **Summation**: Approx. **$861.6$ GB**.
 
-A modern H100 GPU’s inflection threshold sits at roughly 300 FLOPs/Byte. Exceeding this threshold means GPUs are **Compute-Bound**. The thousands of ALU cores run at peak frequencies, and raw theoretical算力 (TFLOPS) dictates processing speed rather than HBM bandwidth.
+The resulting **Total Intensity** is:
+$$\frac{1.64 \times 10^{17} \text{ FLOPs}}{861.6 \times 10^9 \text{ Bytes}} \approx \mathbf{190,000} \text{ FLOPs/Byte}$$
+
+A modern H100 GPU’s inflection threshold sits at roughly 300 FLOPs/Byte. Exceeding this threshold means GPUs are **Compute-Bound**. The thousands of ALU cores run at peak frequencies, and raw theoretical compute power (TFLOPS) dictates processing speed rather than HBM bandwidth.
 
 ---
 
@@ -201,10 +209,18 @@ Models ingest merely **1 newly generated Token**.
 **2. Why Is It Memory-Bound?**
 To generate a **single token**, GPUs execute an absurd action: **they must drag monolithic model weights (hundreds of GBs) plus all accumulated KV Caches from VRAM to the SRAM cores!** Compute volumes are minuscule, leaving cores idle while HBM bandwidth is maxed out.
 
-Evaluating Llama 3 405B at $N = 100,000$:
-*   **Total Compute**: $\approx 1.635 \times 10^{12}$ FLOPs.
-*   **VRAM Traffic**: 810 GB (Weights) + 51.6 GB (Cache) $\approx 861.6$ GB.
-*   **Intensity**: $\approx \mathbf{1.9 \text{ FLOPs/Byte}}$.
+Evaluating Llama 3 405B at $N = 100,000$ (with 100,000 currently accumulated context):
+1. **Single-Step Compute**:
+   *   **Linear Layer**: $2 \times 1 \times P = 8.1 \times 10^{11}$ FLOPs.
+   *   **Attention**: $4 \times L \times 1 \times N \times d = 4 \times 126 \times 1 \times 10^5 \times 16384 \approx 8.25 \times 10^{11}$ FLOPs.
+   *   **Summation**: Approx. **$1.635 \times 10^{12}$ FLOPs**.
+2. **Single-Step VRAM Traffic**:
+   *   **Reading Weights**: **$810$ GB** (Full model weights must be read entirely for every round of generation!).
+   *   **Reading KV Cache**: Since attention must attend to all past 100,000 tokens, we fetch their KV Caches from VRAM, totaling approx. **$51.6$ GB**.
+   *   **Summation**: Approx. **$861.6$ GB**.
+
+The resulting **Single-Step Intensity** is:
+$$\frac{1.635 \times 10^{12} \text{ FLOPs}}{861.6 \times 10^9 \text{ Bytes}} \approx \mathbf{1.9} \text{ FLOPs/Byte}$$
 
 Arithmetic intensity (1.9) falls vastly below hardware inflection points (~300). VRAM bandwidth—how fast data feeds cores—dictates TBT latencies, rather than raw TFLOPS capabilities.
 
