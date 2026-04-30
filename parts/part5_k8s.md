@@ -1,4 +1,4 @@
-# Part Five: Orchestration —— Taming the Supercomputer: Leveraging Kubernetes for AI Compute
+# Part 5: Orchestration —— Taming the Supercomputer: Leveraging Kubernetes for AI Compute
 
 ## Table of Contents
 - [Chapter 21: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles](#chapter-21-when-loose-coupling-meets-tight-coupling-the-collision-of-k8s-and-llm-lifecycles)

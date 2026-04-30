@@ -1,4 +1,4 @@
-# Part Four: Distributed Chapter — The Concerto Across Single Nodes: Parallel Strategies and High-Speed Interconnects
+# Part 4: Distributed Chapter — The Concerto Across Single Nodes: Parallel Strategies and High-Speed Interconnects
 
 ## Table of Contents
 - [Chapter 16: Slicing the Giant: Tensor, Pipeline, and Context Parallelism](#chapter-16-slicing-the-giant-tensor-pipeline-and-context-parallelism)

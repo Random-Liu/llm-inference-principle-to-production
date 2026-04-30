@@ -1,4 +1,4 @@
-# Part Three: Single Node — High-Performance Engines Squeezing Every Inch of VRAM
+# Part 3: Single Node — High-Performance Engines Squeezing Every Inch of VRAM
 
 ## Table of Contents
 - [Chapter 9: Architecture Optimization: GQA](#chapter-9-architecture-optimization-gqa)

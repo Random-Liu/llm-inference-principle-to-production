@@ -1,4 +1,4 @@
-# Part One: Principles — The Foundational Engine of Transformers and LLMs
+# Part 1: Principles — The Foundational Engine of Transformers and LLMs
 
 ## Table of Contents
 - [Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V](#chapter-1-demystifying-the-transformer-the-magic-of-q-k-and-v)
