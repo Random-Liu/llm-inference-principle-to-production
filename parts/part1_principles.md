@@ -20,13 +20,17 @@
   - [Section 1: Prefill Phase: Handling Input Context](#section-1-prefill-phase-handling-input-context)
   - [Section 2: Decode Phase: The Autoregressive Loop](#section-2-decode-phase-the-autoregressive-loop)
 
+This part zooms into cluster-level architecture and explores how top technology companies serve billions of requests.
+
+---
+
 ## Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V
 
-In Large Language Models (LLMs), all magic stems from the **Transformer** architecture, and its core is the **Self-Attention mechanism**. This chapter breaks down the three most famous letters in self-attention: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the soul of the model's ability to understand context.
+In Large Language Models (LLMs), all magic stems from the **Transformer** architecture, and its core is the **Self-Attention mechanism**. This chapter breaks down the three most famous letters in self-attention: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the soul of the model's ability to understand context and capture complex relationships between words.
+
+---
 
 ### Section 1: A Bird's-Eye View: Classic Transformer Architecture
-
-Before diving into QKV, let's grasp the macro workflow of the classic **Encoder-Decoder** Transformer architecture (the original design).
 
 ```mermaid
 graph BT
@@ -51,22 +55,26 @@ graph BT
     Head --> Prob[Predict Next Token]
 ```
 
-We can compare this to **simultaneous interpretation**:
+Before diving into the micro world of QKV, let's grasp the macro workflow of the classic **Encoder-Decoder** Transformer architecture (the original design design).
 
-1.  **Left Side: Encoder — "Listening and Comprehending"**
-    *   **Input**: For example, "The cat is black".
-    *   **Workflow**: Data enters at the bottom and flows up through layers.
-    *   **Core Mechanism**: Each layer uses unmasked **Self-Attention**. Unlike GPT's Masked Self-Attention which only looks backward, the Encoder allows all words to attend to each other. This bidirectional view captures full context. This suits translation perfectly because the source sentence is known and complete; the model extracts semantics rather than predicting the next word.
-    *   **Output**: Hidden state vectors rich in context, representing full comprehension of the sentence.
+We can compare this process to **Simultaneous Interpretation**:
 
-2.  **Right Side: Decoder — "Translating and Expressing"**
-    *   **Input**: The Encoder's context vectors and **previously generated words**.
-    *   **Workflow**:
-        *   **Masked Self-Attention**: The decoder's core mechanism. It restricts the model to look only at preceding words when predicting the next, preventing it from "peeking" at the future. This maintains causality: during inference, future words do not exist yet; during training, peeking would prevent the model from learning true predictive capabilities.
-        *   **Multi-Head Cross-Attention**: The Decoder uses its current Query to search for matching Keys and Values in the Encoder's output.
-    *   **Output**: Softmax converts outputs to probabilities for the next word (e.g., "est" based on the previously translated "Le chat").
+1.  **Left Side: Encoder — "Listen, Understand, and Take Notes"**
+    *   **Input**: For example, the English sentence "The cat is black".
+    *   **Process**: Data enters from the bottom and passes through multiple layers.
+    *   **Core Mechanism**: Every layer contains a "Self-Attention mechanism". **Please note that self-attention here is "Unmasked"**. This is different from the Masked Self-Attention in models like GPT, which can only look at the preceding context. In the Encoder, all words in the sentence can **observe each other**, understanding the context without any blind spots. This is completely logical in translation tasks because the source sentence is **known and complete**. We don't need to predict it; we only need to fully extract its semantics and maximize context information.
+    *   **Output**: The top outputs are **hidden state vectors** rich in contextual information. They represent that the Encoder has completely "understood" the sentence.
 
-**Summary**: The Encoder understands the input (bidirectional), while the Decoder generates output (unidirectional).
+2.  **Right Side: Decoder — "Translate and Express"**
+    *   **Input**: It receives two pieces of information: first, the "secret secret report understood" passed from the Encoder; second, **the words it translated at previous moments**.
+    *   **Process**:
+        *   **Masked Self-Attention**: This is the core mechanism of the Decoder. When predicting the next word, it can only observe the words already spoken before it, not "peek" into future words. **Why?** Because during inference, future words have not been generated yet; and during training, if peeking into future words is allowed, the model will cheat by looking up the answers, failing to acquire real prediction ability.
+        *   **Multi-Head Cross-Attention**: **This is the most critical step!** The Decoder uses its current intent (Query) to search the secret report from the Encoder for matching clues (Key and Value).
+    *   **Output**: Passes through Softmax to predict the probability of the next word (e.g., "est") based on the previously translated "Le chat".
+
+**Summary**: The Encoder is responsible for "understanding the input" (bi-directional observation), and the Decoder is responsible for "generating the output based on understanding" (uni-directional generation).
+
+---
 
 ### Section 2: Evolution: Decoder-Only Architecture
 
@@ -82,71 +90,75 @@ graph BT
     Head --> Prob[Predict Next Token]
 ```
 
-Modern LLMs (like GPT, Llama, and DeepSeek) evolved from the dual-tower Encoder-Decoder to a minimalist **Decoder-Only** architecture, discarding the Encoder.
+Following the classic Transformer, large language models underwent a major architectural evolution. Today's prominent large models such as GPT, Llama, and DeepSeek did not adopt the native Encoder-Decoder dual-tower architecture, but shifted towards the extremely simplified **Decoder-Only** architecture — they discarded the left side Encoder and kept only the right side Decoder.
 
-Why abandon the Encoder if it excels at understanding?
+Seeing this, readers might naturally ask: **Since the Encoder is so skilled at understanding, why did modern models discard it, leaving everyone with a "single tower" Decoder-Only architecture?**
 
-This reflects an elegant paradigm shift:
-1.  **Translation vs. Continuation**: Transformers originally served translation, where input and output are separate (e.g., English and Chinese), requiring an Encoder to understand and a Decoder to translate.
-2.  **The Solitaire Paradigm**: Modern LLMs treat all tasks (Q&A, coding, reasoning) as text continuation: predict the next word given the preceding text.
-3.  **Unified Decoder**: Since everything is continuous text, we directly concatenate the prompt and response into the Decoder, eliminating the need for isolated towers.
+This involves a profound paradigm transition:
+1.  **Transformers were originally designed for "Translation"**: In translation tasks, "input" and "output" are inherently segregated entities (e.g., English and Chinese). Therefore, the Encoder first understands the English, and the Decoder translates it into Chinese.
+2.  **Modern LLMs play "Text Continuation"**: Scientists discovered that all natural language tasks (Q&A, code generation, reasoning, and translation) can be unified into a continuation game of **"giving the previous text, predicting the next word"**.
+3.  **The Decoder Handles Everything**: Since it is simply a continuous stream of text, we no longer need two physically segregated towers. We splice the Prompt and Response together and feed them entirely to the Decoder.
 
-The Decoder-Only architecture simplifies the design:
-1.  **No Encoder**: Removes the independent encoder tower.
-2.  **No Cross-Attention**: Eliminates inter-tower interaction.
-3.  **Unified Input**: Concatenates Prompt and Response into a single sequence.
-4.  **Core Mechanism**: Composed entirely of stacked **Masked Self-Attention** and **Feed-Forward Network (FFN)** blocks.
+The Decoder-Only architecture is immensely simplified compared to the classic design:
+1.  **Encoder Eliminated**: There is no independent Encoder tower.
+2.  **Cross-Attention Eliminated**: Since there is no Encoder, cross-tower interactive attentions are no longer needed.
+3.  **Unified Input**: Prompt and Response are spliced into a continuous sequence and fed uniformly from the bottom.
+4.  **Core Mechanism**: The entire model consists of stacked **Masked Self-Attention** blocks and **Feed-Forward Networks (FFN)** blocks.
 
-How it works:
-*   **Prefill Phase**: The model processes the Prompt all at once. Although using Masked Self-Attention, the known Prompt allows parallel computation of word relationships (like an Encoder).
-*   **Decode Phase**: The model generates words one by one. Each new word appends to the sequence to predict the next. Masked Self-Attention ensures the query only attends to preceding tokens, maintaining causality.
+Under this architecture, how does the model operate?
+*   **Prefill Phase**: Your input Prompt is processed in one go. Although it uses Masked Self-Attention, because the prompt text is known, the model can compute relationships between prompt tokens in parallel (similar to how an Encoder works).
+*   **Decode Phase**: The model generates the response word by word. As each new word is generated, it is added to the end of the input sequence to predict the next word. At this point, Masked Self-Attention ensures the generation can only look back at preceding prompts and words, securing causal relationships.
 
-This "great truth is simple" design makes training more efficient and provides the foundation for inference optimizations like **KV Cache**.
+This simplistic design not only optimizes pre-training on massive data but also provides the unified physical foundation for production serving optimizations like **KV Cache**.
+
+---
 
 ### Section 3: The Library Analogy: Intuitive Meaning of QKV
 
-Let's use a library analogy to understand Q, K, and V before diving into math.
+Before delving into complex mathematical formulas, let's use a highly intuitive scenario to understand the logical meaning of Q, K, and V.
 
-Imagine walking into a library to find "noise-canceling Bluetooth headphones". Here is how Q, K, and V operate:
+Imagine walking into a giant **Science Library** searching for material on "noise-canceling Bluetooth headphones". In this scene, Q, K, and V play distinct roles:
 
-1.  **Q (Query)**: Your search term ("noise-canceling Bluetooth headphones"). It represents what you want to find.
-2.  **K (Key)**: The book's index or tags (e.g., title, author, abstract).
-    *   Book A Key: "Wired Gaming Headset Review".
-    *   Book B Key: "Teardown of Sony Noise-Canceling Bluetooth Headphones".
-3.  **V (Value)**: The actual content inside the book. If you read Book B, the text you absorb about acoustic principles is the Value.
+1.  **Q (Query)**: Represents **your current intent**. The search words you enter in the computer: "noise-canceling Bluetooth headphones". This represents what information characteristics you are currently seeking.
+2.  **K (Key)**: Represents the **indices or tags of book content**. Every book has a name, author, abstract, and classification tag. For instance:
+    *   Book A's Key is: "Wired Gaming Headphones Review".
+    *   Book B's Key is: "Sony Noise-Canceling Bluetooth Headphones Teardown and Chip Analysis".
+3.  **V (Value)**: Represents the **actual knowledge within the books**. If you ultimately decide to read Book B, the detailed words you absorb about chipsets and acoustics are the Value.
 
-**Self-Attention** matches your **Query** against all **Keys** to calculate relevance scores, then uses these scores to weight how much you read from each book's **Value**.
+**The overall logical flow of the Self-Attention mechanism** involves taking your **Query**, matching it against the **Keys** of all books to calculate a relevance score, and then allocating your reading attention to the **Values** of each book based on those scores.
 
-Mapping back to large models, let's use the word "apple":
+Mapping this back to LLMs, let’s use "Apple" as a concrete example:
 
 Suppose we have two sentences:
-*   Sentence A: "At today's **new product launch**, **Apple** introduced..."
-*   Sentence B: "At the **supermarket**, the box of **apples** I bought is very..."
+*   Sentence A: "At today’s **new product launch**, **Apple** introduced..."
+*   Sentence B: "The box of **apples** I bought at the **supermarket** was very..."
 
-When the model processes the word "apple":
-1.  **It generates its own Query (Q)**: Representing its "search intention".
+When the model processes the word "Apple":
+1.  **It generates its own Query (Q)**: Representing its "searching intent".
     > [!NOTE]
-    > This Query is a high-dimensional vector containing hundreds of abstract search dimensions learned during training. We use anthropomorphic language like "searching for 'technology' or 'fruit' clues" for intuition.
-2.  **Match with Keys of preceding words**: The Query of "Apple" matches with Keys of words before it.
-    *   In **Sentence A**, "Apple" matches strongly with "new product launch".
-    *   In **Sentence B**, "apples" matches strongly with "supermarket".
-3.  **Extract Value based on weights**:
-    *   In **Sentence A**, the high match with "new product launch" pulls the semantics of "Apple" toward the tech company.
-    *   In **Sentence B**, the high match with "supermarket" pulls the semantics toward fruit.
+    > In reality, this Query is a complex high-dimensional vector housing hundreds of abstract search dimensions formed during pre-training. We use humanized wording like "I am 'apple', I need 'tech' or 'fruit' clues" simply to facilitate human understanding.
+2.  **It matches its Query against the Keys (K) of all preceding words**:
+    *   In **Sentence A**, the **Q** of "Apple" scores a high match against the **K** of "**new product launch**" (since launches tie strongly to tech companies).
+    *   In **Sentence B**, the **Q** of "apples" matches strongly with the **K** of "**supermarket**" (since supermarkets tie to food and fruit).
+3.  **Extracts Values (V) based on weights**:
+    *   In **Sentence A**, the model assigns heavy weights to the **V** of "new product launch", causing the final vector for "Apple" to skew toward **"Apple Inc."**.
+    *   In **Sentence B**, the model assigns heavy weights to the **V** of "supermarket", skewing the final vector for "apples" toward **"fruit"**.
 
-Through this dynamic matching, the same word can be given completely different, precise meanings under different contexts.
+Through dynamic matching, identical words secure precise definitions across differing contexts.
 
 ---
 
 ### Section 4: Mathematical Principles: Matrix Computation of QKV
 
-Let's see how matrices dynamically calculate Q, K, and V.
+With the logical meaning understood, let’s examine how LLMs dynamically compute Q, K, and V through matrix multiplication.
 
-#### 0. Word Vector (Embedding)
-Computers need numbers. The model converts "apple" via a learned Embedding table into a high-dimensional vector $X$ (e.g., 4096 dimensions), representing its initial coordinates in semantic space.
+#### 0. What is Word Embedding?
+Before calculating, text must be transformed into computer-friendly numbers. Suppose the input is the word "Apple". The model first looks up a dictionary (Embedding table) and translates "Apple" into a continuous vector $X$ of say 4096 dimensions. This string of numbers represents the initial semantic coordinates of "Apple" in a multi-dimensional space.
 
-#### 1. Linear Projection
-The model multiplies the input vector $X$ by three learned weight matrices ($W_Q$, $W_K$, $W_V$) to generate Q, K, and V:
+#### 1. Linear Mapping (From Embeddings to Q, K, and V)
+Suppose we hold the word vector $X$. In Transformer models, there are three core **weight matrices** learned through pre-training: $W_Q$, $W_K$, and $W_V$.
+
+Input word vectors multiply against these three matrices to dynamically generate corresponding Q, K, and V vectors:
 
 $$Q = X W_Q$$
 $$K = X W_K$$
@@ -154,140 +166,112 @@ $$V = X W_V$$
 
 > [!NOTE]
 > **Static Weights vs. Dynamic Data**
-> $W_Q, W_K, W_V$ are **static model weights** fixed in VRAM. Q, K, and V are **dynamically generated data**, calculated on the fly for each specific input. This enables the same word to yield different semantics in different contexts.
+> A critical boundary exists: $W_Q, W_K, W_V$ are **static model weights** fixed in VRAM after training, acting as shared "processing rules" for all Tokens. Q, K, and V are **dynamically generated data**, computed in real-time by multiplying the input vector $X$ against the static weight matrices. This is the reason why a single word secures different semantic meanings across various contexts.
 
-#### 2. Calculating Similarity and Attention Weights
-To determine how much attention the current word (Query) gives to preceding words (Keys), the model computes the dot product of the current word's Q and preceding words' K:
+#### 2. Computing Similarities and Attention Weights
+To determine the attention the current word (Query) allocates to preceding words (Keys), the model computes the **dot product** of the current word's Q and preceding words' K. A higher dot product represents closer semantic proximity.
 
 $$\text{Score} = Q \cdot K^T$$
 
-To prevent gradient vanishing from large scores, the model divides by $\sqrt{d_k}$ (vector dimension). Softmax then converts these scaled scores into probabilities totaling 1:
+To prevent numerical explosions and vanishing gradients, the model divides the score by a scaling factor $\sqrt{d_k}$ ($d_k$ represents the vector's dimension). Subsequently, a **Softmax** function maps these scores into a probability distribution where all weights add up to 1:
 
 $$\text{Attention Weights} = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)$$
 
 #### 3. Extracting Information (Weighted Sum)
-Finally, the model sums the **Values** of all words weighted by the attention weights, capturing the context:
+Lastly, the model uses the computed attention weights to perform a weighted sum against the **Values** of all words, completing context retrieval:
 
 $$\text{Output} = \sum (\text{Attention Weights} \times V)$$
-
-> [!NOTE]
-> **Dynamic Generation**: While a word (e.g., "apple") always starts with the same lookup vector $X$, attending to different contexts yields completely different output vectors. This is the power of self-attention.
 
 ---
 
 ### Section 5: Feed-Forward Network: Knowledge Base
 
-After the self-attention mechanism completes the information exchange between words, the vector enters the **Feed-Forward Network (FFN)**. If the attention mechanism is responsible for "finding relationships between words", then the FFN is responsible for each word's "closed-door thinking".
+After self-attention completes word-to-word information exchanges, vectors enter the **Feed-Forward Network (FFN)**. While Attention focuses on "finding relationships," FFN handles the "internal reflection" of individual words.
 
-#### 1. The FFN Workflow
+#### 1. The Classic FFN Workflow
+Vectors $H$ entering the FFN are not raw attention outputs. They are a **Residual Connection** summing the **Attention output** and the **original input vector $X$**.
 
-The input vector $H$ to the FFN is the sum of the Attention output and the original input vector $X$ (Residual Connection).
+This $H$ vector holds a blend of "who I am" (original meaning) and "what I've gone through" (global context). The FFN processes it in three stages:
 
-$H$ blends "who I am" (original meaning) with "what I experienced" (context). The FFN processes it in three steps:
+1.  **Up-Projection**: The input vector $H$ multiplies against a weight matrix $W_1$. In most models, this expands dimensions from 4096 up to 16384, opening a wider space for complex feature extraction.
+2.  **Activation**: The up-projected vector passes through a non-linear activation function $\sigma$ (e.g., ReLU, GeLU, or SwiGLU). This introduces non-linear expressivity while filtering and selecting information.
+3.  **Down-Projection**: The activated vector multiplies against $W_2$, scaling dimensions from 16384 back to 4096 so it can sum residually with the initial input.
 
-1.  **Up-Projection**: Multiplying $H$ by weight matrix $W_1$ expands dimensions (e.g., 4096 to 16384), unfolding information for feature extraction.
-2.  **Non-linear Activation**: The expanded vector passes through a non-linear function $\sigma$ (like SwiGLU), filtering and selecting information.
-3.  **Down-Projection**: Multiplying by $W_2$ compresses the vector back to original dimensions (e.g., 4096) for residual addition.
+#### 2. Soft KV Memory: The Symmetry of FFN and Attention
+While Attention relies on Q, K, and V, FFN only holds $W_1$ and $W_2$. A famous 2020 paper demonstrated profound mathematical symmetry: **FFN is essentially a Key-Value memory retrieval system!**
 
-#### 2. FFN as a "Soft KV Memory Base"
+Let’s contrast formulas:
+*   **Attention Formula**: $\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V$
+*   **FFN Formula**: $\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2$
 
-With only two matrices ($W_1$ and $W_2$), FFN seems to lack the QKV structure of Attention. However, a famous 2020 paper showed that **the FFN operates as a Key-Value memory retrieval system**.
+Under this view, FFN computation perfectly mirrors the Q, K, V logic:
 
-Compare the core formulas:
-*   **Attention**: $\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V$
-*   **FFN**: $\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2$
+1.  **The input vector $H$ is the Query (Q)!** It queries the FFN: "Here is my current status. Are there complementary facts in the memory?"
+2.  **The Up-projection matrix $W_1$ acts as the Keys (K)**. We slice $W_1$ column-wise into 16384 vectors. Each represents a specific "pattern" learned by the model. Computing $H \cdot W_1$ yields the similarity between Query $H$ and knowledge Keys $W_1$.
+3.  **The Down-projection matrix $W_2$ acts as the Values (V)**. We slice $W_2$ row-wise. Each represents specific knowledge tied to a pattern.
 
-Here, the FFN calculation maps to Q, K, and V logic:
+When $H$ enters the FFN, knowledge retrieval proceeds:
+If processing **Sentence B** ("apples at the supermarket"):
+1.  **Pattern Match**: $H$ (fused as "fruit apple") computes against $W_1$. It matches strongly with "fruit/food" patterns.
+2.  **Activation Filter**: $\sigma$ zeroes out unrelated scores (like "tech companies").
+3.  **Knowledge Fetch**: Retrieves "crisp, juicy" from $W_2$, blending them into the final output.
 
-1.  **Input vector $H$ acts as the Query**: It asks, "Given my current state, what supplementary information exists in the knowledge base?"
-2.  **Up-Projection Matrix $W_1$ acts as the Keys**: Slicing $W_1$ by columns yields vectors representing specific "patterns" (e.g., "fruit in a supermarket context"). $H \cdot W_1$ calculates similarity between the Query and these Keys.
-3.  **Down-Projection Matrix $W_2$ acts as the Values**: Slicing $W_2$ by rows yields vectors representing concrete knowledge (e.g., "crisp, juicy").
+Conversely, processing **Sentence A** ("Apple new product launch"):
+1.  **Pattern Match**: $H$ matches strongly with "tech, digital, company" patterns.
+2.  **Activation Filter**: Filters out the "fruit" pattern.
+3.  **Knowledge Fetch**: Retrieves "iPhone, high tech" from $W_2$.
 
-Processing the "apple" example:
-
-For **Sentence B** ("At the **supermarket**, the box of **apples** I bought is very..."):
-1.  **Pattern Matching**: The input vector $H$ (already fused into "fruit apple" by Attention) yields a high matching score with the "fruit, food" pattern in $W_1$.
-2.  **Activation Filtering**: Function $\sigma$ zeroes out scores for unrelated patterns (like "tech company"), retaining only the "fruit" pattern.
-3.  **Knowledge Extraction**: The model weights the Values in $W_2$ by these scores, extracting knowledge like "crisp, juicy".
-
-For **Sentence A** ("At today's new product launch, Apple introduced..."):
-1.  **Pattern Matching**: The input vector $H$ ("tech company Apple") scores high with "technology, company" patterns in $W_1$.
-2.  **Activation Filtering**: The function filters out the "fruit" pattern.
-3.  **Knowledge Extraction**: The model extracts knowledge like "iPhone, high-tech" from $W_2$.
-
-#### 3. Fusion and the Complete Life of a Token
-The knowledge retrieved by the FFN will not directly replace the original vector, but is fused together through a **Residual Connection (addition)**:
+#### 3. Residual Integration
+FFN knowledge sums residually with the original vector:
 $$x_{new} = H + FFN(H)$$
-
-This is like a **"scratchpad"** carried by the Token:
-*   $H$ (written on the scratchpad): I am an "apple", and I am in the context of "eating".
-*   $FFN(H)$ (knowledge base supplement): Attributes are "crisp, juicy".
-*   **Addition**: Staple the supplementary material to the next page of the scratchpad. The Token now understands both context and knowledge.
-
-**Summary**: A Token's journey in one layer of the Transformer is: **first go to the Attention meeting (understand context)**, **then go to the FFN library (understand knowledge)**, and finally walk to the next layer with enriched memory!
+Tokens carry a **"notepad"**:
+*   $H$ states: I am an "apple" situated in an "eating" context.
+*   $FFN(H)$ adds: Physical traits include "crisp and juicy".
+*   **Summation**: The token understands both the context and the facts, advancing memory down the layers.
 
 ---
 
 ### Section 6: Multi-Head Attention: Parallel Perspectives
 
-Single-head attention blends all semantic relationships into one vector, risking loss of focus. Industrial models use dozens of heads (sets of matrices) per layer, called **Multi-Head Attention (MHA)**.
+Early simplifications assumed a single set of $W_Q, W_K, W_V$. Forcing complex semantics into a single vector risks oversight. Modern LLMs stack dozens of these matrices in every layer—known as **Multi-Head Attention (MHA)**.
 
 **Why multiple heads?**
-Language is complex; a word plays multiple roles simultaneously.
-*   **Grammar Head**: Finds subject-verb-object relationships.
-*   **Emotion Head**: Captures emotional adjectives.
-*   **Coreference Head**: Resolves pronouns (like "he" or "it").
+Human language holds multi-faceted roles:
+*   **Head 1 (Grammar)**: Identifies subject-verb-object relations.
+*   **Head 2 (Emotion)**: Catches emotionally charged adjectives.
+*   **Head 3 (Reference)**: Identifies what pronouns like "it" or "him" point to.
 
-MHA observes sentences from dozens of perspectives in parallel. It concatenates parallel outputs.
-
-> [!IMPORTANT]
-> **The Fourth Matrix: $W_O$**
-> Besides replicating $W_Q$, $W_K$, and $W_V$ for multiple heads, MHA introduces a fourth matrix: the **Output Projection Matrix $W_O$**. It integrates the concatenated outputs and fuses information across heads back to the original dimension.
-
-**Llama 3 405B MHA Workflow**:
-1.  **Input**: Sentence matrix of shape `[N, 16384]` ($N$ words, 16384 dimensions).
-2.  **Projection**: Matrices $W_Q, W_K, W_V$ (size `[16384, 16384]`) generate $Q, K, V$ of shape `[N, 16384]`.
-3.  **Split**: Slices the 16384 dimensions into 128 heads, each dimension 128. Shape becomes `[N, 128, 128]`.
-4.  **Scores**: Each head computes scores independently ($Q \times K^T$), resulting in `[N, N]`.
-5.  **Combine**: Multiplies scores by $V$, yielding output `[N, 128]` per head.
-6.  **Concatenate**: Joins the 128 head outputs to restore `[N, 16384]`.
-7.  **Output Projection**: Matrix $W_O$ (`[16384, 16384]`) fuses results into the final output `[N, 16384]`.
+**The Fourth Matrix: $W_O$**
+MHA doesn't just duplicate $W_Q$, $W_K$, and $W_V$. To compress fragmented outputs back into the original dimensions, models introduce an **Output Projection Matrix $W_O$**.
 
 ---
 
 ### Section 7: Mixture of Experts: Sparse Activation
 
-MoE upgrades the FFN by creating multiple replicas.
+MoE is the **multi-replica upgrade of FFN**.
 
 #### 1. Dense Model Pain Points
-Traditional **Dense** models use one FFN per layer. All tokens pass through it, whether discussing quantum mechanics or cooking. Memorizing more knowledge requires a massive FFN, surging compute costs (FLOPs).
+In traditional **Dense** models, each layer holds a single FFN. Whether talking about quantum physics or cooking recipes, all tokens pass through the same FFN. Scaling knowledge requires scaling the FFN, driving up compute costs (FLOPs) and inference latency.
 
-#### 2. The MoE Solution: Division of Labor
-MoE splits the massive FFN into multiple smaller FFNs, called **Experts** (e.g., 8 or 16).
-
-Components:
-*   **Router (Gating Network)**: Calculates match scores between the token (Query) and each expert.
-*   **Experts**: Standard FFNs specializing in specific domains (e.g., code, literature) during training.
+#### 2. MoE Solution: Division of Labor
+MoE shards a monolithic FFN into multiple smaller FFNs—each called an **Expert**.
+*   **Router**: When tokens enter, the Router measures their relevance against experts.
+*   **Experts**: Every expert is a standard FFN trained to specialize in particular domains.
 
 #### 3. Sparse Activation
-When a token enters:
-1.  **Router Scoring**: Identifies the topic (e.g., quantum mechanics).
-2.  **Sparse Activation**: Activates only the Top-K relevant experts (e.g., Expert 3 and 5), leaving others idle.
-3.  **Fusion**: Fuses results from active experts based on weights.
+1.  **Router Calculation**: Routes tokens discussing quantum physics.
+2.  **Sparse Activation**: Activates Top-K relevant experts (e.g., Experts 3 and 5) and leaves others idle.
+3.  **Fusion**: Only activated experts process the tokens; outputs fuse according to weighted relevance.
 
-**Summary**: MoE enables a massive total parameter count (broad knowledge) with a small active parameter count per forward pass (cheap compute). This is the secret to DeepSeek's efficiency.
-
-Note that MoE only reduces **compute cost** by activating fewer experts. It does not save **VRAM**; all expert weights must remain in memory to handle any topic instantly. Loading these massive parameters still demands extreme VRAM capacity. We will discuss these VRAM challenges in detail in the Inference part.
+MoE delivers **"high total parameters (massive knowledge) but low activated parameters (economical compute)"**. All experts must reside in VRAM, demanding strict memory capacities.
 
 ---
 
 ## Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow
 
-We have explored the core parts: self-attention and FFN. Now, let's see how they assemble into a large model "skyscraper" and how data flows through it.
+Components must be assembled into a "skyscraper" to orchestrate logical data flow.
 
-**Complete Model Architecture Diagram**
-
-This diagram shows the complete journey of a token in a Decoder-Only model, from entry to prediction:
+**The End-to-End Architecture:**
 
 ```mermaid
 graph LR
@@ -315,39 +299,24 @@ graph LR
     end
 ```
 
+---
+
 ### Section 1: Input Stage: Embeddings and Positional Encoding
 
-Before entering the layers, data undergoes processing in the "lobby" to become model-readable and acquire critical context.
-
-1.  **Word Embedding**: Converts tokens into high-dimensional vectors (e.g., 4096 dimensions) via table lookup, establishing initial semantic coordinates.
-2.  **Positional Encoding**:
-    Self-attention is **time-blind**; it computes vector similarity without sequence order. Without help, "I eat the apple" and "the apple eats me" look identical. We must inject position information.
-    *   **Rotary Position Embedding (RoPE)**: Modern models (like Llama and Qwen) use RoPE. Instead of adding position values early, it **twists** the Q and K vectors by an angle in multi-dimensional space when computing the dot product.
-    *   Closer words have smaller angle differences, yielding larger dot products. This elegantly encodes relative position into the attention calculation.
+Data is translated and injected with structural information at the threshold foyer.
+1.  **Word Embedding**: Words map into high-dimensional coordinates.
+2.  **Positional Encoding**: Attention is natively order-blind. SOTA open-source models apply **RoPE (Rotary Position Embedding)**, geometric matrices that "twist" Q and K vectors during attention calculations based on their positions. Close proximity words undergo tight twists and output higher scores.
 
 ---
 
 ### Section 2: Wisdom of Stacking: Hierarchical Feature Extraction
 
-After embedding, the word vector begins climbing the Transformer skyscraper. Modern LLMs stack dozens or hundreds of **Transformer Blocks** (e.g., Llama-3 70B has 80 layers).
+LLMs stack dozens or hundreds of **Transformer Blocks** (e.g., 80 layers in Llama 3 70B).
+*   **Low Layers**: Track syntax and local relationships.
+*   **Middle Layers**: Extract commonsense facts from FFN memory repositories.
+*   **High Layers**: Handle abstract concepts and logical reasoning.
 
-**Why so many layers?**
-
-This stacking enables **Hierarchical Feature Extraction**:
-
-1.  **Single Layer Limits**: A single layer only recognizes superficial associations (e.g., "apple" and "supermarket"). It cannot perform deep reasoning.
-2.  **Multi-Layer Emergence**:
-    *   **Bottom Layers**: Extract grammar and local relationships (e.g., identifying subjects and modifiers).
-    *   **Middle Layers**: Capture entity relationships and common sense. The FFN consults its "soft memory base" to add background knowledge.
-    *   **Top Layers**: Handle abstract concepts and logical reasoning, distilling the sentence into an abstract intent to answer the prompt.
-
-This layer-by-layer progression from concrete to abstract is key to LLM "intelligence".
-
-Information flows diagonally upwards across layers, not horizontally within a layer. When processing the Prompt, all words advance side by side, climbing layers simultaneously.
-
-In Layer 1, when the 4th word attends to the 3rd, it sees the 3rd word's initial state at Layer 1 entry, not a state already fused with words 1 and 2. Parallel computation prevents waiting.
-
-The output state of the 3rd word from Layer 1 (carrying info from words 1 and 2) serves as its input to Layer 2. When the 4th word attends to it in Layer 2, it matches with its Key and reads its Value, indirectly accessing information from words 1 and 2. This design enables massive GPU parallelism while achieving deep semantic fusion.
+**Slanted Information Flow**: Tokens traverse layers concurrently. Rather than moving horizontally, information flows **slantwise upwards** across layers, allowing deep semantic integrations while utilizing parallel GPU compute.
 
 ```mermaid
 graph LR
@@ -373,130 +342,66 @@ graph LR
         L2_T2 -->|Attention| L2_T3
     end
 
-    L1_T1 -->|Inter-layer Passing| L2_T1
-    L1_T2 -->|Inter-layer Passing| L2_T2
-    L1_T3 -->|Inter-layer Passing| L2_T3
+    L1_T1 -->|Inter-layer Transfer| L2_T1
+    L1_T2 -->|Inter-layer Transfer| L2_T2
+    L1_T3 -->|Inter-layer Transfer| L2_T3
 ```
 
 ---
 
 ### Section 3: The Translator: LM Head
 
-At the top floor, each token emits a final hidden state vector ($h_{last}$), containing complex semantics distilled from all layers.
-
-Since humans read words, not vectors, the model uses a "translator": the **LM Head**. This massive linear projection matrix (shape: `[vector dimension, vocabulary size]`) maps the vector back to the vocabulary.
-
-Multiplying $h_{last}$ by the LM Head yields **raw scores (Logits)** for every word in the vocabulary.
+Tokens exiting the skyscraper hold complex semantic meanings. The **LM Head** acts as the translator—a matrix mapping vectors onto a massive vocabulary space (e.g., 50,000 to 150,000 tokens), outputting raw **Logits**.
 
 > [!NOTE]
-> **Why no LM Head in middle layers?**
-> Mapping high-dimensional vectors back to words in middle layers would destroy the complex abstract logic and cause information loss. The model must process information fully before outputting.
-
-> [!NOTE]
-> **Engineering Easter Egg: Weight Tying**
-> Classic models (like GPT-2, Llama 2) share the same physical matrix for Embedding and LM Head to save VRAM. Some newer, larger models decouple them for better expressive power.
+> Intermediate layers do not translate text to preserve high-dimensional abstract representations. Older models shared a physical matrix for both Embedding and LM Head (**Weight Tying**), whereas newer SOTA models isolate them.
 
 ---
 
 ### Section 4: Logits and Softmax: Probabilistic Normalization
 
-Logits are irregular real numbers (e.g., "apple": 12.5, "phone": 8.2). To select a word, the system converts these scores into a probability distribution using **Softmax**.
-
-Softmax exponentiates and normalizes logits across the vocabulary, ensuring:
-1.  All probabilities fall between 0 and 1.
-2.  Probabilities sum to 1.
-
-The result is a distribution like `{"apple": 0.7, "phone": 0.2, "run": 0.001}`.
+LM Head outputs raw integer scores (Logits). A **Softmax** function indexes and normalizes them into absolute probability distributions between 0 and 1.
 
 ---
 
 ### Section 5: Parameter Breakdown: What Makes Up 8B/70B Models
 
-What do 8B or 70B parameters refer to?
-
-**Parameters are the sum of all numbers in the model's learnable weight matrices**, representing the knowledge "solidified" during training.
-
-Let's break down the 405 billion parameters of **Llama 3 405B**:
-
-**Core configuration**:
-*   Vocabulary Size: $128,256$
-*   Hidden Dimension ($d$): $16384$
-*   Number of Layers: $126$
-*   FFN Intermediate Dimension: $53248$
-*   GQA: 128 Query Heads, 8 KV Heads
-
-**The Bill**:
-1.  **Embedding Layer**: `Vocabulary Size * Hidden Dimension` = $128,256 \times 16384 \approx 2.10$ billion. (128.2k words $\times$ 16384 dimensions).
-2.  **Transformer Layers** ($126$ layers):
-    *   **Attention**: $W_Q, W_K, W_V, W_O$ total $\approx 5.7$ billion per layer.
-    *   **FFN**: Gate, Up, Down matrices total $\approx 26.17$ billion per layer.
-    *   **Total per layer**: $\approx 31.87$ billion.
-    *   **Total for 126 layers**: $126 \times 31.87 \approx 401.6$ billion.
-    *   **Note**: **FFN occupies about 82% of the parameter count** in Transformer layers. Most "hard knowledge" lives here.
-3.  **Output Layer (LM Head)**: `Hidden Dimension * Vocabulary Size` = $16384 \times 128,256 \approx 2.10$ billion. Maps vectors back to vocabulary scores.
-
-**Total**: $2.1\text{B} + 401.6\text{B} + 2.1\text{B} \approx 405.8$ billion parameters.
-
-Downloading a 405B model means downloading 405 billion floating-point numbers (about 810GB in FP16). Input prompts trigger matrix multiplications with these numbers to generate responses.
+Parameters constitute learned floating numbers across all weight matrices. Let’s break down **Llama 3 405B**:
+*   **Word Embeddings**: $128,256 \times 16384 \approx \mathbf{2.1 \text{ Billion}}$
+*   **Transformer Blocks**: Attention matrices plus massive FFN matrices ($16384 \times 53248$) sum to 3.18B parameters per layer. Totaling $126 \times 3.18B \approx \mathbf{401.6 \text{ Billion}}$. FFN alone captures ~82%.
+*   **LM Head**: $\approx \mathbf{2.1 \text{ Billion}}$
+*   **Total Account**: $\approx \mathbf{405.8 \text{ Billion Parameters}}$
 
 ---
 
 ### Section 6: Data Flow: End-to-End Pipeline
 
-Let's trace a token's journey from entry to output:
-
-1.  **Input Stage**: Table lookup converts all prompt tokens into word vectors simultaneously, forming initial input $X_0$.
-    > [!NOTE]
-    > Models with absolute position encoding (like BERT) add position info here. RoPE models do not add it here.
-2.  **Layer-by-Layer Shuttle**:
-    *   $X_0$ enters Layer 1 Attention. RoPE injects position rotation here.
-    *   Words exchange info, then add to the original vector (Residual Connection) to prevent feature loss.
-    *   The result enters Layer 1 FFN to consult knowledge.
-    *   Another residual connection yields Layer 1 output, $X_1$.
-    *   $X_1$ ascends to Layer 2 and repeats the process up to the final layer, yielding hidden state $h_{last}$.
-3.  **Output Stage**:
-    *   After normalization (Norm), $h_{last}$ enters the **LM Head**.
-    *   The LM Head projects it back to vocabulary scores (Logits).
-    *   **Softmax** converts logits to a probability distribution.
-
-This completes a **single forward pass**, predicting the next word.
+1.  **Input Phase**: Prompts map onto word embeddings.
+2.  **Stack Transit Phase**: Vectors pass through Masked Attention and FFN layers, summing residually across 80 layers to form $h_{last}$.
+3.  **Output Phase**: $h_{last}$ passes through RMSNorm, gets translated by the LM Head, and normalizes into token probabilities via Softmax.
 
 ---
 
 ## Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation
 
-In Chapter 2, we understood the static structure of the skyscraper. Now, we are going to make this building truly operate. When a user's request (input) arrives, how does the model process it step by step and ultimately "speak" the answer out?
+---
 
 ### Section 1: Prefill Phase: Handling Input Context
 
-Suppose the user asks: "What is artificial intelligence?"
-
-1.  **Tokenization**: Splits text into tokens (e.g., "What", "is", "artificial", "intelligence", "?").
-2.  **Simultaneous Input**: Feeds all token vectors into the model at once.
-3.  **Parallel Computation**: Since the Prompt is complete and known, the model computes word relationships in parallel. This step understands context to prepare for generation.
-    > [!TIP]
-    > **Prefill Parallelism**: 1) Parallel generation of Q, K, V for all tokens. 2) Parallel computation of attention weights and weighted fusion. GPUs execute both as efficient matrix multiplications.
-4.  **First Word Probability**: Generates a probability distribution for the first generated word.
+Prompt: "What is AI?"
+1.  **Tokenization**: Text gets chopped into Tokens.
+2.  **One-Shot Feed**: Full vectors enter the model concurrently.
+3.  **Parallel Compute**: GPUs compute all relationships simultaneously, mapping full context comprehension.
+4.  **Initial Probabilities**: Outputs next-token probability distributions.
 
 ---
 
 ### Section 2: Decode Phase: The Autoregressive Loop
 
-Based on the probability distribution from Prefill, the model selects the next word (e.g., "AI").
+Model outputs "AI".
+1.  **Continuation**: The new token appends onto the Prompt, entering as a brand-new longer sequence.
+2.  **Looping**: Sequence processes through all layers, predicting the next token.
 
-1.  **Output the Word**: The model outputs "AI".
-2.  **The Loop**:
-    *   The model appends "AI" to the input sequence: "What is artificial intelligence? AI".
-    *   This extended sequence feeds back into the model.
-    *   The model predicts the next word (e.g., "is").
-    *   The loop continues.
-
-This is **Autoregression**: the previous output becomes the next input.
-
-While this ensures coherence, it demands heavy computation: generating a 1000-word story requires running the model 1000 times.
-
-In Part One, we explored the Transformer's core mechanics: self-attention, FFNs, and data flow. We saw how the model predicts the next word. However, this "solitaire" game demands massive compute and VRAM for long texts and heavy traffic.
-
-What bottlenecks LLM inference speed? How does VRAM usage grow? In **Part Two**, we will confront these physical and mathematical limits.
+This **Autoregressive** loop implies that to generate a 1,000-word text, the model must traverse the entire skyscraper 1,000 times.
 
 ---

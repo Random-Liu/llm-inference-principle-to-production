@@ -1,236 +1,230 @@
-# Part 2: Bottlenecks — Why LLM Inference is Hard
+# Part 2: Bottlenecks — Why LLM Inference is So Difficult
 
 ## Table of Contents
-- [Chapter 4: Performance Metrics: Measuring Inference Speed](#chapter-4-performance-metrics-measuring-inference-speed)
-- [Chapter 5: Naive Inference: How Unoptimized Systems Work](#chapter-5-naive-inference-how-unoptimized-systems-work)
-  - [Section 1: The Unoptimized Process](#section-1-the-unoptimized-process)
-  - [Section 2: Complexity Analysis: The Computational Explosion](#section-2-complexity-analysis-the-computational-explosion)
-  - [Section 3: The Solution: Caching Past Computations](#section-3-the-solution-caching-past-computations)
-- [Chapter 6: KV Cache: Solving the Compute Bottleneck](#chapter-6-kv-cache-solving-the-compute-bottleneck)
-  - [Section 1: The Principle: Caching K and V](#section-1-the-principle-caching-k-and-v)
-  - [Section 2: The Scope: Why Only K and V?](#section-2-the-scope-why-only-k-and-v)
-  - [Section 3: The Cost: The VRAM Tsunami](#section-3-the-cost-the-vram-tsunami)
-- [Chapter 7: Batching: Maximizing GPU Utilization](#chapter-7-batching-maximizing-gpu-utilization)
-  - [Section 1: The Bottleneck: Memory Bandwidth](#section-1-the-bottleneck-memory-bandwidth)
-  - [Section 2: The Solution: Batched Matrix Multiplication (BMM)](#section-2-the-solution-batched-matrix-multiplication-bmm)
-  - [Section 3: The Flaw: Static Batching and Padding](#section-3-the-flaw-static-batching-and-padding)
+- [Chapter 4: Core Metrics: Measuring the "Ruler" of Large Model Inference](#chapter-4-core-metrics-measuring-the-ruler-of-large-model-inference)
+- [Chapter 5: Starting from Scratch: How Naive LLM Inference Operates](#chapter-5-starting-from-scratch-how-naive-llm-inference-operates)
+  - [Section 1: The Unoptimized Inference Workflow](#section-1-the-unoptimized-inference-workflow)
+  - [Section 2: Bottleneck Anatomy: Explosion of Computational Complexity](#section-2-bottleneck-anatomy-explosion-of-computational-complexity)
+  - [Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?](#section-3-eliciting-optimizations-can-we-remember-past-calculations)
+- [Chapter 6: The Rule-Breaker: KV Cache and the Resulting "Memory Tsunami"](#chapter-6-the-rule-breaker-kv-cache-and-the-resulting-memory-tsunami)
+  - [Section 1: Trading Space for Time: Caching K and V](#section-1-trading-space-for-time-caching-k-and-v)
+  - [Section 2: Why Only K and V?](#section-2-why-only-k-and-v)
+  - [Section 3: The Memory Tsunami: A Multi-Terabyte Math Problem](#section-3-the-memory-tsunami-a-multi-terabyte-math-problem)
+- [Chapter 7: Maximizing GPU Utilization: The Evolution of Batching](#chapter-7-maximizing-gpu-utilization-the-evolution-of-batching)
+  - [Section 1: Compute-Bound vs. Memory-Bound](#section-1-compute-bound-vs-memory-bound)
+  - [Section 2: Batched Matrix Multiplication (BMM)](#section-2-batched-matrix-multiplication-bmm)
+  - [Section 3: The Padding Problem: Flaws in Static Batching](#section-3-the-padding-problem-flaws-in-static-batching)
 - [Chapter 8: Core Asymmetry: Prefill vs. Decode](#chapter-8-core-asymmetry-prefill-vs-decode)
-  - [Section 1: Prefill Phase: The Compute-Bound Phase](#section-1-prefill-phase-the-compute-bound-phase)
-  - [Section 2: Decode Phase: The Memory-Bound Phase](#section-2-decode-phase-the-memory-bound-phase)
-  - [Section 3: The Asymmetry: Data Perspective Comparison](#section-3-the-asymmetry-data-perspective-comparison)
+  - [Section 1: Prefill Phase — The "Blitzkrieg" Consuming Compute (Compute-Bound)](#section-1-prefill-phase--the-blitzkrieg-consuming-compute-compute-bound)
+  - [Section 2: Decode Phase — The "War of Attrition" Crushing Bandwidth (Memory-Bound)](#section-2-decode-phase--the-war-of-attrition-crushing-bandwidth-memory-bound)
+  - [Section 3: Asymmetry from a Data Perspective](#section-3-asymmetry-from-a-data-perspective)
 
-This part explains the physical and mathematical limits engineers face when putting LLMs into production.
-
-
-## Chapter 4: Performance Metrics: Measuring Inference Speed
-
-Traditional web "response time" cannot evaluate autoregressive LLMs that generate text token by token. We need specific metrics:
-
-*   **TTFT (Time to First Token)**: Time from request submission to the first generated token. It corresponds to the **Prefill Phase** and determines perceived responsiveness.
-*   **TBT (Time Between Tokens)**: Time between two consecutive tokens. It corresponds to the **Decode Phase** and determines streaming fluency.
-*   **TPS (Tokens Per Second)**: Number of tokens generated per second ($TPS = 1 / TBT$).
-*   **Latency**: Total time for the request. Formula: $Latency = TTFT + (\text{Tokens} - 1) \times TBT$.
-*   **Throughput**: Total tokens or requests processed per second. This determines concurrency and Total Cost of Ownership (TCO).
+This part explains the physical and mathematical "brick walls" engineers hit when pushing LLMs into production.
 
 ---
 
-## Chapter 5: Naive Inference: How Unoptimized Systems Work
+## Chapter 4: Core Metrics: Measuring the "Ruler" of Large Model Inference
 
-To understand optimization, we must look at how basic inference works and why it fails at scale.
+Before discussing large model inference optimizations, we must establish evaluation criteria. The step-by-step autoregressive trait means we cannot gauge performance merely by using "Response Time" of traditional Web services. This chapter outlines core performance metrics.
 
-### Section 1: The Unoptimized Process
+*   **TTFT (Time to First Token)**: The latency from when a user dispatches a request to when the model outputs the **first word**. It corresponds to the **Prefill phase**, determining whether the system is responsive.
+*   **TBT (Time Between Tokens)**: Generation latency between two adjacent Tokens. It corresponds to the **Decode phase**, dictating streaming output fluency.
+*   **TPS (Tokens Per Second)**: Measures how many Tokens the model emits per second. It is the inverse of TBT ($TPS = 1 / TBT$).
+*   **Latency**: Total time taken to conclude the full request. Computed as $\text{Latency} = \text{TTFT} + (\text{GeneratedTokens} - 1) \times \text{TBT}$.
+*   **Throughput**: Total number of tokens or requests processed by the server per second. It stands as the core indicator for gauging concurrency and Total Cost of Ownership (TCO).
 
-Assume the prompt is "Large models are". Generating the first three words without optimization works as follows:
+---
 
-1.  **Generate Word 1**:
+## Chapter 5: Starting from Scratch: How Naive LLM Inference Operates
+
+Before introducing advanced optimizations, we must examine how "early ancestors" performed LLM inference to appreciate the severity of inference bottlenecks.
+
+---
+
+### Section 1: The Unoptimized Inference Workflow
+
+Suppose the model generates text following the prompt "Large models are". The unoptimized generation flow proceeds as follows:
+
+1.  **Generating Token 1**:
     *   **Input**: ["Large", "models", "are"]
-    *   **Process**: The prompt passes through all 80 Transformer layers.
-    *   **Output**: "the". The sequence becomes ["Large", "models", "are", "the"].
-2.  **Generate Word 2**:
+    *   **Processing**: The entire sentence passes through 80 Transformer layers.
+    *   **Output**: Predicts the next word is "the". We get ["Large", "models", "are", "the"].
+2.  **Generating Token 2**:
     *   **Input**: ["Large", "models", "are", "the"]
-    *   **Process**: The system feeds all 4 words back into the first layer and processes them through all 80 layers again.
-    *   **Output**: "future". The sequence becomes ["Large", "models", "are", "the", "future"].
-3.  **Generate Word 3**:
+    *   **Processing**: **The 4 words are fed back from layer 1**, traversing the full 80 layers again!
+    *   **Output**: Predicts the next word is "future". We get ["Large", "models", "are", "the", "future"].
+3.  **Generating Token 3**:
     *   **Input**: ["Large", "models", "are", "the", "future"]
-    *   **Process**: The system feeds all 5 words back into the first layer and processes them through all 80 layers again.
-    *   **Output**: ".".
-
-### Section 2: Complexity Analysis: The Computational Explosion
-
-This method is **Naive Inference**. Let $N$ be the current sequence length, $d$ the hidden dimension, and $L$ the number of layers. A single step to generate the next word has the following characteristics:
-
-1.  **Compute Complexity**: $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$ per step.
-    *   **Linear Layers**: $O(N \cdot d^2)$ per layer. The system computes matrix multiplications (QKV projections, FFN mappings) for all $N$ words.
-    *   **Attention**: $O(N^2 \cdot d)$ per layer. Each word's Query computes a dot product with the Keys of all preceding words, creating an $N \times N$ matrix.
-
-2.  **Storage Complexity**: $O(L \cdot d^2) + O(N \cdot d + N^2)$ per step.
-    *   **Static Weights**: $O(L \cdot d^2)$. Model parameters reside permanently in VRAM.
-    *   **Dynamic Activations**: $O(N \cdot d + N^2)$. Temporary memory for the current step, released immediately after.
-
-3.  **Parallelization**:
-    *   **Prefill Phase**: Highly parallelizable because the prompt is complete. It fully utilizes GPU compute cores.
-    *   **Decode Phase**: Strictly serial due to autoregression. The current token depends on the previous one. Naive inference recalculates historical words in parallel during each serial step, wasting massive compute power.
-
-**Case Study: Llama 3 (405B) on NVIDIA H100**
-
-Let's estimate the cost of generating one token in Naive mode:
-*   **Model**: $d = 16384$, $L = 126$.
-*   **Scenario**: Prompt length $N = 1000$.
-*   **Computation**: Linear layers require approx. $2 \times L \times (11 \times N \times d^2) \approx 744$ TFLOPs. (Coefficient 11 accounts for attention and FFN layers; factor of 2 counts multiply-add as 2 operations).
-*   **Latency**: An H100 GPU delivers ~1000 TFLOPS (FP16). At 100% utilization, computing this **single token** takes $744 / 1000 \approx 0.74$ seconds.
-
-Generation slows down as context grows due to the $N^2$ Attention complexity. At $N = 1,000,000$, generating the next token would take approx. **2.5 hours**. This is unusable in production.
-
-### Section 3: The Solution: Caching Past Computations
-
-Naive inference cannot support long text or high concurrency. To fix this, engineers cache past computation results and only compute the new token. This technology is **KV Cache**.
+    *   **Processing**: **Fed back yet again from layer 1**, traversing 80 layers.
+    *   **Output**: Predicts the next word is ".".
 
 ---
 
-## Chapter 6: KV Cache: Solving the Compute Bottleneck
+### Section 2: Bottleneck Anatomy: Explosion of Computational Complexity
 
-KV Cache breaks the $O(N^2)$ loop by trading space for time.
+This sequential workflow is academically recognized as **Naive Inference**. Assuming sequence length is $N$, model hidden dimension is $d$, and layer count is $L$, a **single round** of Naive computation yields these dimensions:
 
-### Section 1: The Principle: Caching K and V
+1.  **Compute Complexity**: Single-round temporal complexity is $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$
+    *   **Linear Layer Compute**: $O(N \cdot d^2)$ per layer across $L$ layers. QKV projections and FFN mappings demand full matrix multiplications.
+    *   **Attention Compute**: $O(N^2 \cdot d)$ across $L$ layers. Every word Query computes dot products against preceding Key vectors, generating $N \times N$ matrix multiplications.
+2.  **Storage Complexity**: Space complexity is $O(L \cdot d^2) + O(N \cdot d + N^2)$
+    *   **Static Weights**: $O(L \cdot d^2)$. Parameters matrices must reside in HBM perpetually, independent of context length.
+    *   **Dynamic Activations**: $O(N \cdot d + N^2)$. Memory allocated temporarily for calculations and released instantly upon round completions.
+3.  **Parallelization Capabilities**:
+    *   **Prefill Phase**: Complete Prompt availability allows **highly parallelized** compute, saturating GPU multi-core compute capacities.
+    *   **Decode Phase**: Autoregressively sequential, making steps **strictly serial**. Furthermore, Naive Inference re-computes preceding words in parallel during every serial round, causing extensive compute waste.
 
-Recall the Attention formula: $\text{Attention}(Q, K, V) = \text{softmax}(\frac{Q K^T}{\sqrt{d_k}})V$.
+**Real-World Projection: Llama 3 (405B)**
+Examining the SOTA **Llama 3 (405B)** ($d = 16384$, $L = 126$):
+*   **Scenario**: Length $N = 1000$ words (processing a 1000-word prompt).
+*   **Single-Round Compute**: Reaching $2 \times L \times (11 \times N \times d^2) \approx \mathbf{744 \text{ Trillion Floating-point Operations (TFLOPs)}}$.
+*   **Estimated Time**: Leveraging an **NVIDIA H100** yielding 1 PFLOPS (FP16 theoretical peak), generating **1 single word** takes approximately $744 \div 1000 \approx \mathbf{0.74 \text{ Seconds}}$.
+*   Naively processed, the model emits only 1 to 2 words per second, slowing further as contexts lengthen. Quadratic Attention scaling implies that for generating the 1,000,001st token, **generating a single word would consume approximately 2.5 hours**, making production serving wholly unviable.
 
-Key observations:
-*   The **Query (Q)** of a new token represents current intent and must be computed fresh.
-*   The **Key (K)** and **Value (V)** of past tokens **never change**.
+---
 
-Instead of recomputing, the system stores K and V in VRAM after the first step. For subsequent tokens, the GPU only computes Q, K, and V for the *single* new token, appends them to the cache, and performs attention with all cached K and V. This drops compute complexity from $O(N^2)$ to $O(N)$.
+### Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?
 
-### Section 2: The Scope: Why Only K and V?
+Naive inference effectively kills large model serving. It fails to handle long text sequences or tolerate concurrent workloads.
 
-Why not cache Q? Because Q represents the "search intent" for the current step.
-*   To predict token 4, we use token 4's Q to query tokens 1-3.
-*   To predict token 5, we use token 5's Q to query tokens 1-4.
-Token 4's Q becomes obsolete after step 4. We only cache K and V because they carry the persistent features of the tokens.
+Engineers wondered: Can we cache the calculated results of preceding words and exclusively compute newly appended tokens? This intuition gave birth to the foundational cornerstone of LLM serving—**KV Cache**.
 
-### Section 3: The Cost: The VRAM Tsunami
+---
 
-Let's compare Naive mode and KV Cache mode when generating the $N$-th token:
+## Chapter 6: The Rule-Breaker: KV Cache and the Resulting "Memory Tsunami"
 
-| Metric | Naive Mode | KV Cache Mode |
+To break the $O(N^2)$ computational deadlock, KV Cache trades space for time, rewriting large model serving rules.
+
+---
+
+### Section 1: Trading Space for Time: Caching K and V
+
+Returning to the Attention formula: $\text{Attention}(Q, K, V) = \text{softmax}(\frac{Q K^T}{\sqrt{d_k}})V$.
+Engineers observed:
+*   When generating new tokens, **Queries (Q)** are dynamic intents that must be generated by the newly arrived token.
+*   However, **Keys (K)** and **Values (V)** of preceding words **never change** once generated.
+*   Caching these "fixed assets" in VRAM means GPUs only need to compute Q, K, and V for **one new Token**. Newly generated K and V vectors append onto existing caches, bounding attention compute to $O(N)$ rather than $O(N^2)$.
+
+---
+
+### Section 2: Why Only K and V?
+
+Why don't we cache Q? Because Query vectors represent "active intents" used up in individual steps. Predicting word 4 requires word 4's Q to search preceding words. Word 4's Q becomes useless during word 5's prediction. **Q is discarded, and only characteristic K and V vectors are cached.**
+
+---
+
+### Section 3: The Memory Tsunami: A Multi-Terabyte Math Problem
+
+We compare **Naive** vs. **KV Cache** complexities against generating the $N\text{-th}$ Token ($L$ layers, $d$ dimension):
+
+| Dimension | Naive Inference | KV Cache Mode |
 | :--- | :--- | :--- |
-| **Compute Complexity** | $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$ | $O(L \cdot (d^2 + N \cdot d))$ |
-| **Storage Complexity** | $O(L \cdot d^2)$ (Weights only) | $O(L \cdot d^2 + L \cdot N \cdot d)$ (Weights + Cache) |
+| **Compute Complexity** | `O(L * (N * d^2 + N^2 * d))` | `O(L * (d^2 + N * d))` |
+| **Storage Complexity** | `O(L * d^2)` (Weights Only) | `O(L * d^2 + L * N * d)` (Weights + Cache) |
 
-**Key Differences**:
-1. **Compute Reduction**: KV Cache reduces linear layer computation from $O(N)$ to $O(1)$ per token, and attention from $O(N^2)$ to $O(N)$.
-2. **VRAM Growth**: VRAM usage now grows linearly with sequence length $N$ ($O(L \cdot N \cdot d)$).
-3. **Activations**: The table ignores dynamic activations because they are released immediately and do not accumulate.
+**Core Divergence:**
+1.  **Compute Dominance**: KV Cache cuts linear layer computations from $O(N)$ to $O(1)$, and attention computations from $O(N^2)$ to $O(N)$.
+2.  **VRAM Space Penalty**: Compute drops at the cost of VRAM footprints scaling linearly against context length $N$ ($O(L \cdot N \cdot d)$).
+3.  **Dynamic Activations**: Transient activation memory releases instantly upon forward passes and is omitted in long-term static analyses.
 
-Thus, while saving compute, KV Cache triggers a **VRAM Tsunami**. Deep layers and large dimensions require storing K and V for every token, on every layer, for every user.
+**Calculating the Tsunami via Llama 3 405B** ($L = 126, d = 16384$, unoptimized MHA, 1 Million Tokens):
+*   **Footprint per Token**: K and V vectors across 126 layers consume `64 KB * 126 = 8064 KB (~8 MB)` in FP16 formats.
+*   **Total Footprint**: `8064 KB * 1,000,000 \approx \mathbf{8.26 \text{ TB}}$`! A single request consumes over **8 Terabytes of VRAM**.
 
-**The Math of Llama 3 (405B)**:
-*   **Layers**: $126$, **Dimension**: $16384$.
-*   **Per-Token Size**: $16384 \times 2 \text{ bytes (FP16)} \times 2 \text{ (K and V)} = 64\text{ KB}$ per layer. Total = $64\text{ KB} \times 126 = 8064\text{ KB} \approx 8\text{ MB}$ per token.
-*   **At 1M tokens**: $8\text{ MB} \times 1,000,000 \approx 8.26\text{ TB}$ for a **single request**.
-
-This shifts LLM inference from being **compute-bound** to **memory-bound**. Technologies like GQA, PagedAttention, and RadixAttention attempt to solve this storage crisis.
+KV Cache shifts LLMs from "Compute-Bound" (stalling on raw arithmetic) to "Memory-Bound" (stalling on VRAM capacities). We resolve this monster using **GQA**, **PagedAttention**, and **RadixAttention**.
 
 ---
 
-## Chapter 7: Batching: Maximizing GPU Utilization
+## Chapter 7: Maximizing GPU Utilization: The Evolution of Batching
 
-### Section 1: The Bottleneck: Memory Bandwidth
+Having resolved single-user compute via KV Cache, engineers faced concurrent workload demands.
 
-For LLM inference, memory bandwidth is often the primary bottleneck, not compute power.
+---
 
-Model weights and KV Cache reside in VRAM, while computations occur in Streaming Multiprocessors (SMs).
-*   **Single-User Case**: To generate *one* token, the GPU moves hundreds of gigabytes of weights and the entire accumulated KV Cache from VRAM to SMs. After computing that token, it discards the data. The next step repeats this massive data transfer.
-*   This massive data movement saturates memory bandwidth. Compute cores spend most of their time idling, waiting for data.
+### Section 1: Compute-Bound vs. Memory-Bound
 
-### Section 2: The Solution: Batched Matrix Multiplication (BMM)
+Production LLMs are frequently starved of **Memory Bandwidth** rather than raw compute. Model parameters and KV Caches sit in VRAM, while compute takes place inside SMC cores.
+*   **Single User Inference**: For every generated token, GPUs must read monolithic model weights and all accumulated KV Caches from VRAM to the cores. The core spends most of its time **idle, waiting for data transfers**.
 
-Batching solves this by processing multiple user requests together. By stacking $N$ user inputs into a 3D tensor, the GPU loads the weight matrix once to compute for all $N$ users, multiplying throughput.
+---
+
+### Section 2: Batched Matrix Multiplication (BMM)
+
+To prevent core idling, we deploy **Batching**. We stack $N$ user inputs into a 3D tensor. GPUs fetch model weight matrices once and apply them to all $N$ user requests simultaneously, scaling up throughput.
 
 > [!NOTE]
-> While users share model weights, their KV Caches are private. The GPU must load each user's KV Cache separately, so KV Cache data movement scales linearly with batch size.
+> While users share a single copy of model weights, their KV Caches remain strictly isolated. GPUs must drag $N$ discrete KV Caches from VRAM to cores, scaling VRAM transfers linearly against Batch Size.
 
-### Section 3: The Flaw: Static Batching and Padding
+---
 
-Traditional **Static Batching** requires all requests in a batch to start and end simultaneously. Since request lengths vary, systems must pad shorter requests with invalid tokens. This wastes compute resources and forces short requests to wait for long ones (the straggler effect).
+### Section 3: The Padding Problem: Flaws in Static Batching
+
+Standard **Static Batching** forces all requests in a batch to begin and end simultaneously. Since input and output lengths differ, engines insert massive volumes of **Padding** for shorter prompts. Computing padding wastes resources and chains shorter requests to wooden-barrel limits of the longest request.
 
 ---
 
 ## Chapter 8: Core Asymmetry: Prefill vs. Decode
 
-### Section 1: Prefill Phase: The Compute-Bound Phase
+---
 
-**1. Process and Complexity**
-The model processes all $N$ input tokens simultaneously.
-*   **Linear Layers**: GEMM (General Matrix-Matrix Multiplication). Complexity is $O(L \cdot N \cdot d^2)$.
-*   **Attention**: Due to the Causal Mask, queries only attend to past and current tokens. This generates a lower-triangular $N \times N$ matrix. Complexity is $O(L \cdot N^2 \cdot d)$.
-*   **Total Complexity**: $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$. At large $N$, the quadratic attention complexity dominates.
+### Section 1: Prefill Phase — The "Blitzkrieg" Consuming Compute (Compute-Bound)
 
-**2. Why It Is Compute-Bound**
-**Arithmetic Intensity** measures floating-point operations per byte read from VRAM.
+**1. Mathematical Workflow**
+Models absorb **$N$ input tokens** in one shot.
+*   **Linear Layer**: $N$ vectors multiply against weight matrices. These are standard **GEMM** operations scaling against $N$ ($O(L \cdot N \cdot d^2)$).
+*   **Attention**: Under Causal Mask bounds, each word only attends to preceding words, forming a lower-triangular $N \times N$ attention matrix ($O(L \cdot N^2 \cdot d)$).
+*   **Complexity**: Total single-round complexity sums to $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$.
 
-$$\text{Arithmetic Intensity} = \frac{\text{Linear Layer FLOPs} + \text{Attention FLOPs}}{\text{Model Weight Size} + \text{KV Cache Write Volume}}$$
+**2. Why Is It Compute-Bound?**
+This anchors around **Arithmetic Intensity** (FLOPs computed per Byte fetched).
+$$\text{Intensity} = \frac{\text{Linear Compute} + \text{Attention Compute}}{\text{Model Weight Size} + \text{KV Cache Writes}}$$
 
-Estimation for Llama 3 405B at $N = 100,000$:
-1. **Computation**:
-   *   Linear layers: $2 \times N \times P \approx 8.1 \times 10^{16}$ FLOPs.
-   *   Attention: $4 \times L \times N^2 \times d \approx 8.26 \times 10^{16}$ FLOPs.
-   *   Total: $\approx 1.64 \times 10^{17}$ FLOPs.
-2. **Memory Traffic**:
-   *   Read weights: $810$ GB.
-   *   Write KV Cache: $\approx 51.6$ GB.
-   *   Total: $\approx 861.6$ GB.
+Evaluating Llama 3 405B at $N = 100,000$:
+*   **Total Compute**: $\approx 1.64 \times 10^{17}$ FLOPs.
+*   **VRAM Traffic**: 810 GB (Weights) + 51.6 GB (KV Cache) $\approx 861.6$ GB.
+*   **Final Intensity**: $1.64 \times 10^{17} / 861.6 \times 10^9 \approx \mathbf{190,000 \text{ FLOPs/Byte}}$.
 
-**Result**: $1.64 \times 10^{17} / 861.6 \times 10^9 \approx 190,000$ FLOPs/Byte.
-
-Since $190,000$ far exceeds the balance point of an H100 GPU ($\approx 300$ FLOPs/Byte, based on 1000 TFLOPS and 3.3 TB/s bandwidth), the system is **Compute-Bound**. The bottleneck is the GPU's peak TFLOPS, not memory bandwidth.
+A modern H100 GPU’s inflection threshold sits at roughly 300 FLOPs/Byte. Exceeding this threshold means GPUs are **Compute-Bound**. The thousands of ALU cores run at peak frequencies, and raw theoretical算力 (TFLOPS) dictates processing speed rather than HBM bandwidth.
 
 ---
 
-### Section 2: Decode Phase: The Memory-Bound Phase
+### Section 2: Decode Phase — The "War of Attrition" Crushing Bandwidth (Memory-Bound)
 
-After Prefill, the model enters the autoregressive Decode phase, generating tokens one by one.
+Once the first word is output, autoregressive Decode iterations begin.
 
-**1. Process and Complexity**
-Each step takes only the **1 token generated in the previous step** as input.
-*   **Linear Layers**: GEMV (General Matrix-Vector Multiplication).
-*   **Attention**: The Query of the new token computes dot products with cached Keys of all $N$ past tokens.
-*   **Complexity**: $O(L \cdot (d^2 + N \cdot d))$. Attention computation grows with $N$.
+**1. Mathematical Workflow**
+Models ingest merely **1 newly generated Token**.
+*   **Linear Layer**: Degrades into **GEMV** matrix-vector multiplications.
+*   **Attention**: The single new token's Query vector attends to all preceding $N$ Key vectors in the cache.
+*   **Complexity**: $O(L \cdot (d^2 + N \cdot d))$.
 
-**2. Why It Is Memory-Bandwidth-Bound**
-To generate **one token**, the GPU must load the entire model weights and the accumulated KV Cache from VRAM to cores.
-*   **Low Compute**: Matrix-vector multiplication requires minimal compute, leaving GPU cores idle.
-*   **High Traffic**: Memory bandwidth is saturated.
+**2. Why Is It Memory-Bound?**
+To generate a **single token**, GPUs execute an absurd action: **they must drag monolithic model weights (hundreds of GBs) plus all accumulated KV Caches from VRAM to the SRAM cores!** Compute volumes are minuscule, leaving cores idle while HBM bandwidth is maxed out.
 
-Arithmetic Intensity estimation for Llama 3 405B at $N = 100,000$:
-1. **Computation**:
-   *   Linear layers: $2 \times 1 \times P = 8.1 \times 10^{11}$ FLOPs.
-   *   Attention: $4 \times L \times 1 \times N \times d \approx 8.25 \times 10^{11}$ FLOPs.
-   *   Total: $\approx 1.635 \times 10^{12}$ FLOPs.
-2. **Memory Traffic**:
-   *   Read weights: $810$ GB (loaded every step).
-   *   Read KV Cache: $\approx 51.6$ GB.
-   *   Total: $\approx 861.6$ GB.
+Evaluating Llama 3 405B at $N = 100,000$:
+*   **Total Compute**: $\approx 1.635 \times 10^{12}$ FLOPs.
+*   **VRAM Traffic**: 810 GB (Weights) + 51.6 GB (Cache) $\approx 861.6$ GB.
+*   **Intensity**: $\approx \mathbf{1.9 \text{ FLOPs/Byte}}$.
 
-**Result**: $1.635 \times 10^{12} / 861.6 \times 10^9 \approx 1.9$ FLOPs/Byte.
-
-This falls far below the hardware balance point ($\approx 300$). The bottleneck is how fast VRAM feeds data to cores. Upgrading raw compute power yields little benefit without higher memory bandwidth.
+Arithmetic intensity (1.9) falls vastly below hardware inflection points (~300). VRAM bandwidth—how fast data feeds cores—dictates TBT latencies, rather than raw TFLOPS capabilities.
 
 ---
 
-### Section 3: The Asymmetry: Data Perspective Comparison
+### Section 3: Asymmetry from a Data Perspective
 
-| Feature | Prefill Phase | Decode Phase (Single Step) |
+| Dimension | Prefill Phase | Decode Phase |
 | :--- | :--- | :--- |
-| **Input Scale** | $N$ Tokens | $1$ Token |
-| **Operator** | GEMM | GEMV |
-| **Compute Complexity** | $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$ | $O(L \cdot (d^2 + N \cdot d))$ |
-| **VRAM Access** | Load Weights + Write KV Cache | Load Weights + Read KV Cache + Append |
-| **Bottleneck** | **Compute-Bound** | **Memory-Bandwidth-Bound** |
-| **GPU Utilization** | High | Low |
+| **Input Scale** | $N$ Tokens (High) | $1$ Token (Minimal) |
+| **Math Kernel** | GEMM | GEMV |
+| **Complexity** | $O(L \cdot (N \cdot d^2 + N^2 \cdot d))$ | $O(L \cdot (d^2 + N \cdot d))$ |
+| **VRAM Access** | Read Weights + Write Cache | Read Weights + Read & Append Cache |
+| **Hardware Bound** | **Compute-Bound** | **Memory-Bound** |
+| **GPU Utilization** | Peak | Idle |
 
-**Engineering Challenges**:
-1.  **Throughput vs. Latency**: Large batches improve throughput by amortizing weight loads. But in Decode, larger batches load more private KV Caches, increasing user latency (TBT). In long-context scenarios, where KV Cache size rivals model weights, batching fails to improve throughput.
-2.  **Scheduling Conflicts**: Mixing compute-heavy Prefills with memory-heavy Decodes blocks Decode steps. This causes lagging for active users (straggler effect), disrupting streaming output.
+**The Engineering Paradox:**
+1.  **Throughput vs. Latency**: Elevating Batch Size dilutes weight reading costs to raise throughput. In Decode, larger batches translate to fetching larger discrete KV Caches, stretching out individual TBT latencies.
+2.  **Scheduler Dilemmas**: Mixing compute-heavy Prefills alongside memory-heavy Decodes causes the **Straggler Effect**, triggering jitters in ongoing TBTs and breaking output fluency.
 
-Part Three explores how systems like vLLM and SGLang solve these issues via **Continuous Batching** and **Chunked Prefill**.
+We resolve this paradox via **Continuous Batching** and **Chunked Prefill** in Part 3.
+
+---
