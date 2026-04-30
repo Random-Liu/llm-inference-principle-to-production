@@ -1,4 +1,4 @@
-## Part 2: Bottlenecks — Why LLM Inference is Hard
+# Part 2: Bottlenecks — Why LLM Inference is Hard
 
 ## Table of Contents
 - [Chapter 4: Performance Metrics: Measuring Inference Speed](#chapter-4-performance-metrics-measuring-inference-speed)
@@ -22,7 +22,7 @@
 This part explains the physical and mathematical limits engineers face when putting LLMs into production.
 
 
-### Chapter 4: Performance Metrics: Measuring Inference Speed
+## Chapter 4: Performance Metrics: Measuring Inference Speed
 
 Traditional web "response time" cannot evaluate autoregressive LLMs that generate text token by token. We need specific metrics:
 
@@ -34,11 +34,11 @@ Traditional web "response time" cannot evaluate autoregressive LLMs that generat
 
 ---
 
-### Chapter 5: Naive Inference: How Unoptimized Systems Work
+## Chapter 5: Naive Inference: How Unoptimized Systems Work
 
 To understand optimization, we must look at how basic inference works and why it fails at scale.
 
-#### Section 1: The Unoptimized Process
+### Section 1: The Unoptimized Process
 
 Assume the prompt is "Large models are". Generating the first three words without optimization works as follows:
 
@@ -55,7 +55,7 @@ Assume the prompt is "Large models are". Generating the first three words withou
     *   **Process**: The system feeds all 5 words back into the first layer and processes them through all 80 layers again.
     *   **Output**: ".".
 
-#### Section 2: Complexity Analysis: The Computational Explosion
+### Section 2: Complexity Analysis: The Computational Explosion
 
 This method is **Naive Inference**. Let $N$ be the current sequence length, $d$ the hidden dimension, and $L$ the number of layers. A single step to generate the next word has the following characteristics:
 
@@ -81,17 +81,17 @@ Let's estimate the cost of generating one token in Naive mode:
 
 Generation slows down as context grows due to the $N^2$ Attention complexity. At $N = 1,000,000$, generating the next token would take approx. **2.5 hours**. This is unusable in production.
 
-#### Section 3: The Solution: Caching Past Computations
+### Section 3: The Solution: Caching Past Computations
 
 Naive inference cannot support long text or high concurrency. To fix this, engineers cache past computation results and only compute the new token. This technology is **KV Cache**.
 
 ---
 
-### Chapter 6: KV Cache: Solving the Compute Bottleneck
+## Chapter 6: KV Cache: Solving the Compute Bottleneck
 
 KV Cache breaks the $O(N^2)$ loop by trading space for time.
 
-#### Section 1: The Principle: Caching K and V
+### Section 1: The Principle: Caching K and V
 
 Recall the Attention formula: $\text{Attention}(Q, K, V) = \text{softmax}(\frac{Q K^T}{\sqrt{d_k}})V$.
 
@@ -101,14 +101,14 @@ Key observations:
 
 Instead of recomputing, the system stores K and V in VRAM after the first step. For subsequent tokens, the GPU only computes Q, K, and V for the *single* new token, appends them to the cache, and performs attention with all cached K and V. This drops compute complexity from $O(N^2)$ to $O(N)$.
 
-#### Section 2: The Scope: Why Only K and V?
+### Section 2: The Scope: Why Only K and V?
 
 Why not cache Q? Because Q represents the "search intent" for the current step.
 *   To predict token 4, we use token 4's Q to query tokens 1-3.
 *   To predict token 5, we use token 5's Q to query tokens 1-4.
 Token 4's Q becomes obsolete after step 4. We only cache K and V because they carry the persistent features of the tokens.
 
-#### Section 3: The Cost: The VRAM Tsunami
+### Section 3: The Cost: The VRAM Tsunami
 
 Let's compare Naive mode and KV Cache mode when generating the $N$-th token:
 
@@ -133,9 +133,9 @@ This shifts LLM inference from being **compute-bound** to **memory-bound**. Tech
 
 ---
 
-### Chapter 7: Batching: Maximizing GPU Utilization
+## Chapter 7: Batching: Maximizing GPU Utilization
 
-#### Section 1: The Bottleneck: Memory Bandwidth
+### Section 1: The Bottleneck: Memory Bandwidth
 
 For LLM inference, memory bandwidth is often the primary bottleneck, not compute power.
 
@@ -143,22 +143,22 @@ Model weights and KV Cache reside in VRAM, while computations occur in Streaming
 *   **Single-User Case**: To generate *one* token, the GPU moves hundreds of gigabytes of weights and the entire accumulated KV Cache from VRAM to SMs. After computing that token, it discards the data. The next step repeats this massive data transfer.
 *   This massive data movement saturates memory bandwidth. Compute cores spend most of their time idling, waiting for data.
 
-#### Section 2: The Solution: Batched Matrix Multiplication (BMM)
+### Section 2: The Solution: Batched Matrix Multiplication (BMM)
 
 Batching solves this by processing multiple user requests together. By stacking $N$ user inputs into a 3D tensor, the GPU loads the weight matrix once to compute for all $N$ users, multiplying throughput.
 
 > [!NOTE]
 > While users share model weights, their KV Caches are private. The GPU must load each user's KV Cache separately, so KV Cache data movement scales linearly with batch size.
 
-#### Section 3: The Flaw: Static Batching and Padding
+### Section 3: The Flaw: Static Batching and Padding
 
 Traditional **Static Batching** requires all requests in a batch to start and end simultaneously. Since request lengths vary, systems must pad shorter requests with invalid tokens. This wastes compute resources and forces short requests to wait for long ones (the straggler effect).
 
 ---
 
-### Chapter 8: Core Asymmetry: Prefill vs. Decode
+## Chapter 8: Core Asymmetry: Prefill vs. Decode
 
-#### Section 1: Prefill Phase: The Compute-Bound Phase
+### Section 1: Prefill Phase: The Compute-Bound Phase
 
 **1. Process and Complexity**
 The model processes all $N$ input tokens simultaneously.
@@ -187,7 +187,7 @@ Since $190,000$ far exceeds the balance point of an H100 GPU ($\approx 300$ FLOP
 
 ---
 
-#### Section 2: Decode Phase: The Memory-Bound Phase
+### Section 2: Decode Phase: The Memory-Bound Phase
 
 After Prefill, the model enters the autoregressive Decode phase, generating tokens one by one.
 
@@ -218,7 +218,7 @@ This falls far below the hardware balance point ($\approx 300$). The bottleneck 
 
 ---
 
-#### Section 3: The Asymmetry: Data Perspective Comparison
+### Section 3: The Asymmetry: Data Perspective Comparison
 
 | Feature | Prefill Phase | Decode Phase (Single Step) |
 | :--- | :--- | :--- |

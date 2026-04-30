@@ -38,6 +38,11 @@ This file contains instructions and conventions for AI agents working on this re
 - **Quoting for Safety**: When using emojis or spaces in labels, always enclose the label in double quotes inside the brackets (e.g., `NodeID["🧠 Label"]`) to prevent rendering syntax errors.
 
 ## File Editing and Cleanliness
+- **Header Level Hierarchy**: Maintain a consistent header level hierarchy across all part files (`part*.md` and `part*.cn.md`):
+  - Part Title: `#` (Level 1)
+  - Chapter Title: `##` (Level 2)
+  - Section Title: `###` (Level 3)
+  - Sub-sections should use `####` and beyond accordingly.
 - **No Stray Blank Lines**: When deleting content (lines, sections, or headers), the AI agent MUST ensure that it does not leave behind redundant, consecutive blank lines. Clean up the surrounding lines to maintain proper document flow (typically at most one blank line between paragraphs or sections).
 - **TOC Maintenance**: When modifying any title or header in a file, the AI agent MUST review and update:
   1. The file's own Table of Contents (at the beginning of the file). **Note**: The file-specific TOC should only include Chapter and Section level headers (i.e., the top two levels of the document's content hierarchy), ignoring deeper sub-sections.

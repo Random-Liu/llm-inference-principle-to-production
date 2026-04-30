@@ -1,4 +1,4 @@
-## Part Three: Single Node — High-Performance Engines Squeezing Every Inch of VRAM
+# Part Three: Single Node — High-Performance Engines Squeezing Every Inch of VRAM
 
 ## Table of Contents
 - [Chapter 9: Architecture Optimization: GQA](#chapter-9-architecture-optimization-gqa)
@@ -42,9 +42,9 @@ To overcome these limits, engineers and scientists designed co-optimized hardwar
 
 Now, let's look at the first battlefield: slimming down VRAM at the model architecture level.
 
-### Chapter 9: Architecture Optimization: GQA
+## Chapter 9: Architecture Optimization: GQA
 
-#### Section 1: Evolution: From MHA to GQA
+### Section 1: Evolution: From MHA to GQA
 
 Early Transformers used **MHA (Multi-Head Attention)**.
 *   **MHA**: $H$ Query heads require $H$ Key and $H$ Value heads. As discussed in [Chapter 6](part2_bottlenecks.md#section-3-the-cost-the-vram-tsunami), KV Cache space complexity is $O(L \cdot N \cdot d)$. Although the hidden dimension $d$ is split into $H$ heads ($d = H \times d_k$), the total KV Cache size depends on the full dimension $d$ because the number of KV heads equals Query heads. For large models like Llama 3 405B ($d = 16384$), large $d$ and long sequences $N$ result in a massive KV Cache.
@@ -72,7 +72,7 @@ To compare these mechanisms, we calculate the KV Cache size for **Llama 3 405B**
 
 Reducing the cache from $8 \text{ TB}$ to $504 \text{ GB}$, GQA achieves a 16-fold compression, enabling long-context processing on a single node or small cluster.
 
-#### Section 2: Trimming Rationale: Why Reducing Only K and V Works
+### Section 2: Trimming Rationale: Why Reducing Only K and V Works
 
 **Why can we trim $K$ and $V$ while leaving $Q$ intact without losing expressive power?**
 
@@ -101,7 +101,7 @@ FFN parameters account for about 82% of each layer, while Attention accounts for
 
 Since Attention only **moves and correlates** context, compressing its KV cache does not destroy FFN knowledge. The model still knows facts; it just uses fewer "memory pointers" (KV) during inference.
 
-#### Section 3: Frontier Progress: Alternative KV Compression Methods
+### Section 3: Frontier Progress: Alternative KV Compression Methods
 
 Beyond GQA, other developments aim to combat the VRAM tsunami:
 
@@ -122,11 +122,11 @@ These advancements show that **reducing K and V size via architecture remains a 
 
 These methods require training with the specific architecture. Alternatively, we can compress the KV Cache at the **precision level** without changing the architecture.
 
-### Chapter 10: Precision Reduction: KV Cache Quantization (FP8/INT8)
+## Chapter 10: Precision Reduction: KV Cache Quantization (FP8/INT8)
 
 If GQA pushes the **spatial structure** to the extreme (reducing data volume), then KV Cache quantization brings the hammer down on **data density**.
 
-#### Section 1: Trade-off: Compute for Bandwidth
+### Section 1: Trade-off: Compute for Bandwidth
 
 Standard inference stores K and V at 16-bit precision (FP16 or BF16), using 2 bytes per element. **KV Cache quantization** compresses them to 8 bits (FP8 or INT8), reducing size to 1 byte and halving the VRAM footprint.
 
@@ -136,7 +136,7 @@ This introduces computational overhead:
 
 This essentially uses extra computation to compress storage, which is a highly profitable trade-off during the Decode phase.
 
-#### Section 2: Rationale: Why It Works
+### Section 2: Rationale: Why It Works
 
 As discussed in [Chapter 8](part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-vs-decode), Decode is **Memory-Bound**. GPU cores sit idle, waiting for data from VRAM.
 
@@ -145,14 +145,14 @@ As discussed in [Chapter 8](part2_bottlenecks.md#chapter-8-core-asymmetry-prefil
 
 On modern GPUs like NVIDIA H100, native FP8 support makes the compute overhead negligible. Trading minor computation for halved VRAM and doubled speed is standard. Compressing to 8-bit typically causes less than 0.5% accuracy loss while doubling concurrent capacity.
 
-#### Section 3: INT8 vs. FP8: Different Paradigms
+### Section 3: INT8 vs. FP8: Different Paradigms
 
 Two distinct routes exist for 8-bit KV Cache quantization:
 
 * **INT8 (8-bit Integer)**: Maps floats to integers by scaling into 256 discrete grids. It requires dequantizing back to FP16 for compute. Fine-grained quantization minimizes accuracy drops.
 * **FP8 (8-bit Floating Point)**: Reduces precision and range while keeping the float structure. NVIDIA H100 computes FP8 extremely fast without explicit dequantization, making it the server standard.
 
-#### Section 4: Dynamic vs. Static: Contrast with Weight Quantization
+### Section 4: Dynamic vs. Static: Contrast with Weight Quantization
 
 Weight quantization (e.g., GPTQ, AWQ) is also common, but it differs from KV Cache quantization in difficulty and impact:
 
@@ -167,9 +167,9 @@ Common combinations:
 
 Although the size of the KV Cache is substantially compressed through GQA and quantization techniques, as context grows, it still causes severe fragmentation issues in VRAM. This is why we still need **PagedAttention**.
 
-### Chapter 11: VRAM Management at the Engine Level: PagedAttention
+## Chapter 11: VRAM Management at the Engine Level: PagedAttention
 
-#### Section 1: Fragmentation Crisis: Waste from Static Contiguous Allocation
+### Section 1: Fragmentation Crisis: Waste from Static Contiguous Allocation
 
 Because final sequence lengths are unpredictable, traditional VRAM management used **static contiguous allocation**. Systems pre-allocated VRAM based on the maximum context length (e.g., 8000 tokens).
 
@@ -181,7 +181,7 @@ The vLLM paper noted that traditional static allocation often utilized less than
 
 ---
 
-#### Section 2: OS Inspiration: Virtual Memory Paging
+### Section 2: OS Inspiration: Virtual Memory Paging
 
 To solve this, vLLM researchers adopted the **virtual memory paging (Paging)** mechanism from operating systems, which splits physical memory into fixed-size "Pages" to allow logically contiguous memory to be physically scattered.
 
@@ -191,7 +191,7 @@ vLLM applies this to GPU VRAM management:
 
 ---
 
-#### Section 3: Block Tables: Minimizing Memory Waste
+### Section 3: Block Tables: Minimizing Memory Waste
 
 To find scattered tokens, PagedAttention introduces **Block Tables**, similar to OS Page Tables, mapping logical blocks to physical blocks. During $Q \cdot K^T$ calculation, the attention mechanism queries the table to read K and V vectors from discrete blocks.
 
@@ -209,9 +209,9 @@ The next chapter covers cross-request cache reuse.
 
 ---
 
-### Chapter 12: Memory Time Machine: Prefix Caching (RadixAttention)
+## Chapter 12: Memory Time Machine: Prefix Caching (RadixAttention)
 
-#### Section 1: Dilemma: RAG and Multi-Turn Dialogues
+### Section 1: Dilemma: RAG and Multi-Turn Dialogues
 
 Prompts often contain massive background materials.
 
@@ -236,7 +236,7 @@ In code generation or Beam Search, systems generate multiple continuations for o
 
 ---
 
-#### Section 2: Radix Trees: Sharing Physical Memory
+### Section 2: Radix Trees: Sharing Physical Memory
 
 Frameworks like SGLang and vLLM introduced **RadixAttention**, using a **Radix Tree** to manage KV Cache.
 
@@ -294,11 +294,11 @@ This enables instant reuse for multi-turn dialogues and RAG, reducing TTFT from 
 
 ---
 
-### Chapter 13: The Train That Never Stops: Continuous Batching and Chunked Prefill
+## Chapter 13: The Train That Never Stops: Continuous Batching and Chunked Prefill
 
 Chapter 7 discussed static batching flaws: short sentences require massive padding to match long sentences, wasting compute and VRAM. This chapter introduces how engines solve this with **Continuous Batching** and **Chunked Prefill**.
 
-#### Section 1: Continuous Batching: Revolving Door Mechanism
+### Section 1: Continuous Batching: Revolving Door Mechanism
 
 To prevent short requests from waiting for long ones, **Continuous Batching** (or In-flight Batching) emerged, proposed by Orca and popularized by vLLM.
 
@@ -347,7 +347,7 @@ Continuous batching excels at Decode (1 token at a time). However, long prompts 
 
 ---
 
-#### Section 2: Chunked Prefill: Perfect Complement
+### Section 2: Chunked Prefill: Perfect Complement
 
 While Continuous Batching optimizes Decode, long **Prefill** requests can still cause head-of-line blocking, stalling other requests.
 
@@ -364,11 +364,11 @@ This carpooling saturates both compute and bandwidth.
 
 ---
 
-### Chapter 14: When VRAM Bursts: Preemption and Scheduling
+## Chapter 14: When VRAM Bursts: Preemption and Scheduling
 
 Even with PagedAttention, extreme concurrency or ultra-long texts can exhaust GPU VRAM. When VRAM is full and requests are pending, the scheduler must make a choice.
 
-#### Section 1: Dilemma: Scheduler Decisions
+### Section 1: Dilemma: Scheduler Decisions
 
 When VRAM hits 100% load, the system faces two demands:
 1. **Inactive Data**: Cached prefix KV Cache (ref count 0).
@@ -378,7 +378,7 @@ To avoid **OOM (Out of Memory)** crashes, the scheduler must act.
 
 ---
 
-#### Section 2: Cache Management: Eviction and Tiered Offloading
+### Section 2: Cache Management: Eviction and Tiered Offloading
 
 The system first cleans up unused cached data using an **LRU (Least Recently Used)** eviction strategy:
 * The system maintains the last access timestamp and reference count for each node.
@@ -395,7 +395,7 @@ When accessed, data is asynchronously pulled back to GPU VRAM, greatly expanding
 
 ---
 
-#### Section 3: Preemption: Swap vs. Recompute
+### Section 3: Preemption: Swap vs. Recompute
 
 If VRAM is still insufficient, the scheduler initiates **Preemption**: pausing some requests to free VRAM for others.
 
@@ -417,7 +417,7 @@ vLLM defaults to Swapping but falls back to Recomputation under extreme pressure
 
 ---
 
-#### Section 4: SGLang: Unifying Preemption and Eviction under Tree Management
+### Section 4: SGLang: Unifying Preemption and Eviction under Tree Management
 
 SGLang unifies cache sharing, eviction, and preemption within the Radix Tree:
 1. **Preemption is Dereferencing**: Paused requests simply drop their node reference count to zero. No data moves or erases.
@@ -430,7 +430,7 @@ SGLang unifies cache sharing, eviction, and preemption within the Radix Tree:
 
 ---
 
-### Chapter 15: Trading "Idle Compute" for "Ultimate Latency": Speculative Decoding
+## Chapter 15: Trading "Idle Compute" for "Ultimate Latency": Speculative Decoding
 
 While PagedAttention solves VRAM fragmentation and continuous batching eliminates padding, the auto-regressive Decode phase still faces a **Memory Bandwidth Bottleneck (Memory-Bound)**.
 
@@ -438,7 +438,7 @@ As discussed in Chapter 8, generating one token requires moving hundreds of giga
 
 **Speculative Decoding** leverages idle compute by trading extra computation for reduced latency. It increases arithmetic intensity per memory access, drastically reducing latency at low concurrency. However, at high concurrency, it may compete for compute resources and reduce overall throughput.
 
-#### Section 1: Analogy: The Professor and the Assistant
+### Section 1: Analogy: The Professor and the Assistant
 
 **Analogy: Professor and Assistant**
 * **Target Model**: The wise but slow professor (large model).
@@ -451,7 +451,7 @@ Process:
 
 One forward pass yields multiple verified tokens, saving time.
 
-#### Section 2: Economics: Arithmetic Intensity Trade-offs
+### Section 2: Economics: Arithmetic Intensity Trade-offs
 
 Total computation (FLOPs) increases, but it is highly profitable.
 
@@ -461,7 +461,7 @@ Speculative decoding lets the model **process multiple tokens at once**. Reading
 
 This boosts arithmetic intensity, utilizing idle compute to reduce latency.
 
-#### Section 3: Evolution: From Dual Models to External Heads
+### Section 3: Evolution: From Dual Models to External Heads
 
 **1. Dual-Model Scheme**
 * **Principle**: Progenitor method. Loads a massive **Target Model** and a small **Draft Model** into VRAM.
@@ -486,7 +486,7 @@ This boosts arithmetic intensity, utilizing idle compute to reduce latency.
 > 2. **Why not native?**: Base model creators focus on core capability; speculative decoding is a system-level optimization best left decoupled.
 > 3. **Where implemented?**: Scheduling, communication, and **tree-based KV Cache rollback** are implemented in **Inference Frameworks (like vLLM or SGLang)**.
 
-#### Section 4: Production: Tree Attention and Dynamic Trade-offs
+### Section 4: Production: Tree Attention and Dynamic Trade-offs
 
 **1. Tree Attention**
 To improve hit rates, methods offer Top-K candidates, creating a **Draft Tree**. The framework feeds this tree to the large model at once. The large model uses Tree Attention to find the correct path, and the framework **prunes (rolls back)** other branches.
