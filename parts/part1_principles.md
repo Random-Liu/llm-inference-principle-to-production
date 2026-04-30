@@ -11,16 +11,16 @@
   - [Section 7: Mixture of Experts: Sparse Activation](#section-7-mixture-of-experts-sparse-activation)
 - [Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow](#chapter-2-building-the-skyscraper-stacking-layers-and-data-flow)
   - [Section 1: Input Stage: Embeddings and Positional Encoding](#section-1-input-stage-embeddings-and-positional-encoding)
-  - [Section 2: Wisdom of Stacking: Hierarchical Feature Extraction](#section-2-wisdom-of-stacking-hierarchical-feature-extraction)
+  - [Section 2: Wisdom of Stacking: Why Stacking Multiple Transformers?](#section-2-wisdom-of-stacking-why-stacking-multiple-transformers)
   - [Section 3: The Translator: LM Head](#section-3-the-translator-lm-head)
-  - [Section 4: Logits and Softmax: Probabilistic Normalization](#section-4-logits-and-softmax-probabilistic-normalization)
-  - [Section 5: Parameter Breakdown: What Makes Up 8B/70B Models](#section-5-parameter-breakdown-what-makes-up-8b70b-models)
-  - [Section 6: Data Flow: End-to-End Pipeline](#section-6-data-flow-end-to-end-pipeline)
+  - [Section 4: Logits and Softmax: Converting Raw Scores to Probabilities](#section-4-logits-and-softmax-converting-raw-scores-to-probabilities)
+  - [Section 5: Pop Science: What Do We Mean by 8B/70B Parameters?](#section-5-pop-science-what-do-we-mean-by-8b70b-parameters)
+  - [Section 6: Data Flow: The End-to-End Pipeline](#section-6-data-flow-the-end-to-end-pipeline)
 - [Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation](#chapter-3-the-art-of-operation-autoregressive-decoding-and-text-generation)
   - [Section 1: Prefill Phase: Handling Input Context](#section-1-prefill-phase-handling-input-context)
   - [Section 2: Decode Phase: The Autoregressive Loop](#section-2-decode-phase-the-autoregressive-loop)
 
-This part zooms into cluster-level architecture and explores how top technology companies serve billions of requests.
+This part explains the physical and mathematical foundations of LLMs.
 
 ---
 
@@ -55,7 +55,7 @@ graph BT
     Head --> Prob[Predict Next Token]
 ```
 
-Before diving into the micro world of QKV, let's grasp the macro workflow of the classic **Encoder-Decoder** Transformer architecture (the original design design).
+Before diving into the micro world of QKV, let's grasp the macro workflow of the classic **Encoder-Decoder** Transformer architecture (the original design).
 
 We can compare this process to **Simultaneous Interpretation**:
 
@@ -251,7 +251,7 @@ MHA doesn't just duplicate $W_Q$, $W_K$, and $W_V$. To compress fragmented outpu
 MoE is the **multi-replica upgrade of FFN**.
 
 #### 1. Dense Model Pain Points
-In traditional **Dense** models, each layer holds a single FFN. Whether talking about quantum physics or cooking recipes, all tokens pass through the same FFN. Scaling knowledge requires scaling the FFN, driving up compute costs (FLOPs) and inference latency.
+In traditional **Dense** models, each layer holds a single FFN. All tokens pass through the same FFN. Scaling knowledge requires scaling the FFN, driving up compute costs (FLOPs) and inference latency.
 
 #### 2. MoE Solution: Division of Labor
 MoE shards a monolithic FFN into multiple smaller FFNs—each called an **Expert**.
@@ -259,7 +259,7 @@ MoE shards a monolithic FFN into multiple smaller FFNs—each called an **Expert
 *   **Experts**: Every expert is a standard FFN trained to specialize in particular domains.
 
 #### 3. Sparse Activation
-1.  **Router Calculation**: Routes tokens discussing quantum physics.
+1.  **Router Calculation**: Routes tokens to corresponding specialists.
 2.  **Sparse Activation**: Activates Top-K relevant experts (e.g., Experts 3 and 5) and leaves others idle.
 3.  **Fusion**: Only activated experts process the tokens; outputs fuse according to weighted relevance.
 
@@ -269,54 +269,24 @@ MoE delivers **"high total parameters (massive knowledge) but low activated para
 
 ## Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow
 
-Components must be assembled into a "skyscraper" to orchestrate logical data flow.
-
-**The End-to-End Architecture:**
-
-```mermaid
-graph LR
-    subgraph Input_Stage ["Input Stage"]
-        In[Input Token IDs] --> Emb[Embedding]
-    end
-    subgraph Hidden_Layers ["Transformer Layers"]
-        Emb --> Layer1[Layer 1]
-        Layer1 --> Layer2[Layer 2]
-        Layer2 --> Dots["..."]
-        Dots --> LayerN[Layer N]
-        
-        subgraph Detail ["Per-Layer Structure"]
-            SA["Masked Self-Attention (RoPE applied here)"] --> Add1[Residual Add]
-            Add1 --> FFN[Feed-Forward Network]
-            FFN --> Add2[Residual Add]
-        end
-    end
-    subgraph Output_Stage ["Output Stage"]
-        LayerN --> Norm[RMSNorm / LayerNorm]
-        Norm --> LMHead[LM Head]
-        LMHead --> Logits[Logits]
-        Logits --> Softmax[Softmax]
-        Softmax --> Prob[Token Probabilities]
-    end
-```
-
 ---
 
 ### Section 1: Input Stage: Embeddings and Positional Encoding
 
-Data is translated and injected with structural information at the threshold foyer.
-1.  **Word Embedding**: Words map into high-dimensional coordinates.
-2.  **Positional Encoding**: Attention is natively order-blind. SOTA open-source models apply **RoPE (Rotary Position Embedding)**, geometric matrices that "twist" Q and K vectors during attention calculations based on their positions. Close proximity words undergo tight twists and output higher scores.
+Before data enters the multi-layer Transformer Blocks, it goes through the entrance lobby for formatting and injection of core insights.
+1.  **Word Embedding**: Words map onto high-dimensional continuous coordinates.
+2.  **Positional Encoding**: Attention is natively "time-blind". Modern SOTA models apply **RoPE (Rotary Position Embedding)**, rotating Q and K vectors complexly in geometric spaces during dot products. Words close in proximity sustain minimal rotational differences and yield high scores.
 
 ---
 
-### Section 2: Wisdom of Stacking: Hierarchical Feature Extraction
+### Section 2: Wisdom of Stacking: Why Stacking Multiple Transformers?
 
-LLMs stack dozens or hundreds of **Transformer Blocks** (e.g., 80 layers in Llama 3 70B).
-*   **Low Layers**: Track syntax and local relationships.
-*   **Middle Layers**: Extract commonsense facts from FFN memory repositories.
+Armed with positional embeddings, tokens ascend the Transformer Block skyscraper (e.g., 80 layers in Llama 3 70B).
+*   **Low Layers**: Extract grammar and local syntactic relationships.
+*   **Middle Layers**: Comprehend entities and commonsense facts from FFNs.
 *   **High Layers**: Handle abstract concepts and logical reasoning.
 
-**Slanted Information Flow**: Tokens traverse layers concurrently. Rather than moving horizontally, information flows **slantwise upwards** across layers, allowing deep semantic integrations while utilizing parallel GPU compute.
+**Slanted Information Flow**: Parallel prompt processing means tokens do not move horizontally across a single layer; information moves **slantwise upwards**, letting GPUs compute in parallel while securing deep semantic integration.
 
 ```mermaid
 graph LR
@@ -351,34 +321,34 @@ graph LR
 
 ### Section 3: The Translator: LM Head
 
-Tokens exiting the skyscraper hold complex semantic meanings. The **LM Head** acts as the translator—a matrix mapping vectors onto a massive vocabulary space (e.g., 50,000 to 150,000 tokens), outputting raw **Logits**.
+When data exits the top layer, each token yields a final hidden state vector ($h_{last}$). The **LM Head** maps these abstract vectors onto a huge vocabulary matrix (shaped `[Vector Dimension, Vocab Size]`), returning raw **Logits**.
 
 > [!NOTE]
-> Intermediate layers do not translate text to preserve high-dimensional abstract representations. Older models shared a physical matrix for both Embedding and LM Head (**Weight Tying**), whereas newer SOTA models isolate them.
+> Intermediate layers are kept abstract to prevent logical informational losses. Static models used **Weight Tying** (sharing Embedding and LM Head matrices physically) to save VRAM, whereas SOTA models decouple them.
 
 ---
 
-### Section 4: Logits and Softmax: Probabilistic Normalization
+### Section 4: Logits and Softmax: Converting Raw Scores to Probabilities
 
-LM Head outputs raw integer scores (Logits). A **Softmax** function indexes and normalizes them into absolute probability distributions between 0 and 1.
-
----
-
-### Section 5: Parameter Breakdown: What Makes Up 8B/70B Models
-
-Parameters constitute learned floating numbers across all weight matrices. Let’s break down **Llama 3 405B**:
-*   **Word Embeddings**: $128,256 \times 16384 \approx \mathbf{2.1 \text{ Billion}}$
-*   **Transformer Blocks**: Attention matrices plus massive FFN matrices ($16384 \times 53248$) sum to 3.18B parameters per layer. Totaling $126 \times 3.18B \approx \mathbf{401.6 \text{ Billion}}$. FFN alone captures ~82%.
-*   **LM Head**: $\approx \mathbf{2.1 \text{ Billion}}$
-*   **Total Account**: $\approx \mathbf{405.8 \text{ Billion Parameters}}$
+LM Head outputs raw integer scores (Logits). The **Softmax** function processes them into probability distributions between 0 and 1, ensuring all token probabilities sum to 1.
 
 ---
 
-### Section 6: Data Flow: End-to-End Pipeline
+### Section 5: Pop Science: What Do We Mean by 8B/70B Parameters?
+
+Parameters denote all trainable floating-point numbers in weight matrices. Let's analyze **Llama 3 (405B)**:
+1.  **Word Embedding Layer**: $128,256 \times 16384 \approx \mathbf{2.1 \text{ Billion Parameters}}$.
+2.  **Transformer Layers**: Every layer encompasses Attention and FFN matrices ($16384 \times 53248$), totaling 3.18B parameters per layer. Across 126 layers, parameters total $\approx \mathbf{401.6 \text{ Billion}}$. **FFN consumes ~82% of parameters**, housing the hard knowledge.
+3.  **Output Layer (LM Head)**: $\approx \mathbf{2.1 \text{ Billion Parameters}}$.
+*   **Final Bill**: $2.1 \text{B} + 401.6 \text{B} + 2.1 \text{B} \approx \mathbf{405.8 \text{ Billion Parameters}}$.
+
+---
+
+### Section 6: Data Flow: The End-to-End Pipeline
 
 1.  **Input Phase**: Prompts map onto word embeddings.
-2.  **Stack Transit Phase**: Vectors pass through Masked Attention and FFN layers, summing residually across 80 layers to form $h_{last}$.
-3.  **Output Phase**: $h_{last}$ passes through RMSNorm, gets translated by the LM Head, and normalizes into token probabilities via Softmax.
+2.  **Stack Transit Phase**: Tokens interact and sum residually with original vectors, ascending the skyscraper until they hit $h_{last}$.
+3.  **Output Phase**: $h_{last}$ passes through RMSNorm, is projected by the LM Head into Logits, and converts to probabilities via Softmax.
 
 ---
 
@@ -388,20 +358,16 @@ Parameters constitute learned floating numbers across all weight matrices. Let�
 
 ### Section 1: Prefill Phase: Handling Input Context
 
-Prompt: "What is AI?"
-1.  **Tokenization**: Text gets chopped into Tokens.
-2.  **One-Shot Feed**: Full vectors enter the model concurrently.
-3.  **Parallel Compute**: GPUs compute all relationships simultaneously, mapping full context comprehension.
-4.  **Initial Probabilities**: Outputs next-token probability distributions.
+1.  **Tokenization**: The prompt shards into tokens.
+2.  **One-Shot Feed**: Fed into the model concurrently.
+3.  **Parallel Compute**: Attention weights and vectors are calculated simultaneously on GPUs to extract context comprehension.
+4.  **First Probability**: Emits the probability distributions for the subsequent token.
 
 ---
 
 ### Section 2: Decode Phase: The Autoregressive Loop
 
-Model outputs "AI".
-1.  **Continuation**: The new token appends onto the Prompt, entering as a brand-new longer sequence.
-2.  **Looping**: Sequence processes through all layers, predicting the next token.
-
-This **Autoregressive** loop implies that to generate a 1,000-word text, the model must traverse the entire skyscraper 1,000 times.
+1.  **Emit First Token**: E.g., "AI".
+2.  **Autoregression Loop**: The token appends to the prompt, fed back into Layer 1. The sequence travels up the skyscraper again to predict the next token. The loop iterates recursively.
 
 ---
