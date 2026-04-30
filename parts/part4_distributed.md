@@ -7,20 +7,20 @@
   - [Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory](#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory)
   - [Section 4: The Impact of TP and PP on Core Metrics](#section-4-the-impact-of-tp-and-pp-on-core-metrics)
   - [Section 5: Breaking the Sequence Wall: Context Parallelism](#section-5-breaking-the-sequence-wall-context-parallelism)
-  - [Chapter 17: The Perfect Division of Labor: Disaggregated Serving](#chapter-17-the-perfect-division-of-labor-disaggregated-serving)
-    - [Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma](#section-1-irreconcilable-contradiction-hardware-mismatch-and-management-dilemma)
-    - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](#section-2-physical-separation-decoupling-hardware-simplifying-management)
-    - [Section 3: Typical Workflow of Disaggregated Serving](#section-3-typical-workflow-of-disaggregated-serving)
-  - [Chapter 18: The Omniscient Traffic Police: Content-Aware Routing](#chapter-18-the-omniscient-traffic-police-content-aware-routing)
-    - [Section 1: AI Gateway: The Traffic Police That Knows the Business](#section-1-ai-gateway-the-traffic-police-that-knows-the-business)
-    - [Section 2: Cache-Aware Routing and Dynamic Replication](#section-2-cache-aware-routing-and-dynamic-replication)
-    - [Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3](#section-3-sglangs-system-level-implementation-gateway-approximate-tree-and-shared-l3)
-  - [Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference](#chapter-19-opening-the-meridians-network-communication-and-high-speed-interconnects-in-large-model-inference)
-    - [Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch](#section-1-the-bloodline-within-a-single-machine-pcie-nvlink-and-nvswitch)
-    - [Section 2: The Cross-Machine Bridge: RDMA and Its Implementations](#section-2-the-cross-machine-bridge-rdma-and-its-implementations)
-    - [Section 3: Parallel Modes, Data Volumes, and Metric Impacts](#section-3-parallel-modes-data-volumes-and-metric-impacts)
+- [Chapter 17: The Perfect Division of Labor: Disaggregated Serving](#chapter-17-the-perfect-division-of-labor-disaggregated-serving)
+  - [Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma](#section-1-irreconcilable-contradiction-hardware-mismatch-and-management-dilemma)
+  - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](#section-2-physical-separation-decoupling-hardware-simplifying-management)
+  - [Section 3: Typical Workflow of Disaggregated Serving](#section-3-typical-workflow-of-disaggregated-serving)
+- [Chapter 18: The Omniscient Traffic Police: Content-Aware Routing](#chapter-18-the-omniscient-traffic-police-content-aware-routing)
+  - [Section 1: AI Gateway: The Traffic Police That Knows the Business](#section-1-ai-gateway-the-traffic-police-that-knows-the-business)
+  - [Section 2: Cache-Aware Routing and Dynamic Replication](#section-2-cache-aware-routing-and-dynamic-replication)
+  - [Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3](#section-3-sglangs-system-level-implementation-gateway-approximate-tree-and-shared-l3)
+- [Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference](#chapter-19-opening-the-meridians-network-communication-and-high-speed-interconnects-in-large-model-inference)
+  - [Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch](#section-1-the-bloodline-within-a-single-machine-pcie-nvlink-and-nvswitch)
+  - [Section 2: The Cross-Machine Bridge: RDMA and Its Implementations](#section-2-the-cross-machine-bridge-rdma-and-its-implementations)
+  - [Section 3: Parallel Modes, Data Volumes, and Metric Impacts](#section-3-parallel-modes-data-volumes-and-metric-impacts)
 
-The final part zooms out to cluster-level architecture and how top tech companies serve billions of requests.
+This part zooms out to cluster-level architecture and how top tech companies serve billions of requests.
 
 ## Chapter 16: Slicing the Giant: Tensor, Pipeline, and Context Parallelism
 
@@ -31,10 +31,17 @@ When the model's parameter count soars from 7B (7 billion) to 400B (400 billion)
 Why must we perform distributed inference? The most direct reason is that **it cannot fit into the VRAM (Video RAM)**.
 
 Take a 400B parameter model as an example:
-* If using half-precision (FP16) storage, the model weights alone would occupy **800 GB** of VRAM!
-* Take the classic **NVIDIA H100** as an example, its single-card VRAM is usually 80 GB. This means you need at least 10 H100 graphics cards to barely "fit" this model (and this leaves absolutely no room for KV Cache).
+*   If using half-precision (FP16) storage, the model weights alone would occupy **800 GB** of VRAM!
+*   Take the classic **NVIDIA H100** as an example, its single-card VRAM is usually $80$ GB. This means you need at least $10$ H100 graphics cards to barely "fit" this model (leaving no room for KV Cache).
+*   Since a standard AI server typically accommodates at most $8$ graphics cards (totaling $640$ GB VRAM), you must use at least $2$ servers just to fit the model.
 
-Although with the rapid evolution of hardware, the Blackwell architecture (like B200, with single-card VRAM up to 192 GB) has come to the stage, and there will be an even stronger Rubin architecture in the future, meaning the required number of cards will correspondingly decrease. However, the physical limit of "single card cannot fit super large model weights and massive KV Cache" still exists. Therefore, multi-machine, multi-card distributed inference is not an option, but an absolute necessity.
+Although hardware evolves rapidly—with the Blackwell architecture (e.g., B200 with 192 GB VRAM) and future Rubin architecture reducing the required card count—the physical limit of single-card capacity remains. This is driven by three factors:
+
+1.  **Continuous Model Growth**: Model parameters have grown exponentially. From GPT-3's 175B in 2020, to GPT-4's estimated 1.8T in 2023, and Llama 4 reaching 2T in 2025. Supply chain estimates suggest next-gen top models are heading towards the 3T to 5T range. Model growth outpaces hardware VRAM expansion.
+2.  **Longer Context and Massive KV Cache**: The rise of Agents and RAG demands long contexts, soaring from thousands to over 128K or even 1M tokens. This generates massive KV Cache (which can approach or even exceed model weights in long-context and high-concurrency scenarios), further straining single-card VRAM.
+3.  **Hardware Lifecycle and ROI**: H-series GPUs like NVIDIA H100 remain heavily used in production. Companies with massive investments in these servers cannot simply discard them for new architectures. They must network multiple existing servers for distributed inference to maximize ROI.
+
+Therefore, multi-machine distributed inference is an absolute necessity, not an option.
 
 ---
 
@@ -47,7 +54,7 @@ To make multiple graphics cards work together collaboratively, the industry main
 * **Characteristics**: It occurs **inside each network layer**. The communication is extremely frequent and the bandwidth requirement is extremely high, so it is usually limited to **within a single machine** among multiple cards.
 
 **2. Pipeline Parallelism (PP) — Horizontal Slicing**
-* **Approach**: Break apart the layers of the model. Suppose a model has 80 layers, machine A is responsible for layers 1~40, and machine B is responsible for layers 41~80. After machine A finishes computing the hidden states of the first 40 layers, it sends them over the network to machine B to continue the computation.
+* **Approach**: Break apart the layers of the model. Suppose a model has 80 layers, machine A is responsible for layers 1 to 40, and machine B is responsible for layers 41 to 80. After machine A finishes computing the hidden states of the first 40 layers, it sends them over the network to machine B to continue the computation.
 * **Characteristics**: It occurs **between layers**. The communication frequency is relatively low, making it very suitable for distributed deployment across different physical hosts (Multi-host).
 
 By combining TP and PP (for example, 8-card TP + 2-machine PP), we can elegantly slice a super large model across 16 or even more graphics cards.
@@ -83,7 +90,7 @@ After understanding the basic principles of TP and PP, let's systematically anal
 * **User-facing TTFT**: The total time from when the user presses the send key to seeing the first word on the screen (roughly equal to Queueing Time + Execution TTFT + Network transmission delay).
 
 **1. The Metric Impact of Tensor Parallelism (TP): Brute Force and Lane Expansion**
-* **Impact on Execution TTFT**: **Significantly reduced**. The Prefill phase is compute-bound. TP directly shortens the pure computation time of the model run by amortizing the matrix multiplication computation.
+* **Impact on Execution TTFT**: **Significantly reduced**. The Prefill phase is compute-bound. TP directly shortens the pure computation time of the model run by amortizing the matrix multiplication computation (assuming All-Reduce bandwidth is not a bottleneck, e.g., with NVLink).
 * **Impact on TBT / TPS**: **Slightly reduced (improves TPS)**. In the Decode phase, TP can still accelerate the computation of each step. But because the computation amount is small, the communication overhead ratio of cross-card All-Reduce will rise, and the speedup ratio is not linear.
 * **Impact on Queueing Time and Throughput**: **Dual optimization but with a Trade-off**.
     1. **Shorten service time**: Because TP computes faster, old requests disembark quickly, and the queueing time for subsequent requests naturally shortens.
@@ -101,13 +108,17 @@ After understanding the basic principles of TP and PP, let's systematically anal
 
 ### Section 5: Breaking the Sequence Wall: Context Parallelism
 
-As the context window of large models soars from thousands in the early days to millions today (such as Gemini 1.5), traditional Tensor Parallelism (TP) and Pipeline Parallelism (PP) begin to appear inadequate when handling super-long sequences. This gave birth to a third slicing dimension — **Context Parallelism (CP)**.
+As the context window of large models soars from thousands in the early days to millions today, traditional Tensor Parallelism (TP) and Pipeline Parallelism (PP) begin to appear inadequate when handling super-long sequences. This gave birth to a third slicing dimension — **Context Parallelism (CP)**.
 
 **1. What problem does it solve?**
 In extremely long context scenarios, the core bottleneck is no longer just model weights, but the **KV Cache growing linearly with sequence length** and the **attention computation volume growing quadratically**.
 * Even if you use TP to slice the model weights onto 8 cards, a single card still might not be able to fit the KV Cache for a sequence of hundreds of thousands or even millions of Tokens.
 * Traditional TP focuses on slicing the Hidden Dimension, but cannot effectively amortize the VRAM and compute pressure brought by the Sequence Length dimension.
 * Therefore, the core goal of CP is to **smash the "sequence wall"**, allowing the system to process super-long texts far exceeding single-card VRAM capacity.
+
+**Schematic of the 3D Slicing Dimensions in LLM Parallelism (L × N × d):**
+
+![Schematic of the 3D Slicing Dimensions in LLM Parallelism](../images/parallelism_dimensions.svg)
 
 **2. How does it work?**
 The core idea of Context Parallelism is to **slice along the Sequence Dimension**:
@@ -120,19 +131,19 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 > The implementation of Ring Attention is not simply "data chunking"; it faces enormous engineering challenges in communication coordination and computational load balancing.
 >
 > **1. "Pass the Parcel" Coordination of Communication and Computation**
-> Suppose we slice the sequence into 3 chunks, collaboratively computed by 3 machines. Machine 1 holds $Q_1, K_1, V_1$; Machine 2 holds $Q_2, K_2, V_2$; Machine 3 holds $Q_3, K_3, V_3$. In Causal Attention (autoregressive) mode, the coordination process is as follows:
-> * **Step 1**: All machines start simultaneously, computing the attention of local $Q$ with local $KV$. At the same time, asynchronous communication is initiated, passing $KV$ chunks in the ring like a parcel: Machine 1 sends $KV_1$ to Machine 2, Machine 2 sends $KV_2$ to Machine 3, and so on.
-> * **Step 2**: After receiving the $KV$ chunk passed from upstream, the machine computes the attention of local $Q$ with the new $KV$. For example, Machine 2 receives $KV_1$ and computes the attention of $Q_2$ with $KV_1$. At this time, Machine 1 receives $KV_3$, but because it is causal attention, it cannot look at future information, so this computation is invalid (or masked out).
-> * **Step 3**: Continue passing $KV$ chunks. Machine 3 eventually receives $KV_1$ and computes the attention of $Q_3$ with $KV_1$.
+> Suppose we slice the sequence into 3 chunks, collaboratively computed by 3 GPUs. GPU 1 holds $Q_1, K_1, V_1$; GPU 2 holds $Q_2, K_2, V_2$; GPU 3 holds $Q_3, K_3, V_3$. In Causal Attention (autoregressive) mode, the coordination process is as follows:
+> * **Step 1**: All GPUs start simultaneously, computing the attention of local $Q$ with local $KV$. At the same time, asynchronous communication is initiated, passing $KV$ chunks in the ring like a parcel: GPU 1 sends $KV_1$ to GPU 2, GPU 2 sends $KV_2$ to GPU 3, and so on.
+> * **Step 2**: After receiving the $KV$ chunk passed from upstream, the GPU computes the attention of local $Q$ with the new $KV$. For example, GPU 2 receives $KV_1$ and computes the attention of $Q_2$ with $KV_1$. At this time, GPU 1 receives $KV_3$, but because it is causal attention, it cannot look at future information, so this computation is invalid (or masked out).
+> * **Step 3**: Continue passing $KV$ chunks. GPU 3 eventually receives $KV_1$ and computes the attention of $Q_3$ with $KV_1$.
 >
-> In this way, each machine eventually completes the computation with all the historical $KV$ chunks it needs. Because communication is asynchronous, the latency of attention computation is effectively hidden. **To maintain mathematical equivalence**, each machine needs to combine Online Softmax (a trick similar to FlashAttention) to dynamically update the maximum value and accumulated sum of the local Softmax after receiving a new KV chunk.
+> In this way, each GPU eventually completes the computation with all the historical $KV$ chunks it needs. Because communication is asynchronous, the latency of attention computation is effectively hidden. **To maintain mathematical equivalence**, each GPU needs to combine Online Softmax (a trick similar to FlashAttention) to dynamically update the maximum value and accumulated sum of the local Softmax after receiving a new KV chunk.
 >
 > **Ring Attention Coordination Flowchart:**
 > ```mermaid
 > sequenceDiagram
->     participant M1 as Machine 1 (holds Q1, KV1)
->     participant M2 as Machine 2 (holds Q2, KV2)
->     participant M3 as Machine 3 (holds Q3, KV3)
+>     participant M1 as "📟 GPU 1 (holds Q1, KV1)"
+>     participant M2 as "📟 GPU 2 (holds Q2, KV2)"
+>     participant M3 as "📟 GPU 3 (holds Q3, KV3)"
 > 
 >     Note over M1, M3: Step 1: Compute locally and pass KV
 >     par Asynchronous Communication
@@ -166,30 +177,30 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 >
 > **2. The Challenge of Load Imbalance and Zig-zag Optimization**
 > As can be seen from the above process, in Causal Attention, valid attention computation presents a lower triangular shape:
-> * Machine 1 only needs to compute 1 valid computation ($Q_1$ with $KV_1$).
-> * Machine 2 needs to compute 2 valid computations ($Q_2$ with $KV_1, KV_2$).
-> * Machine 3 needs to compute 3 valid computations ($Q_3$ with $KV_1, KV_2, KV_3$).
+> * GPU 1 only needs to compute 1 valid computation ($Q_1$ with $KV_1$).
+> * GPU 2 needs to compute 2 valid computations ($Q_2$ with $KV_1, KV_2$).
+> * GPU 3 needs to compute 3 valid computations ($Q_3$ with $KV_1, KV_2, KV_3$).
 >
-> This leads to severe load imbalance, and Machine 1 and Machine 2 will be idle early. To solve this problem, the industry mainly has two solutions:
-> * **Solution A: Brute-force Padding/Masking**: All machines perform full-load computation; even invalid future chunks are computed normally, and finally forcibly filtered out with a mask. While this keeps the code simple and symmetric, it wastes nearly 50% of compute.
-> * **Solution B: Zig-zag Partitioning / Striping**: Stop slicing the sequence into contiguous intervals, but use a "dealing cards" or "pairing from both ends" method to allocate. Suppose there are 6 chunks. Machine 1 takes chunk 1 and 6 (workload $1+6=7$), Machine 2 takes chunk 2 and 5 (workload $2+5=7$), Machine 3 takes chunk 3 and 4 (workload $3+4=7$). Through this clever orchestration, the computation load of each machine is perfectly balanced, eliminating idle time.
+> This leads to severe load imbalance, and GPU 1 and GPU 2 will be idle early. To solve this problem, the industry mainly has two solutions:
+> * **Solution A: Brute-force Padding/Masking**: All GPUs perform full-load computation; even invalid future chunks are computed normally, and finally forcibly filtered out with a mask. While this keeps the code simple and symmetric, it wastes nearly 50% of compute.
+> * **Solution B: Zig-zag Partitioning / Striping**: Stop slicing the sequence into contiguous intervals, but use a "dealing cards" or "pairing from both ends" method to allocate. Suppose there are 6 chunks. GPU 1 takes chunk 1 and 6 (workload $1+6=7$), GPU 2 takes chunk 2 and 5 (workload $2+5=7$), GPU 3 takes chunk 3 and 4 (workload $3+4=7$). Through this clever orchestration, the computation load of each GPU is perfectly balanced, eliminating idle time.
 >
 > **Load Balancing and Zig-zag Diagram:**
 > ```mermaid
 > graph TD
 >     subgraph "Contiguous Partitioning"
->         N1["Machine 1: Chunks [1, 2]"]
->         N2["Machine 2: Chunks [3, 4]"]
->         N3["Machine 3: Chunks [5, 6]"]
+>         N1["📟 GPU 1: Chunks [1, 2]"]
+>         N2["📟 GPU 2: Chunks [3, 4]"]
+>         N3["📟 GPU 3: Chunks [5, 6]"]
 >         N1 -->|"Workload: 1+2 = 3"| NW1["Severely Idle"]
 >         N2 -->|"Workload: 3+4 = 7"| NW2["Moderate Load"]
 >         N3 -->|"Workload: 5+6 = 11"| NW3["Heavy Load"]
 >     end
 > 
 >     subgraph "Zig-zag Partitioning"
->         Z1["Machine 1: Chunks [1, 6]"]
->         Z2["Machine 2: Chunks [2, 5]"]
->         Z3["Machine 3: Chunks [3, 4]"]
+>         Z1["📟 GPU 1: Chunks [1, 6]"]
+>         Z2["📟 GPU 2: Chunks [2, 5]"]
+>         Z3["📟 GPU 3: Chunks [3, 4]"]
 >         Z1 -->|"Workload: 1+6 = 7"| ZW1["Perfectly Balanced"]
 >         Z2 -->|"Workload: 2+5 = 7"| ZW2["Perfectly Balanced"]
 >         Z3 -->|"Workload: 3+4 = 7"| ZW3["Perfectly Balanced"]
@@ -201,7 +212,13 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 2. **Impact on TBT / TPS**: **Minor impact**. In the Decode phase, only one Token is generated at a time, and it does not need to process the matrix multiplication of the full long text like Prefill, so CP has limited improvement on the inter-token time.
 3. **Impact on Throughput and Cost**: **Trading high communication costs for "feasibility"**. CP introduces a massive amount of ring communication overhead. It has no advantage in ordinary short-text inference, but in super-long text scenarios, it is the **only solution to "make the task run"**.
 
-### Chapter 17: The Perfect Division of Labor: Disaggregated Serving
+> [!IMPORTANT]
+> **The Ultimate Form: Cross-Machine Context Parallelism**
+> 
+> While this section focuses on intra-machine GPU collaboration for simplicity, Context Parallelism can span physical machines. **When context length reaches 1M or more and exceeds the total VRAM of a single machine, CP must cross machine boundaries.**
+> In this case, Ring Attention communication uses cross-machine networks (InfiniBand or RoCE). Since their bandwidth and latency are an order of magnitude worse than NVLink, this requires advanced compute-communication overlap techniques, representing the ultimate long-context engineering challenge.
+
+## Chapter 17: The Perfect Division of Labor: Disaggregated Serving
 
 What is **Disaggregated Serving**? Put simply, it is an architecture that completely strips the **Prefill** phase and **Decode** phase of large model inference and runs them on physical clusters with different hardware configurations.
 
@@ -209,7 +226,7 @@ In Part Three, we introduced **Continuous Batching** and **Chunked Prefill**. Th
 
 The answer is: single-machine optimization is only a **"tactical-level"** limit squeeze. Attempting to perfectly balance Prefill and Decode within a single machine is not only constrained by the physical limits of **hardware mismatch**, but also brings **extremely high complexity in system management and scheduling**. When the service scale reaches an industrial magnitude, the "perfection" within a single machine becomes a macroscopic "burden". This chapter will unveil **Disaggregated Serving** and see how it simultaneously solves hardware mismatch and greatly simplifies resource management.
 
-#### Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma
+### Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma
 
 We mentioned in Chapter 8 that Prefill and Decode have completely opposite hardware requirements:
 * **Prefill**: Processes massive inputs, requiring extremely high **Compute (FLOPs)**, but relatively small VRAM capacity requirements.
@@ -225,7 +242,7 @@ If using a traditional unified architecture (mixed deployment), the system will 
 
 ---
 
-#### Section 2: Physical Separation: Decoupling Hardware, Simplifying Management
+### Section 2: Physical Separation: Decoupling Hardware, Simplifying Management
 
 To fundamentally break the deadlock, top tech companies have begun to adopt the **Disaggregated Serving** architecture (such as various internal systems at Google and the open-source DistServe).
 
@@ -247,7 +264,7 @@ More importantly, disaggregated serving **reduces the complex mixed scheduling p
 
 Through this refined resource matching, disaggregated serving not only solves the awkwardness of chopping wood with a dragon-slaying sword but also makes the resource matching and management of the entire cluster clean and controllable.
 
-#### Section 3: Typical Workflow of Disaggregated Serving
+### Section 3: Typical Workflow of Disaggregated Serving
 
 After understanding the advantages of disaggregated serving, let's see how a request flows under the separated architecture. It is like a carefully arranged relay race. The **AI Gateway** plays the role of a "Matchmaker", while the **Prefill Node** and **Decode Node** perform point-to-point handovers:
 
@@ -303,11 +320,11 @@ This decentralized data handover mechanism where "the gateway only controls flow
 
 ---
 
-### Chapter 18: The Omniscient Traffic Police: Content-Aware Routing
+## Chapter 18: The Omniscient Traffic Police: Content-Aware Routing
 
 In Chapter 17, we split the cluster into a Prefill pool and a Decode pool. So, when massive HTTP requests pour in, who decides which request goes to which machine? This chapter will introduce the "traffic police" in the large model cluster — **Content-Aware Routing**.
 
-#### Section 1: AI Gateway: The Traffic Police That Knows the Business
+### Section 1: AI Gateway: The Traffic Police That Knows the Business
 
 Traditional load balancers (like Nginx or F5) only care about basic physical metrics such as network traffic, concurrent connections, and server CPU/memory utilization. To them, an HTTP request is just a bunch of meaningless bytes.
 
@@ -331,7 +348,7 @@ We can use the following table to sort out the routing decision logic of the AI 
 
 ---
 
-#### Section 2: Cache-Aware Routing and Dynamic Replication
+### Section 2: Cache-Aware Routing and Dynamic Replication
 
 In large model clusters, **Cache-aware Routing** is the most powerful killer feature of the AI Gateway.
 
@@ -346,7 +363,7 @@ Therefore, we need the gateway to be aware of the prefix content of the request,
 
 ---
 
-#### Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3
+### Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3
 
 After understanding the principle, let's take **SGLang**, a cutting-edge inference engine, as an example to see how it implements this mechanism with extremely low system overhead. SGLang's design is very clever. It doesn't use complex centralized "explicit replication" instructions, but naturally combines the **gateway's soft routing** with the **backend's hierarchical caching**.
 
@@ -375,13 +392,13 @@ This mechanism where "the gateway only does soft routing diversion, and data rel
 
 ---
 
-### Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference
+## Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference
 
 Whether implementing model slicing in distributed inference or performing data movement in Disaggregated Serving, **as computation is sliced, communication overhead is also generated**. Network communication is the "lifeline" that determines the success or failure of the system.
 
 This chapter will analyze the core interconnect technologies and bandwidth characteristics relied upon in large model inference, and their adaptation relationships with various parallel modes.
 
-#### Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch
+### Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch
 
 Inside a single server, the interconnect technology between multiple GPUs has undergone tremendous evolution:
 
@@ -393,7 +410,7 @@ Inside a single server, the interconnect technology between multiple GPUs has un
     * **NVSwitch (Switching Node)**: NVLink is a point-to-point connection. If 8 GPUs are to be fully interconnected at full speed, theoretically C(8,2)=28 independent links are needed, and the GPU's physical interfaces are simply not enough. NVSwitch solves this scalability problem — each GPU connects via NVLink to this dedicated switch chip, NVSwitch, which does internal routing, allowing any two GPUs to communicate with full NVLink bandwidth.
     * **Overall Effect**: 8 GPUs only need to individually connect to NVSwitch to obtain a full-speed, fully interconnected network equivalent to pairwise direct connections, which is the physical cornerstone for realizing efficient Tensor Parallelism (TP).
 
-#### Section 2: The Cross-Machine Bridge: RDMA and Its Implementations
+### Section 2: The Cross-Machine Bridge: RDMA and Its Implementations
 
 When distributed inference spans physical nodes (Multi-host), traditional Ethernet and TCP/IP protocol stacks cannot meet the requirements. Data departing from the GPU must go through GPU VRAM → CPU Memory → Kernel Network Stack → NIC. The path is extremely long, the CPU is involved in the movement the whole time, the latency is high, and the consumption is large.
 
@@ -420,7 +437,7 @@ RDMA is a capability that can run on different physical networks. Currently, the
 
 NVLink Switch (like NVSwitch in the GB200 NVL72 system) connects GPUs across multiple machines via optical cables into a super-large NVLink domain, breaking the 8-card limit of a single machine, allowing 72 GPUs to form a fully interconnected cluster, with cross-machine bandwidth and latency approaching single-machine NVLink levels. Currently, it is mainly targeted at ultra-large-scale training scenarios, and the overall cost is extremely high; the cross-machine communication needs of inference scenarios (PP, Disaggregated Serving) are sufficiently met by InfiniBand or RoCE, so it is not a focus here.
 
-#### Section 3: Parallel Modes, Data Volumes, and Metric Impacts
+### Section 3: Parallel Modes, Data Volumes, and Metric Impacts
 
 To give you a global, quantitative understanding of network communication under different modes, we summarize the various parallel modes of distributed inference and the cross-machine transmission characteristics of disaggregated serving in the table below:
 
