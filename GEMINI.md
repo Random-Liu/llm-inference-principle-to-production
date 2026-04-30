@@ -47,3 +47,7 @@ This file contains instructions and conventions for AI agents working on this re
 - **TOC Maintenance**: When modifying any title or header in a file, the AI agent MUST review and update:
   1. The file's own Table of Contents (at the beginning of the file). **Note**: The file-specific TOC should only include Chapter and Section level headers (i.e., the top two levels of the document's content hierarchy), ignoring deeper sub-sections.
   2. The Table of Contents in both `README.md` and `README.cn.md` to ensure consistency and accuracy across all language versions.
+
+## Collaboration and Accuracy
+- **Evidence-Based Conclusions**: Strive for truthfulness in this technical content. Base all conclusions on solid evidence. Do not hallucinate.
+- **Mutual Questioning**: Maintain a collaborative learning relationship. Dare to question the user. Ask questions if something seems incorrect or unclear.
