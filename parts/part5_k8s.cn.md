@@ -1046,7 +1046,7 @@ Kubernetes 原生的升级和维护通常依赖于 **滚动升级（Rolling Upda
 *   **Node 级别的解法（打破“单节点”升级惯性）**：
     为了避免重复中断和容量雪崩，在 Node 级别必须保证升级是 Gang-aware 的。
     1.  **蓝绿节点池升级（Blue-Green Node Pool Upgrade）**：这是最彻底的办法。直接拉起一个全新的、规格一致的 Node Pool（Green），然后将流量平滑切换过去，最后整体销毁旧节点池（Blue）。这完全避免了就地升级带来的中断风险，但**需要几乎翻倍的冗余资源**。
-    2.  **基于委托就绪的通用高可用升级（Delegated Readiness）**：针对 PDB 无法感知组的困境，笔者提出了一种利用 Upgrade Domain、Readiness 探针聚合与标准 PDB 联动的通用解法。该方案通过“升级域”解决了“寻找合适节点”的问题，并通过“委托就绪”向控制面提供了清晰的“安全信号”。详情参见独立文档 [idea_delegated_readiness_upgrade.cn.md](./ideas/idea_delegated_readiness_upgrade.cn.md)。
+    2.  **基于委托就绪的通用高可用升级（Delegated Readiness）**：针对 PDB 无法感知组的困境，笔者提出了一种利用 Upgrade Domain、Readiness 探针聚合与标准 PDB 联动的通用解法。该方案通过“升级域”解决了“寻找合适节点”的问题，并通过“委托就绪”向控制面提供了清晰的“安全信号”。详情参见独立文档 [idea_multi_host_inference_ha_upgrade.cn.md](./ideas/idea_multi_host_inference_ha_upgrade.cn.md)。
 
 ### 第三节：深水区挑战：Upgrade 场景的“冷启动”与状态保持
 

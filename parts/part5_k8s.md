@@ -1042,7 +1042,7 @@ Engineering teams address PDB and sequential eviction limitations at both Pod an
 *   **Node-Level Solutions (Breaking Single-Node Upgrade Inertia)**:
     To avoid repeated disruptions and capacity avalanches, node upgrades must be Gang-aware.
     1.  **Blue-Green Node Pool Upgrades**: Spin up a new, matching Node Pool (Green), migrate the LWS job as a group (by changing labels or using Kueue), and destroy the old pool (Blue). This avoids in-place upgrade risks entirely but **requires nearly double the redundant resources**.
-    2.  **Generic HA Upgrade via Delegated Readiness**: To address PDB's inability to perceive groups, the author proposes a generic solution linking Upgrade Domains, Readiness probe aggregation, and standard PDBs. This approach solves the "finding the right nodes" problem via Upgrade Domains and provides a clear "safety signal" to the control plane via Delegated Readiness. For details, see the standalone document [idea_delegated_readiness_upgrade.md](./ideas/idea_delegated_readiness_upgrade.md).
+    2.  **Generic HA Upgrade via Delegated Readiness**: To address PDB's inability to perceive groups, the author proposes a generic solution linking Upgrade Domains, Readiness probe aggregation, and standard PDBs. This approach solves the "finding the right nodes" problem via Upgrade Domains and provides a clear "safety signal" to the control plane via Delegated Readiness. For details, see the standalone document [idea_multi_host_inference_ha_upgrade.md](./ideas/idea_multi_host_inference_ha_upgrade.md).
 
 ### Section 3: Upgrade Cold Starts: State Retention Challenges
 
