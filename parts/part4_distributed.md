@@ -5,18 +5,21 @@
   - [Section 1: The Necessity of Multiple Machines: The Giant That Doesn't Fit](#section-1-the-necessity-of-multiple-machines-the-giant-that-doesnt-fit)
   - [Section 2: TP and PP: Vertical and Horizontal Slicing](#section-2-tp-and-pp-vertical-and-horizontal-slicing)
   - [Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory](#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory)
-  - [Section 4: The Impact of TP and PP on Core Metrics](#section-4-the-impact-of-tp-and-pp-on-core-metrics)
   - [Section 5: Breaking the Sequence Wall: Context Parallelism](#section-5-breaking-the-sequence-wall-context-parallelism)
   - [Section 6: Hybrid Parallelism: The 3D Concerto of TP, PP, and CP](#section-6-hybrid-parallelism-the-3d-concerto-of-tp-pp-and-cp)
-- [Chapter 17: The Perfect Division of Labor: Disaggregated Serving](#chapter-17-the-perfect-division-of-labor-disaggregated-serving)
+- [Chapter 17: From Brute Force to Precision: Expert Parallelism (EP)](#chapter-17-from-brute-force-to-precision-expert-parallelism-ep)
+  - [Section 1: At the Dead End of Deduction: When We Try to Solve MoE with TP and PP](#section-1-at-the-dead-end-of-deduction-when-we-try-to-solve-moe-with-tp-and-pp)
+  - [Section 2: The Decision at the Dead End: Cross-host TP vs. Expert Parallelism (EP)](#section-2-the-decision-at-the-dead-end-cross-host-tp-vs-expert-parallelism-ep)
+  - [Section 3: The Golden Duo: DP Attention + EP MoE](#section-3-the-golden-duo-dp-attention--ep-moe)
+- [Chapter 18: The Perfect Division of Labor: Disaggregated Serving](#chapter-18-the-perfect-division-of-labor-disaggregated-serving)
   - [Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma](#section-1-irreconcilable-contradiction-hardware-mismatch-and-management-dilemma)
   - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](#section-2-physical-separation-decoupling-hardware-simplifying-management)
   - [Section 3: Typical Workflow of Disaggregated Serving](#section-3-typical-workflow-of-disaggregated-serving)
-- [Chapter 18: The Omniscient Traffic Police: Content-Aware Routing](#chapter-18-the-omniscient-traffic-police-content-aware-routing)
+- [Chapter 19: The Omniscient Traffic Police: Content-Aware Routing](#chapter-19-the-omniscient-traffic-police-content-aware-routing)
   - [Section 1: AI Gateway: The Traffic Police That Knows the Business](#section-1-ai-gateway-the-traffic-police-that-knows-the-business)
   - [Section 2: Cache-Aware Routing and Dynamic Replication](#section-2-cache-aware-routing-and-dynamic-replication)
   - [Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3](#section-3-sglangs-system-level-implementation-gateway-approximate-tree-and-shared-l3)
-- [Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference](#chapter-19-opening-the-meridians-network-communication-and-high-speed-interconnects-in-large-model-inference)
+- [Chapter 20: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference](#chapter-20-opening-the-meridians-network-communication-and-high-speed-interconnects-in-large-model-inference)
   - [Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch](#section-1-the-bloodline-within-a-single-machine-pcie-nvlink-and-nvswitch)
   - [Section 2: The Cross-Machine Bridge: RDMA and Its Implementations](#section-2-the-cross-machine-bridge-rdma-and-its-implementations)
   - [Section 3: Parallel Modes, Data Volumes, and Metric Impacts](#section-3-parallel-modes-data-volumes-and-metric-impacts)
@@ -112,10 +115,10 @@ After understanding the basic principles of TP and PP, let's systematically anal
 As the context window of large models soars from thousands in the early days to millions today, traditional Tensor Parallelism (TP) and Pipeline Parallelism (PP) begin to appear inadequate when handling super-long sequences. This gave birth to a third slicing dimension — **Context Parallelism (CP)**.
 
 **1. What problem does it solve?**
-In extremely long context scenarios, the core bottleneck is no longer just model weights, but the **KV Cache growing linearly with sequence length** and the **attention computation volume growing quadratically**.
-* Even if you use TP to slice the model weights onto 8 cards, a single card still might not be able to fit the KV Cache for a sequence of hundreds of thousands or even millions of Tokens.
-* Traditional TP focuses on slicing the Hidden Dimension, but cannot effectively amortize the VRAM and compute pressure brought by the Sequence Length dimension.
-* Therefore, the core goal of CP is to **smash the "sequence wall"**, allowing the system to process super-long texts far exceeding single-card VRAM capacity.
+In extremely long context scenarios, the core bottlenecks are not only model weights, but also the **KV Cache growing linearly with sequence length** and the **attention computation volume growing quadratically**.
+* Even if you use TP to slice model weights onto 8 cards, a single card might not hold the KV Cache for hundreds of thousands or millions of Tokens.
+* Traditional TP focuses on slicing the Hidden Dimension, failing to amortize VRAM and computational pressure brought by the Sequence Length dimension.
+* Therefore, the core goal of CP is to **smash the "sequence wall"**. It not only enables the system to accommodate text far exceeding single-card VRAM limits, but also divides the exponentially growing attention compute load across multiple GPUs in parallel, dramatically shortening long-context processing time.
 
 **Schematic of the 3D Slicing Dimensions in LLM Parallelism (L × N × d):**
 
@@ -245,7 +248,99 @@ This characteristic where Attention relies on CP while FFN remains independent i
 
 ---
 
-## Chapter 17: The Perfect Division of Labor: Disaggregated Serving
+## Chapter 17: From Brute Force to Precision: Expert Parallelism (EP)
+
+Chapter 16 discussed slicing dense models across GPUs. TP, PP, and CP all share a common trait: every token activates all parameters.
+
+As models reach trillions of parameters, this brute-force approach hits physical limits. [Mixture of Experts (MoE)](./part1_principles.md#section-7-mixture-of-experts-sparse-activation) solves this by activating only a fraction of experts per token (e.g., 2 out of 256). This **Sparse Activation** property drives a new parallelism dimension: **Expert Parallelism (EP)**.
+
+### Section 1: At the Dead End of Deduction: When We Try to Solve MoE with TP and PP
+
+MoE decouples model capacity from compute cost. You can build massive models with vast knowledge while consuming minimal compute per inference by activating only a fraction of experts.
+
+Facing MoE models with hundreds of gigabytes or terabytes of total expert weights (e.g., DeepSeek V3 with $671\text{B}$ parameters), our most natural instinct is to use the two weapons we already have— **Tensor Parallelism (TP)** and **Pipeline Parallelism (PP)** —to **shard weights** and address the VRAM capacity bottleneck.
+
+Following this intuition, the deduction process unfolds as follows:
+1.  **Step 1: When the model is small, single-machine TP handles everything**
+    If it is a small MoE model (e.g., the $47\text{B}$ Mixtral 8x7B), its total experts add up to only tens of gigabytes. The simplest and most efficient solution is to load it into an 8-GPU server and run it with **intra-machine Tensor Parallelism (TP=8)**. Under NVLink's blistering $900\text{GB/s}$ bandwidth, all GPUs participate in the computation of all experts. While sacrificing some sparsity, it stays simple without complex cross-machine communication.
+2.  **Step 2: As parameters inflate, overlay cross-host PP to slice by layers**
+    When the total parameters multiply and a single machine cannot hold the entire model, we naturally introduce **Pipeline Parallelism (PP)**—slicing the model horizontally by network layers into multiple stages and distributing them across physical machines. Because the relay communication between stages is infrequent and lightweight, this perfectly avoids the bottleneck of limited inter-host network bandwidth.
+3.  **Step 3: Hitting the pipeline bubble, the deduction hits a dead end**
+    However, Pipeline Parallelism (PP) cannot be sliced indefinitely. PP introduces pipeline bubbles. Especially in the word-by-word generation (Decode) phase, bubbles stretch Time Between Tokens (TBT) until it becomes unbearable for users. Consequently, in real production, the depth of PP stages is strictly limited to 4 or 8.
+
+**This lands us in a fatal engineering dead end**:
+Since we cannot slice PP too deeply, the "layer group" assigned to a single physical machine still holds MoE FFN layers (the total experts) whose weights exceed that machine's VRAM capacity! We are forced to shard **"experts within the same network layer"** **across machines**.
+
+### Section 2: The Decision at the Dead End: Cross-host TP vs. Expert Parallelism (EP)?
+
+Facing the dilemma of slicing a single network layer across multiple machines, engineers are confronted with two entirely different architectural philosophies:
+
+1.  **Option A: Cross-host Tensor Parallelism (Cross-host TP)**
+    *   **Approach**: Extend the TP logic by sharding all experts within this layer "vertically" or "horizontally" across different physical machines.
+    *   **Physical Metaphor**: Equivalent to **"Everyone cuts the same tree"** — sharded weights, stationary token activations.
+    *   **Fatal Trade-off**:
+        *   **Plummeting Compute Efficiency**: Sharding matrices too finely eliminates high-efficiency GEMMs. GPUs degrade into inefficient GEMV operations, severely wasting compute capacity.
+        *   **Cross-host Network Paralysis**: Every layer triggers multiple cross-machine global communication events. Across inter-host networks (IB/RoCE) limited to 50-100GB/s, network traffic explodes instantly.
+        *   **Strong Synchronous Blockage**: Cross-host All-Reduce is a rigid synchronous operation. Subsequent computations must wait for cluster-wide communication to finish entirely. Minor jitters on a single node hang the entire cluster's CUDA cores.
+2.  **Option B: Expert Parallelism (EP)**
+    *   **Approach**: **Stationary weights, moving tokens**. We preserve the physical integrity of each expert, putting Expert A on Machine 1 and Expert B on Machine 2. When tokens are ready for computation, we route them over the network (via All-to-All) to the GPU holding the target expert, compute locally, and route them back.
+    *   **Physical Metaphor**: Equivalent to **"Divide trees among people"** — stationary weights, moving token activations.
+    *   **The Resulting Revolution**:
+        *   **Algorithmic-Hardware Symmetry**: Expert integrity is maintained, letting network routing take the sorter role, making hardware dispatch completely isomorphic to MoE's algorithmic sparse routing.
+        *   **High Hardware Efficiency (GEMM Optimization)**: Although all GPUs are busy in high-concurrency scenarios, EP aggregates tokens destined for the same expert onto a specific GPU. This prevents the GPU from frequently loading different expert weights and degrading into inefficient GEMV (as in TP), triggering flawless, large GEMM operations that fully saturate Tensor Cores.
+        *   **Compute-Comm Overlap**: MoE's All-to-All communication is inherently asynchronous. While tokens routed to local experts are processed using dense GEMMs on the local GPU, cross-host tokens are shunted asynchronously over the network. This **extreme asynchronous overlap** virtually hides the communication latency behind the computation time.
+
+**Core Differences between Cross-host TP and Expert Parallelism (EP):**
+
+| Dimension | Cross-host Tensor Parallelism (TP) | Expert Parallelism (EP) |
+| :--- | :--- | :--- |
+| **Core Philosophy** | **"Everyone cuts the same tree"** (sharded weights, stationary token activations) | **"Divide trees among people"** (stationary weights, moving token activations) |
+| **Matrix Multiplication** | **Extremely Low** (sharded matrices, degrading into GEMV) | **Extremely High** (maintains complete expert matrices and aggregates large Batch Tokens to execute efficient GEMMs) |
+| **Communication Pattern** | **All-Reduce** (rigid synchronous global aggregation) | **All-to-All** (asynchronous out-of-order shunting) |
+| **Communication Frequency**| **Extremely High** (frequency scales with active experts) | **Extremely Low** (fixed at 2 times per layer) |
+| **Compute-Comm Overlap** | **Hard to overlap** (CUDA cores must hang and wait) | **Maximum Overlap** (asynchronously shunts tokens in the background) |
+
+> [!NOTE]
+> **Hardcore Quantification: EP vs. TP Communication Volume**
+> 
+> Intuition suggests EP's chaotic All-to-All volume is disastrous. However, math proves otherwise.
+> Let $M$ be the number of machines and $K$ be the number of Top-K experts activated per token. In an unoptimized theoretical model, EP's cross-machine communication volume is merely $1/M$ of TP. Even if engineering practices utilize Operator Fusion to reduce TP communication volume by a factor of $K$, EP's total communication volume is still only around $K/M$ of TP.
+
+---
+
+### Section 3: The Golden Duo: DP Attention + EP MoE
+
+In production (like DeepSeek V3/R1 serving), MoE inference often uses a hybrid topology: **Attention layers use Data Parallelism (DP), and FFN (MoE) layers use Expert Parallelism (EP)**.
+
+This switching leverages MoE **heterogeneity**:
+1. **Attention Layers (Small & Dense)**: Modern architectures (like GQA or MLA discussed in [Chapter 9: Model Architecture VRAM Slimming: GQA](./part3_single_node.md#chapter-9-model-architecture-vram-slimming-gqa)), compress attention weights enough to replicate on every card. Thus, attention perfectly suits **DP (Data Parallelism)**—each card processes its requests independently without communication, avoiding TP All-Reduce overhead.
+2. **FFN Layers (Large & Sparse)**: For MoE, total expert weights are massive and must be sliced across machines via EP, routing tokens.
+
+This dual role (horizontal DP for Attention, vertical routing for FFN) maximizes both MoE algorithmic advantages and distributed hardware capabilities.
+
+**DP Attention + EP MoE Architecture Topology Diagram:**
+
+![DP Attention + EP MoE Architecture Topology](../images/dp_attention_ep_moe.svg)
+
+> [!NOTE]
+> **Core Trade-offs: Sharding Dimensions and the Long vs. Short Context Battle**
+> 
+> We compare DP (Data Parallelism) and CP (Context Parallelism) together because both shard the **input data** itself rather than the model's weight dimensions. However, the specific directions in which they slice data are entirely different:
+> *   **DP Attention**: Shards the **Batch / Request dimension**. Different requests process independently inside each node's attention layers without communication, aiming for maximum concurrency throughput.
+> *   **CP Attention**: Shards the **Sequence dimension**. The KV Cache of a single, super-long request is physically split across nodes, relying on Ring Attention for frequent ring synchronizations.
+> 
+> Deciding between the two requires navigating a delicate **long versus short context trade-off**:
+> *   **Short Text Penalties**: Enabling CP for short sequences results in tiny per-GPU workloads. The GPU compute is immediately choked by frequent cross-host ring communication.
+> *   **Long Text Bottlenecks**: Conversely, without CP, a massive context of hundreds of thousands of tokens instantly fills a single card's VRAM, causing OOM.
+> 
+> **Engineering Trade-offs in Practice**:
+> In real production environments, engineers typically evaluate deployment **Profiles** based on specific business needs. Here are two examples of compromises:
+> *   **Example 1: Compromise Efficiency for Consistency**: Enable subtle CP (e.g., CP=2 or 4) across a uniform fleet. Although short text throughput takes a 10-20% penalty, it guarantees compatibility for all context lengths with minimal hardware investment and high operational stability.
+> *   **Example 2: Physical Isolation for Performance**: Implement a routing gateway to shunt traffic at the boundary. High-frequency short context traffic routes to a pure `DP Attention + EP MoE` topology, keeping Attention zero-communication to secure maximum throughput, while heavy long context traffic enters a dedicated `CP Attention + EP MoE` topology to ensure zero OOMs.
+
+---
+
+## Chapter 18: The Perfect Division of Labor: Disaggregated Serving
 
 What is **Disaggregated Serving**? Put simply, it is an architecture that completely strips the **Prefill** phase and **Decode** phase of large model inference and runs them on physical clusters with different hardware configurations.
 
@@ -347,9 +442,9 @@ This decentralized data handover mechanism where "the gateway only controls flow
 
 ---
 
-## Chapter 18: The Omniscient Traffic Police: Content-Aware Routing
+## Chapter 19: The Omniscient Traffic Police: Content-Aware Routing
 
-In Chapter 17, we split the cluster into a Prefill pool and a Decode pool. So, when massive HTTP requests pour in, who decides which request goes to which machine? This chapter will introduce the "traffic police" in the large model cluster — **Content-Aware Routing**.
+In Chapter 18, we split the cluster into a Prefill pool and a Decode pool. So, when massive HTTP requests pour in, who decides which request goes to which machine? This chapter will introduce the "traffic police" in the large model cluster — **Content-Aware Routing**.
 
 ### Section 1: AI Gateway: The Traffic Police That Knows the Business
 
@@ -419,7 +514,7 @@ This mechanism where "the gateway only does soft routing diversion, and data rel
 
 ---
 
-## Chapter 19: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference
+## Chapter 20: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference
 
 Whether implementing model slicing in distributed inference or performing data movement in Disaggregated Serving, **as computation is sliced, communication overhead is also generated**. Network communication is the "lifeline" that determines the success or failure of the system.
 

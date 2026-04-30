@@ -20,7 +20,8 @@ Follows the principles in `GEMINI.md`:
     - [ ] Agent architecture (e.g., OpenClaw)
     - [ ] Explore new requirements for serving agents
     - [ ] LoRA principles and inference requirements
-    - [ ] Expert parallel (EP) and MoE inference requirements
+    - [x] Expert parallelism (EP) and MoE inference requirements
+    - [ ] Research DeepSeek V4's hybrid attention and corresponding inference framework changes
     - [ ] Explore TPU architecture (e.g., topology) and its solutions to Part 5 challenges
     - [ ] Research GB series hardware topology
     - [ ] Understand how `DisaggregatedSet` works in LeaderWorkerSet (for Disaggregated Serving). Ref KEP: https://github.com/kubernetes-sigs/lws/pull/773
