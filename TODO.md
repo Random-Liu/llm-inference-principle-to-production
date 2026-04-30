@@ -5,7 +5,7 @@ Follows the principles in `GEMINI.md`:
 - [x] Part 1: Principles ([part1_principles.md](parts/part1_principles.md))
 - [x] Part 2: Bottlenecks ([part2_bottlenecks.md](parts/part2_bottlenecks.md))
 - [x] Part 3: Single-Node ([part3_single_node.md](parts/part3_single_node.md))
-- [ ] Part 4: Distributed ([part4_distributed.md](parts/part4_distributed.md))
+- [x] Part 4: Distributed ([part4_distributed.md](parts/part4_distributed.md))
 - [ ] Part 5: Orchestration ([part5_k8s.md](parts/part5_k8s.md))
 - [ ] Part 6: Frontier ([part6_frontier.md](parts/part6_frontier.md))
 
