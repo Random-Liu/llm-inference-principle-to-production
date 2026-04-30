@@ -495,7 +495,7 @@ sequenceDiagram
 
 **2. 后端的“L3 共享缓存”（解决副本生成）**
 被网关分流到空闲节点的请求，本地并没有 KV Cache，重新计算又太慢，怎么办？
-SGLang 引入了 **HiCache** 机制，将缓存分为 GPU(L1)、CPU(L2) 和**分布式共享存储(L3)**（如 Mooncake 或 DeepSeek 3FS）。
+SGLang 引入了 **HiCache** 机制，将缓存分为 GPU(L1)、CPU(L2) 和 **分布式共享存储(L3)** （如 Mooncake 或 DeepSeek 3FS）。
 
 *   当热点节点的缓存被触发写回 L3 后，空闲节点收到网关分流过来的请求，发现本地无缓存，就会 **直接从 L3 共享存储中拉取（Prefetch）** 这份 KV Cache。
 *   Node B 处理完后，本地自然也拥有了该缓存。网关在收到反馈后，更新前缀树，Node B 就正式成为了该热点前缀的新“副本”。
