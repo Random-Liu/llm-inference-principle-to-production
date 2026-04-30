@@ -26,7 +26,7 @@
   - [Section 4: Kueue: Job Queuing and Quota Management](#section-4-kueue-job-queuing-and-quota-management)
 - [Chapter 26: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference](#chapter-26-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference)
   - [Section 1: Pod Autoscaling: Shifting from Metrics to Events](#section-1-pod-autoscaling-shifting-from-metrics-to-events)
-  - [Section 2: Node Autoscaling: Just-In-Time Provisioning](#section-2-node-autoscaling-just-in-time-provisioning)
+  - [Section 2: Autoscaling Bottlenecks: Latency and Atomicity](#section-2-autoscaling-bottlenecks-latency-and-atomicity)
 - [Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets](#chapter-27-operations-and-upgrades-continuity-vs-heavy-assets)
   - [Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference](#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference)
   - [Section 2: Seamless Upgrades: Engineering Practices](#section-2-seamless-upgrades-engineering-practices)
@@ -928,7 +928,7 @@ By targeting **LeaderWorkerSet (LWS)** instead of Deployments:
 *   HPA scales the number of LWS `replicas`.
 *   LWS controller creates or destroys Pods atomically as a group, ensuring atomicity.
 
-### Section 2: Node Autoscaling: Just-In-Time Provisioning
+### Section 2: Autoscaling Bottlenecks: Latency and Atomicity
 
 When Pod scaling exhausts physical resources, Node Autoscaling triggers.
 

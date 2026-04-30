@@ -140,7 +140,7 @@
     - [第四节：Kueue：作业排队与配额管理的艺术](parts/part5_k8s.cn.md#第四节kueue作业排队与配额管理的艺术)
   - [第二十六章：动态伸缩：Pod 与 Node 的 Autoscaling 艺术](parts/part5_k8s.cn.md#第二十六章动态伸缩pod-与-node-的-autoscaling-艺术)
     - [第一节：Pod Autoscaling：从指标到事件的进化](parts/part5_k8s.cn.md#第一节pod-autoscaling从指标到事件的进化)
-    - [第二节：Node Autoscaling：从“买套餐”到“去菜市场”](parts/part5_k8s.cn.md#第二节node-autoscaling从买套餐到去菜市场)
+    - [第二节：节点扩容的暗礁：滞后性与原子性](parts/part5_k8s.cn.md#第二节节点扩容的暗礁滞后性与原子性)
   - [第二十七章：运维与升级：业务连续性与重资产的博弈](parts/part5_k8s.cn.md#第二十七章运维与升级业务连续性与重资产的博弈)
     - [第一节：传统 K8s 升级范式在 LLM 场景的“水土不服”](parts/part5_k8s.cn.md#第一节传统-k8s-升级范式在-llm-场景的水土不服)
     - [第二节：实现无感知的优雅升级](parts/part5_k8s.cn.md#第二节实现无感知的优雅升级)

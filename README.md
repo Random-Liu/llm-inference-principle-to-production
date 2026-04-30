@@ -139,7 +139,7 @@ The primary audience for this book is **the author themselves**. It is open-sour
     - [Section 4: Kueue: Job Queuing and Quota Management](parts/part5_k8s.md#section-4-kueue-job-queuing-and-quota-management)
   - [Chapter 26: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference](parts/part5_k8s.md#chapter-26-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference)
     - [Section 1: Pod Autoscaling: Shifting from Metrics to Events](parts/part5_k8s.md#section-1-pod-autoscaling-shifting-from-metrics-to-events)
-    - [Section 2: Node Autoscaling: Just-In-Time Provisioning](parts/part5_k8s.md#section-2-node-autoscaling-just-in-time-provisioning)
+    - [Section 2: Autoscaling Bottlenecks: Latency and Atomicity](parts/part5_k8s.md#section-2-autoscaling-bottlenecks-latency-and-atomicity)
   - [Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets](parts/part5_k8s.md#chapter-27-operations-and-upgrades-continuity-vs-heavy-assets)
     - [Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference](parts/part5_k8s.md#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference)
     - [Section 2: Seamless Upgrades: Engineering Practices](parts/part5_k8s.md#section-2-seamless-upgrades-engineering-practices)
