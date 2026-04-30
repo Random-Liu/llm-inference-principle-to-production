@@ -263,7 +263,7 @@ Safetensors 完美地解决了“文件在本地如何高效读取”的问题�
 
 过去，Kubernetes 的 Device Plugin 只能把 GPU 抽象为一个一维的**标量整数**（例如：`nvidia.com/gpu: 8`）。调度器只知道“这里有 8 个 GPU”，但它不知道这 8 个 GPU 的显存是多少、架构是 Hopper 还是 Ampere、它们之间是否有 NVLink 互联、甚至不知道它们分别插在哪个 NUMA 节点上。
 
-在大规模分布式 LLM 推理中，任务在本质上是**拓扑强依赖（Topology-aware）**的。
+在大规模分布式 LLM 推理中，任务在本质上是 **拓扑强依赖（Topology-aware）** 的。
 
 在分布式 LLM 推理场景下，由于对拓扑的漠视，标量计数调度会引发以下几个维度的严重问题：
 
@@ -1087,7 +1087,7 @@ Kubernetes 原生的升级和维护通常依赖于 **滚动升级（Rolling Upda
 
 ### 矛盾二：严苛的“计算拓扑”（Rigid Compute-Topology）—— 紧耦合与松耦合的生死碰撞
 
-传统的 Kubernetes 秉承**松耦合（Loose Coupling）**哲学，资源分配是标量计数的（“能塞一个是一个”）。而大模型分布式推理是典型的**拓扑强依赖（Topology-aware）**与**紧耦合（Tightly Coupled）**系统：
+传统的 Kubernetes 秉承 **松耦合（Loose Coupling）** 哲学，资源分配是标量计数的（“能塞一个是一个”）。而大模型分布式推理是典型的 **拓扑强依赖（Topology-aware）** 与 **紧耦合（Tightly Coupled）** 系统：
 *   **什么是严苛拓扑**：单机内 GPU 必须走 NVLink，GPU 与网卡必须在同一个 PCIe Switch 下（GPUDirect RDMA），跨机必须独占机架，且组内所有 Pod 必须同生共死。
 *   **痛点的映射**：
     *   **打破标量计数的桎梏（第二十二章）**：为了让调度器看清主板上的物理真相，K8s 彻底颠覆了 Device Plugin 范式，引入了 DRA（动态资源分配）。
