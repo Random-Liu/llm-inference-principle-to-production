@@ -450,7 +450,7 @@ In Chapter 18, we split the cluster into a Prefill pool and a Decode pool. So, w
 
 Traditional load balancers (like Nginx or F5) only care about basic physical metrics such as network traffic, concurrent connections, and server CPU/memory utilization. To them, an HTTP request is just a bunch of meaningless bytes.
 
-But in an LLM inference cluster, this "blind" routing leads to disaster. Because the cost of large model inference is almost entirely determined by the **content and length of the Prompt**.
+But in an LLM inference cluster, this "blind" routing leads to disaster. Because the cost of large model inference is largely determined by the **content and length of the Prompt**.
 
 Thus, the **AI Gateway** emerged. It is a traffic police that knows the business:
 * **Request Inspection**: Before a request reaches the GPU, the gateway first parses it to see how many Tokens it contains and what business type it belongs to.
@@ -475,7 +475,7 @@ We can use the following table to sort out the routing decision logic of the AI 
 In large model clusters, **Cache-aware Routing** is the most powerful killer feature of the AI Gateway.
 
 **1. Why is it needed?**
-Combined with the **RadixAttention (Prefix Caching)** we learned in Chapter 11, if multiple requests share the same System Prompt, long document background, or historical conversation, the node will locally cache the KV Cache of these prefixes.
+Combined with the [Chapter 12: Memory Time Machine: Prefix Caching (RadixAttention)](./part3_single_node.md#chapter-12-memory-time-machine-prefix-caching-radixattention) we learned, if multiple requests share the same System Prompt, long document background, or historical conversation, the node will locally cache the KV Cache of these prefixes.
 If the gateway just blindly routes round-robin, requests with the same prefix will be scattered to different nodes, causing each node to repeat the Prefill computation. This not only wastes massive GPU compute but also greatly lengthens TTFT.
 Therefore, we need the gateway to be aware of the prefix content of the request, and accurately route the request to the node that already holds the cache.
 
