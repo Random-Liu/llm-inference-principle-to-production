@@ -24,6 +24,7 @@ Follows the principles in `GEMINI.md`:
     - [ ] Research DeepSeek V4's hybrid attention and corresponding inference framework changes
     - [ ] Explore TPU architecture (e.g., topology) and its solutions to Part 5 challenges
     - [ ] Research GB series hardware topology
+    - [ ] Study system optimizations and trade-off changes tailored for cross-machine NVLink Switch (e.g., multi-node Tensor Parallelism expansions, reduced PP requirements)
     - [ ] Understand how `DisaggregatedSet` works in LeaderWorkerSet (for Disaggregated Serving). Ref KEP: https://github.com/kubernetes-sigs/lws/pull/773
     - [ ] Learn the complete CUDA software stack to understand its dependencies
     - [ ] Explore Kubernetes Gateway API Inference Extension
