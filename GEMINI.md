@@ -25,7 +25,8 @@ This file contains instructions and conventions for AI agents working on this re
   - **LaTeX Spacing**: Ensure all inline math formulas `$formula$` are separated from adjacent CJK characters or Chinese punctuation by a space (e.g., `文本 $formula$ 文本` or `公式： $formula$`) to prevent GitHub from failing to render the LaTeX.
   - **Bolding Spacing**: When using bolding on text enclosed in Chinese quotes (e.g., `**“内容”**`) or containing text in parentheses (e.g., `**词语（Annotation）**`), ensure there are spaces around the bold markers if they are adjacent to CJK characters (e.g., `文本 **“内容”** 文本` or `文本 **词语（Annotation）** 文本`) to ensure correct rendering in Markdown parsers. Avoid splitting the bolding or moving quotes outside the bold markers unless necessary.
 - **Non-Chinese Files (`*.md`, primarily English)**: Must follow a **strictly concise and direct** style to avoid verbosity. Follow these principles:
-  - **Principle**: Adopt an "idiomatic + concise" (意译+精简) strategy rather than word-for-word translation.
+  - **Principle**: Adopt an "idiomatic + concise" (意译+精炼) strategy rather than word-for-word translation. The term "concise" (精炼) refers only to simplifying sentences and phrasing; it never justifies dropping paragraphs, background context, or details.
+  - **100% Mapping and No Over-Simplification**: Never drop any background explanations, examples, notes, or comparison metrics for the sake of making sentences short. Every chapter, section, bullet point, and bolded terminology in the English version MUST be a 100% precise, 1:1 structural map of the Chinese source text.
   - **Content Preservation**: Only simplify sentences and phrasing; never delete or alter technical content.
   - **Directness**: Use short sentences and avoid complex clauses (e.g., avoid stacking "is, that, which").
   - **Action-Oriented**: Use active verbs instead of abstract noun phrases (e.g., avoid "the essence of... is...").
