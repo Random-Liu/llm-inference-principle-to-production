@@ -96,6 +96,7 @@ The primary audience for this book is **the author themselves**. It is open-sour
     - [Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory](parts/part4_distributed.md#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory)
     - [Section 4: The Impact of TP and PP on Core Metrics](parts/part4_distributed.md#section-4-the-impact-of-tp-and-pp-on-core-metrics)
     - [Section 5: Breaking the Sequence Wall: Context Parallelism](parts/part4_distributed.md#section-5-breaking-the-sequence-wall-context-parallelism)
+    - [Section 6: Hybrid Parallelism: The 3D Concerto of TP, PP, and CP](parts/part4_distributed.md#section-6-hybrid-parallelism-the-3d-concerto-of-tp-pp-and-cp)
   - [Chapter 17: The Perfect Division of Labor: Disaggregated Serving](parts/part4_distributed.md#chapter-17-perfect-division-of-labor-disaggregated-serving)
     - [Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma](parts/part4_distributed.md#section-1-irreconcilable-contradiction-hardware-mismatch-and-management-dilemma)
     - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](parts/part4_distributed.md#section-2-physical-separation-decoupling-hardware-simplifying-management)

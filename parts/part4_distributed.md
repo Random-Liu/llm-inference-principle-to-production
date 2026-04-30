@@ -7,6 +7,7 @@
   - [Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory](#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory)
   - [Section 4: The Impact of TP and PP on Core Metrics](#section-4-the-impact-of-tp-and-pp-on-core-metrics)
   - [Section 5: Breaking the Sequence Wall: Context Parallelism](#section-5-breaking-the-sequence-wall-context-parallelism)
+  - [Section 6: Hybrid Parallelism: The 3D Concerto of TP, PP, and CP](#section-6-hybrid-parallelism-the-3d-concerto-of-tp-pp-and-cp)
 - [Chapter 17: The Perfect Division of Labor: Disaggregated Serving](#chapter-17-the-perfect-division-of-labor-disaggregated-serving)
   - [Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma](#section-1-irreconcilable-contradiction-hardware-mismatch-and-management-dilemma)
   - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](#section-2-physical-separation-decoupling-hardware-simplifying-management)
@@ -217,6 +218,32 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 > 
 > While this section focuses on intra-machine GPU collaboration for simplicity, Context Parallelism can span physical machines. **When context length reaches 1M or more and exceeds the total VRAM of a single machine, CP must cross machine boundaries.**
 > In this case, Ring Attention communication uses cross-machine networks (InfiniBand or RoCE). Since their bandwidth and latency are an order of magnitude worse than NVLink, this requires advanced compute-communication overlap techniques, representing the ultimate long-context engineering challenge.
+
+---
+
+### Section 6: Hybrid Parallelism: The 3D Concerto of TP, PP, and CP
+
+Extreme scenarios with ultra-large models (e.g., $400\text{B}$) and super-long contexts (e.g., $1\text{M}$ tokens) demand combining multiple strategies. Integrating Tensor Parallelism (TP), Pipeline Parallelism (PP), and Context Parallelism (CP) creates a powerful 3D topology.
+
+**1. The Physical Picture of the Ultimate Topology**
+
+Frontier industry practices reveal a typical 3D parallelism (TP + PP + CP) architecture with clear physical layering:
+
+*   **Intra-node (NVLink Domain) Maxed TP** : Inside a single $8$-card server, setting $\text{TP}=8$ is standard. High-bandwidth NVLink/NVSwitch connects these $8$ cards, acting as a single "physical atom" holding a weight slice. This handles high-frequency All-Reduce communication effectively.
+*   **Inter-node Vertical Slicing (Cross-machine Network) for PP** : Between nodes, pipeline parallelism (PP) slices model layers vertically. **For example, in the diagram below, an $80$-layer model splits into $2$ stages of $40$ layers each (Stage 1 for layers 1-40, Stage 2 for layers 41-80).** Machines only pass small forward activations, minimizing pressure on cross-machine networks (e.g., InfiniBand or RoCE).
+*   **Inter-node Horizontal Expansion (Cross-machine Network) for CP** : Within the same PP stage, context parallelism (CP) handles massive KV Caches exceeding single-node capacity. **For example, in the diagram below, a $1\text{M}$-token context splits into $2$ chunks (each $500\text{K}$ tokens), distributed to two sets of nodes (Node A and Node B).** Nodes replicate identical layer weights and use Ring Attention to cyclically pass KV Cache chunks, piecing together million-level contexts.
+
+**3D Parallelism (TP + PP + CP) Topology Diagram:**
+
+![3D Parallelism Topology (TP + PP + CP) Physical Picture](../images/hybrid_parallelism_topology.svg)
+
+In this architecture, **inside each Transformer block**, the data flow and communication patterns differ between Attention and FFN layers:
+*   **Attention Layers**: Since attention requires tokens to "see" each other, cross-machine CP communication (like Ring Attention) is necessary to exchange KV Cache.
+*   **FFN Layers**: Since the FFN processes each token independently, each machine just computes the FFN for its local tokens without cross-machine communication (only intra-node TP sync).
+
+This characteristic where Attention relies on CP while FFN remains independent is very clear in Dense models. However, if the model is a Mixture of Experts (MoE), the FFN layer evolves into multiple experts, leading to the more complex **Expert Parallelism (EP)**, which we will explore in depth in subsequent chapters.
+
+---
 
 ## Chapter 17: The Perfect Division of Labor: Disaggregated Serving
 
