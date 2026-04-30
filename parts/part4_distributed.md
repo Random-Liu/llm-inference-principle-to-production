@@ -350,12 +350,12 @@ The answer is: single-machine optimization is only a **"tactical-level"** limit 
 
 ### Section 1: Irreconcilable Contradiction: Hardware Mismatch and Management Dilemma
 
-We mentioned in Chapter 8 that Prefill and Decode have completely opposite hardware requirements:
+We mentioned in [Chapter 8: Core Asymmetry: Prefill vs. Decode](../parts/part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-vs-decode) that Prefill and Decode have completely opposite hardware requirements:
 * **Prefill**: Processes massive inputs, requiring extremely high **Compute (FLOPs)**, but relatively small VRAM capacity requirements.
 * **Decode**: Spits out Tokens word by word, with very little computation (compute is idle), but needs to frequently move massive KV Caches from VRAM, extremely craving **Memory Bandwidth** and **Memory Capacity**.
 
 If using a traditional unified architecture (mixed deployment), the system will face a double blow:
-1. **Waste from Hardware Mismatch**: When you use an expensive H100 graphics card to run the Decode phase, its world-destroying Tensor Core compute is "sleeping" and waiting for memory to move data most of the time. This is tantamount to using a dragon-slaying sword to chop wood, causing a huge waste of cost.
+1. **Waste from Hardware Mismatch**: When you use an expensive B200 graphics card to run the Decode phase, its world-destroying Tensor Core compute is "sleeping" and waiting for memory to move data most of the time. This is tantamount to using a dragon-slaving sword to chop wood, causing a huge waste of cost.
 2. **The "Tightrope Walking" of Management and Scheduling**: To solve this contradiction on a single machine, engineers invented extremely complex scheduling algorithms like Continuous Batching and Chunked Prefill (as described in previous chapters). This is tantamount to "walking a tightrope" on a single graphics card — the system must carefully balance the resource occupation of both; any carelessness will trigger jitter in Time to First Token (TTFT) or Time Between Tokens (TBT). This multi-dimensional (compute, memory capacity, bandwidth) mixed optimization makes the resource planning and capacity management of the cluster exceptionally complex.
 
 > [!NOTE]
@@ -407,10 +407,10 @@ To let you see this process of "gateway matchmaking, node direct connection" mor
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as User
-    participant Gateway as AI Gateway / Scheduler
-    participant Prefill as Prefill Node<br/>(Compute-bound)
-    participant Decode as Decode Node<br/>(Memory/Bandwidth-bound)
+    actor User as 🧑 User
+    participant Gateway as 🚦 AI Gateway / Scheduler
+    participant Prefill as 🚀 Prefill Node<br/>(Compute-bound)
+    participant Decode as 💾 Decode Node<br/>(Memory/Bandwidth-bound)
 
     User->>Gateway: 1. Send Prompt request
     Note over Gateway: Matchmaker role: Pick P/D pair<br/>Generate Room ID & Address Info

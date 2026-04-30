@@ -353,12 +353,12 @@ MoE 模型的核心思想是解耦“模型容量”与“计算成本”。你�
 
 ### 第一节：难以调和的矛盾：硬件错配与管理困境
 
-我们在第八章提到过，Prefill 和 Decode 对硬件的需求是完全相反的：
+我们在 [第八章：核心不对称性：Prefill 与 Decode](../parts/part2_bottlenecks.cn.md#第八章核心不对称性prefill-与-decode) 提到过，Prefill 和 Decode 对硬件的需求是完全相反的：
 *   **Prefill**：处理海量输入，需要极高的**计算算力（FLOPs）**，但对显存容量要求相对较小。
 *   **Decode**：逐字吐出 Token，计算量很小（算力闲置），但需要频繁从显存搬运庞大的 KV Cache，极度渴望**显存带宽**和**显存容量**。
 
 如果使用传统的统一架构（混合部署），系统将面临双重打击：
-1.  **硬件错配的浪费**：当你用昂贵的 H100 显卡去跑 Decode 阶段时，它那毁天灭地的 Tensor Core 算力绝大多数时间都在“睡大觉”等显存搬数据。这无异于用屠龙刀去砍柴，造成了极大的成本浪费。
+1.  **硬件错配的浪费**：当你用昂贵的 B200 显卡去跑 Decode 阶段时，它那毁天灭地的 Tensor Core 算力绝大多数时间都在“睡大觉”等显存搬数据。这无异于用屠龙刀去砍柴，造成了极大的成本浪费。
 2.  **管理与调度的“走钢丝”**：为了在单机上解决这个矛盾，工程师们发明了连续批处理、分块预填充等极其复杂的调度算法（如前几章所述）。这无异于在单张显卡上“走钢丝”——系统必须小心翼翼地平衡两者的资源占用，稍有不慎就会引发首字延迟（TTFT）或吐字间隔（TBT）的抖动。这种多维度（算力、显存、带宽）的混合优化，让集群的资源规划和容量管理变得异常复杂。
 
 > [!NOTE]
@@ -394,7 +394,7 @@ MoE 模型的核心思想是解耦“模型容量”与“计算成本”。你�
 理解了分离式推理的优势后，我们来看看一个请求在分离架构下是如何流转的。它就像一场精心安排的接力赛，**AI 网关** 扮演“媒人（Matchmaker）”的角色，而 **Prefill 节点** 和 **Decode 节点** 则进行点对点的交接：
 
 1. **请求接入与撮合**：用户发送 Prompt 请求到达 **AI 网关**。网关根据策略挑选出一组 **Prefill 节点** 和 **Decode 节点**，并为它们生成一个全局唯一的会话标识（如 Room ID）。
-2. **并发派发**：AI 网关将带有连接信息（目标节点地址 and Room ID）的请求，**并发地**同时发送给选定的 Prefill 节点 and Decode 节点。
+2. **并发派发**：AI 网关将带有连接信息（目标节点地址以及 Room ID）的请求，**并发地**同时发送给选定的 Prefill 节点和 Decode 节点。
 3. **点对点握手与预分配**：
    * **Decode 节点** 收到请求后，首先在本地 KV 池中为该请求**预分配**好显存空间，并将这些目标内存地址通过控制流发送给 Prefill 节点（“往这儿写”）。
    * 此时，两节点完成了点对点的握手。
@@ -410,10 +410,10 @@ MoE 模型的核心思想是解耦“模型容量”与“计算成本”。你�
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as 用户
-    participant Gateway as AI 网关 / 调度器
-    participant Prefill as Prefill 节点<br/>(算力密集型)
-    participant Decode as Decode 节点<br/>(显存/带宽密集型)
+    actor User as 🧑 用户
+    participant Gateway as 🚦 AI 网关 / 调度器
+    participant Prefill as 🚀 Prefill 节点<br/>(算力密集型)
+    participant Decode as 💾 Decode 节点<br/>(显存/带宽密集型)
 
     User->>Gateway: 1. 发送 Prompt 请求
     Note over Gateway: 媒人角色：挑选 P/D 对<br/>生成 Room ID 与地址信息
