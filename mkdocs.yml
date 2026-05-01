@@ -28,8 +28,7 @@ theme:
 
 plugins:
   - search
-  - opengraph:
-      image: /images/cover.png
+  - opengraph
 
 markdown_extensions:
   - toc:
