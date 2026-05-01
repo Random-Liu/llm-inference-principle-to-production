@@ -1,5 +1,13 @@
+{% if ".cn.md" in page.file.src_path or "index.cn.md" in page.file.src_path %}
+  {% set giscus_lang = "zh-CN" %}
+  {% set comments_title = "评论与点赞 (Comments & Likes)" %}
+{% else %}
+  {% set giscus_lang = "en" %}
+  {% set comments_title = "Comments & Likes" %}
+{% endif %}
+
 {% if page.meta.comments is not defined or page.meta.comments %}
-  <h2 id="__comments">评论与点赞 (Comments & Likes)</h2>
+  <h2 id="__comments">{{ comments_title }}</h2>
   <script src="https://giscus.app/client.js"
           data-repo="Random-Liu/llm-inference-principle-to-production"
           data-repo-id="R_kgDOSGfGjQ"
@@ -11,7 +19,7 @@
           data-emit-metadata="0"
           data-input-position="bottom"
           data-theme="preferred_color_scheme"
-          data-lang="zh-CN"
+          data-lang="{{ giscus_lang }}"
           crossorigin="anonymous"
           async>
   </script>
