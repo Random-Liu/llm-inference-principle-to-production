@@ -205,15 +205,9 @@ In response to these three dimensions, the aforementioned schools have converged
 ##### Direct Streaming in Public Clouds (Without Local Cache)
 In mature public clouds (e.g., AWS, GCP), setups such as `Run:ai Model Streamer`, `Mountpoint for Amazon S3`, or `AIBrix` are common.
 *   **Principle**: They bypass distributed cache clusters entirely, initiating high-concurrency streaming via object storage SDKs or FUSE drivers.
-*   **Trade-off Considerations**: Because hyperscaler backbones deliver tens of gigabytes of bandwidth, these architectures are lightweight, operate without heavy cache management, and perform exceptionally even **without Local Caching**. In private or cost-sensitive data centers, however, bandwidth limitations make local caching and P2P architectures indispensable for architects.
-
-> [!IMPORTANT]
-> **Determining Factors for Adopting P2P**
-> 
-> The deciding factor for architects assessing **P2P** deployment is the strength of the underlying infrastructure:
-> 
-> *   **On-prem / Air-gapped Environments**: Centralized registries or object storage face extreme concurrent bandwidth limits. P2P is an **absolute necessity** to prevent a Thundering Herd from crashing the central cluster.
-> *   **Public Cloud Environments**: Hyperscaler storage like S3 / GCS delivers massive throughput, making P2P less critical. It remains a **cost and latency optimization** for reducing cross-AZ / egress traffic charges and compressing cold starts during large-scale autoscaling.
+*   **Trade-off Considerations**: Backed by hyperscaler infrastructure and object storage delivering tens of gigabytes of bandwidth, these architectures operate without heavy cache management and perform well even **without Local Caching**. In private or cost-sensitive data centers, however, bandwidth limitations make local caching and P2P architectures indispensable for architects:
+    *   **On-prem / Air-gapped Environments**: Because centralized registries or object storage face concurrent bandwidth limits, P2P mechanisms spread traffic and are crucial for preventing a Thundering Herd from crashing the core storage cluster.
+    *   **Public Cloud Environments**: Because hyperscaler storage like S3 / GCS delivers high throughput, the need for P2P is lessened. It acts mainly as a **cost and latency optimization** to reduce cross-AZ / Egress traffic charges and compress cold-starts during large-scale autoscaling.
 
 
 ---
