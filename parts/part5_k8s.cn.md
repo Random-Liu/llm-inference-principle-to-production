@@ -189,16 +189,16 @@ Safetensors 完美地解决了“文件在本地如何高效读取”的问题�
     *   **本地缓存（Local Cache）**：来自 Alluxio/JuiceFS 部署在计算节点上的 Worker 守护进程。它们会接管节点的本地 SSD/内存，当 Pod 第一次读取某块权重时，该数据块会被沉降到本地 SSD。后续同节点的推理 Pod 重建时，直接“短路读”本地缓存。
     *   **跨节点 P2P 共享（P2P Sharing）**：Alluxio 支持节点间的分布式协同。如果当前节点未命中缓存，会优先向集群内存有该数据块的邻居节点发起内网拉取，而不是直接穿透至远端 S3。
     *   **流式按需拉取（Streaming / Lazy Loading）**：通过 CSI（容器存储接口）挂载虚拟文件系统。文件系统在后台将模型切分为 4MB 左右的微小块，当引擎访问到具体偏移量时，实时按需拉取对应的数据块。
-*   **优势**：对上层推理引擎（如 vLLM）完全透明，引擎只需像读取本地文件一样读取挂载点即可，极大降低了集成门槛。
+*   **定位与选型**：如果团队**决定不采用 OCI 的方案**，那么该组合就是最自然的数据卷式解决路径。
 
 ##### ② 对应流派二（资产镜像化）：Artifact / Image-centric 模式（模型即镜像）
 
 *   **代表组合**：**`Dragonfly + Nydus`**
 *   **原理**：将模型权重伪装打包为标准的 **OCI Artifact**（OCI 规范产物），并在容器运行时（containerd）层面引入 Nydus 作为快照器（Snapshotter），配合 Dragonfly 劫持网络流量并提供拓扑 P2P 传输能力。
-    *   **本地缓存（Local Cache）**：Nydus 作为快照器，会在宿主机的本地磁盘上维护一套数据块的索引与缓存。所有复用相同 OCI Artifact 层的 Pod 可以共享本地已解压的数据块。
-    *   **跨节点 P2P 共享（P2P Sharing）**：完全由 Dragonfly 赋能。Dragonfly 在每个计算节点上部署 Peer 节点，当多台服务器同时拉取权重时，Peer 节点间会拓扑感知并互相“投喂”已拉取的分片。
-    *   **流式按需拉取（Streaming / Lazy Loading）**：Nydus 提供容器层面的 Lazy Loading。权重被打包为类似镜像层的特殊 chunk 集合，Pod 无需等待全部下载即可瞬间进入 Running 状态，容器内的 I/O 请求会被动态拦截并转为网络拉取。
-*   **优势**：深度契合云原生生态的容器镜像分发路径，支持基于 OCI Tag 的版本控制，无需额外部署大型存储集群，运维形态更偏向“无状态”。
+    *   **本地缓存（Local Cache）**：这就是标准的 **Kubelet 本地镜像缓存（Local Image Cache）**。只要没触发 Kubelet 的镜像垃圾回收（Image Garbage Collection），缓存在节点上的权重 Artifact 就会一直保留，供后续的 Pod 随时重用。
+    *   **跨节点 P2P 共享（P2P Sharing）**：由 Dragonfly 赋能。Dragonfly 在每个计算节点上部署 Peer 节点。当多台服务器同时拉取权重时，Peer 节点间会基于**真实且高效的 P2P 协议（True P2P Protocol）**进行拓扑感知并互相“投喂”已拉取的分片，传输速度极快。
+    *   **流式按需拉取（Streaming / Lazy Loading）**：Nydus 提供容器层面的 Lazy Loading。权重被打包为类似镜像层的特殊 chunk 集合，Pod 无需等待全部下载即可瞬间进入 Running 状态，容器内的 I/O 请求会被动态拦截并转为大 chunk 级别的针对性网络拉取。
+*   **优势与选型**：如果你决定走 OCI Artifact 的道路，该组合就是对应的成熟解决路径。其核心好处在于**重用了业界高度成熟的大规模容器镜像分发优化经验**：不仅拥有真正飞速的跨机 P2P 分发能力，其流式按需拉取也是专门针对“大 Chunk”场景做过深度优化的。
 
 ##### 公有云环境下的直接流式读取（免用本地缓存）
 在成熟的顶级公有云环境（如 AWS、GCP）中，业界也常见 `Run:ai Model Streamer`、`Mountpoint for Amazon S3` 或 `AIBrix` 的组合。

@@ -182,7 +182,7 @@ Distributing hundreds of gigabytes of model weights to thousands of nodes and mi
 *   **P2P Sharing**: Leveraging high-speed intra-cluster networks so nodes missing weight files pull data from adjacent Peers, breaking the bandwidth bottleneck of centralized storage.
 *   **Streaming / Lazy Loading**: Slicing large files into Chunks. A Pod pulls just a few megabytes of metadata to become Ready. The underlying filesystem faults in necessary chunks only when the engine accesses a specific weight, eliminating full download wait times.
 
-In response to these three dimensions, the aforementioned schools have converged on the following technical combinations:
+In response to these three dimensions, the aforementioned schools have converged on the:
 
 ##### ① Corresponding to Route 1 (CSI + PVC): Volume / Filesystem-centric Mode (Model as Data)
 
@@ -191,16 +191,16 @@ In response to these three dimensions, the aforementioned schools have converged
     *   **Local Cache**: Provided by Alluxio/JuiceFS Workers deployed on compute nodes. They manage the node's local SSD or memory. When a Pod first reads a weight block, it sinks into the local SSD, allowing subsequent Pod recreations to read directly via short-circuit reads.
     *   **P2P Sharing**: Alluxio supports distributed coordination. If a local cache miss occurs, it pulls from neighboring Workers over the internal network rather than directly stressing the remote object storage.
     *   **Streaming / Lazy Loading**: Implemented as a virtual filesystem mounted via CSI. The backend slices the model into roughly 4MB blocks and dynamically fetches blocks as the engine touches specific offsets.
-*   **Advantages**: Entirely transparent to serving engines like vLLM. The engine reads the mount point as a local filesystem, reducing integration overhead.
+*   **Positioning and Selection**: If the team **decides not to adopt the OCI approach**, this combination is the most natural Persistent Volume-based solution.
 
 ##### ② Corresponding to Route 2 (Asset Image-ization): Artifact / Image-centric Mode (Model as Image)
 
 *   **Representative Stack**: **`Dragonfly + Nydus`**
 *   **Principle**: Packaging weights as a standard **OCI Artifact**. Nydus acts as the Snapshotter in the container runtime (containerd), paired with Dragonfly to hijack network traffic and provide topology-aware P2P transfers.
-    *   **Local Cache**: Nydus maintains an index and cache of data blocks on host local disks, sharing extracted chunks among all Pods referencing the same OCI Artifact layers.
-    *   **P2P Sharing**: Handled entirely by Dragonfly. Peers deployed on each node construct a topology-aware network, feeding downloaded slices to one another to disperse Registry bandwidth crises.
-    *   **Streaming / Lazy Loading**: Nydus provides container-level Lazy Loading. Weight chunks are packaged so Pods reach Running states instantly. Dynamic I/O requests inside the container are intercepted and translated into network fetches.
-*   **Advantages**: Fits container image distribution networks, offers native OCI Tag versioning, requires no heavy persistent cache cluster deployment, and keeps the operational footprint stateless.
+    *   **Local Cache**: This is standard **Kubelet Local Image Cache**. As long as Kubelet's Image Garbage Collection isn't triggered, the cached weight Artifact on the node will remain for subsequent Pods to reuse at will.
+    *   **P2P Sharing**: Powered entirely by Dragonfly. Peers deployed on each compute node construct a topology-aware network based on a **True P2P Protocol**, feeding downloaded slices to one another with extreme speed.
+    *   **Streaming / Lazy Loading**: Nydus provides container-level Lazy Loading. Weights are packaged into special chunk collections akin to image layers. Pods enter Running states instantly, and dynamic I/O requests are intercepted and translated into targeted large-chunk network pulls.
+*   **Advantages and Selection**: If you decide to go down the OCI Artifact route, this stack represents the mature solution. Its primary advantage lies in **reusing the industry's battle-tested large-scale container image distribution optimizations**, utilizing a true P2P protocol for faster deliveries alongside streaming specifically optimized for large chunks.
 
 ##### Direct Streaming in Public Clouds (Without Local Cache)
 In mature public clouds (e.g., AWS, GCP), setups such as `Run:ai Model Streamer`, `Mountpoint for Amazon S3`, or `AIBrix` are common.
