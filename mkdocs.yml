@@ -1,4 +1,5 @@
 site_name: "LLM 从原理到生产级推理 (LLM Inference from Principles to Production)"
+site_url: https://random-liu.github.io/llm-inference-principle-to-production/
 
 theme:
   name: material

@@ -1,10 +1,28 @@
 {% if ".cn.md" in page.file.src_path or "index.cn.md" in page.file.src_path %}
   {% set giscus_lang = "zh-CN" %}
   {% set comments_title = "评论与点赞 (Comments & Likes)" %}
+  {% set share_text = "一键分享 (Share):" %}
 {% else %}
   {% set giscus_lang = "en" %}
   {% set comments_title = "Comments & Likes" %}
+  {% set share_text = "Share this chapter:" %}
 {% endif %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">{{ share_text }}</span>
+  <a href="https://twitter.com/intent/tweet?url={{ page.canonical_url | urlencode }}&text={{ page.title | urlencode }}"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ page.canonical_url | urlencode }}"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
 
 {% if page.meta.comments is not defined or page.meta.comments %}
   <h2 id="__comments">{{ comments_title }}</h2>
