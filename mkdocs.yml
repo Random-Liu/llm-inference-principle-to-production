@@ -2,7 +2,7 @@ site_name: "LLM 从原理到生产级推理 (LLM Inference from Principles to Pr
 
 theme:
   name: material
-  language: zh
+  language: en
   features:
     - navigation.tabs
     - navigation.sections
@@ -12,20 +12,23 @@ theme:
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: teal
-      accent: amber
+      primary: blue
+      accent: light blue
       toggle:
         icon: material/weather-sunny
         name: 切换到浅色模式
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: teal
-      accent: amber
+      primary: blue
+      accent: light blue
       toggle:
         icon: material/weather-night
         name: 切换到深色模式
 
 markdown_extensions:
+  - toc:
+      toc_depth: 3
+      permalink: true
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.superfences:
@@ -49,17 +52,17 @@ extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - "中文版":
-    - "前言": index.md
-    - "第一部分：原理篇": parts/part1_principles.cn.md
-    - "第二部分：瓶颈篇": parts/part2_bottlenecks.cn.md
-    - "第三部分：单机篇": parts/part3_single_node.cn.md
-    - "第四部分：分布式篇": parts/part4_distributed.cn.md
-    - "第五部分：编排篇": parts/part5_k8s.cn.md
   - "English":
-    - "Preface": index.en.md
+    - "Preface": index.md
     - "Part 1: Principles": parts/part1_principles.md
     - "Part 2: Bottlenecks": parts/part2_bottlenecks.md
     - "Part 3: Single-Node": parts/part3_single_node.md
     - "Part 4: Distributed": parts/part4_distributed.md
     - "Part 5: Orchestration": parts/part5_k8s.md
+  - "中文版":
+    - "前言": index.cn.md
+    - "第一部分：原理篇": parts/part1_principles.cn.md
+    - "第二部分：瓶颈篇": parts/part2_bottlenecks.cn.md
+    - "第三部分：单机篇": parts/part3_single_node.cn.md
+    - "第四部分：分布式篇": parts/part4_distributed.cn.md
+    - "第五部分：编排篇": parts/part5_k8s.cn.md
