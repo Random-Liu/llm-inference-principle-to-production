@@ -154,7 +154,7 @@ The table below compares the two approaches:
 #### 2. How Models Enter Pods
 Delivering weights to containers quickly involves four approaches, each with trade-offs:
 
-*   **Route 1: Distributed Filesystems (CSI + PVC, e.g., JuiceFS / Alluxio)**
+*   **Route 1: Distributed Cache Systems (CSI + PVC, e.g., JuiceFS / Alluxio)**
     *   **Principle**: Mount distributed cache systems as PVCs via CSI drivers. Data streams from remote or local cache when the engine reads files.
     *   **Trade-offs**:
         *   **Advantages**: Support for stream loading, second-level Pod starts, and transparency to applications.
@@ -185,22 +185,27 @@ Distributing hundreds of gigabytes of model weights to thousands of nodes and mi
 In response to these three dimensions, the aforementioned schools have converged on the following technical combinations:
 
 ##### ① Corresponding to Route 1 (CSI + PVC): Volume / Filesystem-centric Mode (Model as Data)
-<!-- TODO: Currently modifying weight caching -->
 
 *   **Representative Stack**: **`Fluid + Alluxio / JuiceFS`**
 *   **Principle**: Embedding a distributed cache network under the Persistent Volume Claim (PVC). Fluid acts as the data orchestration control plane on K8s, while Alluxio pools each node's local SSD into a distributed cache.
+    *   **Local Cache**: Provided by Alluxio/JuiceFS Workers deployed on compute nodes. They manage the node's local SSD or memory. When a Pod first reads a weight block, it sinks into the local SSD, allowing subsequent Pod recreations to read directly via short-circuit reads.
+    *   **P2P Sharing**: Alluxio supports distributed coordination. If a local cache miss occurs, it pulls from neighboring Workers over the internal network rather than directly stressing the remote object storage.
+    *   **Streaming / Lazy Loading**: Implemented as a virtual filesystem mounted via CSI. The backend slices the model into roughly 4MB blocks and dynamically fetches blocks as the engine touches specific offsets.
 *   **Advantages**: Entirely transparent to serving engines like vLLM. The engine reads the mount point as a local filesystem, reducing integration overhead.
 
 ##### ② Corresponding to Route 2 (Asset Image-ization): Artifact / Image-centric Mode (Model as Image)
+
 *   **Representative Stack**: **`Dragonfly + Nydus`**
 *   **Principle**: Packaging weights as a standard **OCI Artifact**. Nydus acts as the Snapshotter in the container runtime (containerd), paired with Dragonfly to hijack network traffic and provide topology-aware P2P transfers.
+    *   **Local Cache**: Nydus maintains an index and cache of data blocks on host local disks, sharing extracted chunks among all Pods referencing the same OCI Artifact layers.
+    *   **P2P Sharing**: Handled entirely by Dragonfly. Peers deployed on each node construct a topology-aware network, feeding downloaded slices to one another to disperse Registry bandwidth crises.
+    *   **Streaming / Lazy Loading**: Nydus provides container-level Lazy Loading. Weight chunks are packaged so Pods reach Running states instantly. Dynamic I/O requests inside the container are intercepted and translated into network fetches.
 *   **Advantages**: Fits container image distribution networks, offers native OCI Tag versioning, requires no heavy persistent cache cluster deployment, and keeps the operational footprint stateless.
 
-##### ③ Evolution of Route 3 (Pod-Level Glue): Object-storage-native Mode (Direct Stream Reading)
-*   **Representative Stack**: **`Run:ai Model Streamer / Mountpoint for Amazon S3 / AIBrix`**
-*   **Principle**: Skipping distributed cache clusters and initiating high-concurrency sharded streaming directly via object storage SDKs or FUSE drivers.
-*   **Trade-offs**: Highly lightweight, eliminating persistent cluster planning and operations, but sacrifices intra-cluster P2P sharing.
-*   **Scenario Considerations**: Common in premium public cloud environments (e.g., AWS, GCP). Backed by hyperscaler infrastructure and object storage delivering tens of gigabytes of bandwidth, they can guarantee performance even **without Local Caching**. However, not all on-prem compute centers share these lavish network baselines. In bandwidth-constrained setups, lacking local caching and P2P sharing often leads to network gridlocks.
+##### Direct Streaming in Public Clouds (Without Local Cache)
+In mature public clouds (e.g., AWS, GCP), setups such as `Run:ai Model Streamer`, `Mountpoint for Amazon S3`, or `AIBrix` are common.
+*   **Principle**: They bypass distributed cache clusters entirely, initiating high-concurrency streaming via object storage SDKs or FUSE drivers.
+*   **Trade-off Considerations**: Because hyperscaler backbones deliver tens of gigabytes of bandwidth, these architectures are lightweight, operate without heavy cache management, and perform exceptionally even **without Local Caching**. In private or cost-sensitive data centers, however, bandwidth limitations make local caching and P2P architectures indispensable for architects.
 
 > [!IMPORTANT]
 > **Determining Factors for Adopting P2P**
