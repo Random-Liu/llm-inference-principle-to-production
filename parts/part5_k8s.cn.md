@@ -1032,7 +1032,7 @@ Kubernetes 原生的升级和维护通常依赖于 **滚动升级（Rolling Upda
 
 #### 1. 连接流干（Connection Draining）与超长优雅终止
 为了实现真正的无感知升级，必须在流量切换和进程终止上做精细化控制：
-*   **停止新请求（网关切流）**：在准备升级节点时，首先将其标记为不可调度（Cordon）。此时需要配合 Endpoint 控制器的异步同步，通过 `preStop` Hook（或 K8s 原生的 `sleep` 动作）在容器收到 `SIGTERM` 信号前暂停一段时间，以确保该 Pod 的网络端点有足够时间从上层网关或负载均衡器（LB）中被摘除，从而实现自然断流，不再接收新请求。
+*   **停止新请求（网关切流）**：在准备升级节点时，首先将其标记为不可调度（Cordon）。此时需要配合 Endpoint 控制器的异步同步，依靠在 Container Lifecycle Hook 的 `preStop` 阶段引入的原生 **[`sleep` 动作](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)**，让容器在收到 `SIGTERM` 信号前原生暂停一段时间。这确保了该 Pod 的网络端点有足够时间从上层网关或负载均衡器（LB）中被摘除，从而实现自然断流，而无需像以前那样在 `preStop` 中编写丑陋的 `sleep` shell 脚本。
 *   **消化老请求（处理 vLLM 的 `SIGTERM`）**：
     *   **引擎行为**：当 vLLM 等推理引擎收到 `SIGTERM` 信号时，默认会停止接收新请求，但会继续处理当前队列中已有的存量请求。
     *   **算力与体验的止损**：如果不给足时间而强行打断，不仅会破坏流式输出（Streaming）的用户体验，更会白白浪费之前已经消耗的昂贵 GPU 算力。
