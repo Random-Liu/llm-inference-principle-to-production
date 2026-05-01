@@ -1046,7 +1046,7 @@ Kubernetes 原生的升级和维护通常依赖于 **滚动升级（Rolling Upda
 *   **Node 级别的解法（打破“单节点”升级惯性）**：
     为了避免重复中断和容量雪崩，在 Node 级别必须保证升级是 Gang-aware 的。
     1.  **蓝绿节点池升级（Blue-Green Node Pool Upgrade）**：这是最彻底的办法。直接拉起一个全新的、规格一致的 Node Pool（Green），并在上面完整拉起一套全新的推理组（如 LeaderWorkerSet），待整组就绪后，将流量平滑切换到新节点池，最后整体销毁旧节点（Blue）及其承载的旧推理组。这完全避免了就地升级带来的中断风险，但 **需要准备额外的冗余资源（额外资源的体量取决于每次同时升级的推理组数量）**。
-    2.  **基于委托就绪的通用高可用升级（Delegated Readiness）**：针对 PDB 无法感知组的困境，笔者提出了一种利用 Upgrade Domain、Readiness 探针聚合与标准 PDB 联动的通用解法。该方案通过“升级域”解决了“寻找合适节点”的问题，并通过“委托就绪”向控制面提供了清晰的“安全信号”。详情参见独立文档 [idea_multi_host_inference_ha_upgrade.cn.md](./ideas/idea_multi_host_inference_ha_upgrade.cn.md)。
+    2.  **基于升级域与委托就绪的多机推理集群高可用升级**：针对 PDB 无法感知“组”的困境，笔者提出了一种利用升级域（Upgrade Domain）拓扑打散、委托就绪探针聚合与标准 PDB 联动的通用高可用升级方案。该方案通过三层契约在仅利用 Kubernetes 原生机制的前提下，实现了多机推理工作负载的安全滚动升级。详情参见独立设计文档 [idea_multi_host_inference_ha_upgrade.cn.md](./ideas/idea_multi_host_inference_ha_upgrade.cn.md)。
 
 ### 第三节：深水区挑战：Upgrade 场景的“冷启动”与状态保持
 
