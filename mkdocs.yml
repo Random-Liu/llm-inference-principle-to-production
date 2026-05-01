@@ -27,10 +27,6 @@ theme:
         icon: material/weather-night
         name: 切换到深色模式
 
-plugins:
-  - search
-  - opengraph
-
 markdown_extensions:
   - toc:
       toc_depth: 3

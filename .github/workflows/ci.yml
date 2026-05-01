@@ -21,7 +21,7 @@ jobs:
           path: .cache
           restore-keys: |
             mkdocs-material-
-      - run: pip install mkdocs-material mkdocs-plugin-opengraph
+      - run: pip install mkdocs-material
       - name: Prepare docs directory
         run: |
           mkdir docs
