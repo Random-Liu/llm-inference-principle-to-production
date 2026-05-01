@@ -51,6 +51,10 @@ This file contains instructions and conventions for AI agents working on this re
   2. The Table of Contents in both `README.md` and `README.cn.md` to ensure consistency and accuracy across all language versions.
   3. **TOC Indentation**: When generating or modifying any Table of Contents (TOC), all nested lists MUST be strictly indented by multiples of 4 spaces (e.g., 0, 4, 8 spaces) for the MkDocs Material parser (`pymdownx`) to render nested bullet points accurately.
 
+## Tone and Descriptive Language
+- **Objective and Neutral Tone**: Maintain an evidence-based, qualitative, and neutral tone when presenting architectural designs, engineering tradeoffs, or comparative analysis.
+- **Avoid Absolute Terminology**: Never use overly assertive, absolute, or dramatic vocabulary (e.g., "blazingly fast", "infinite", "uncompromising", "absolute necessity") unless presenting specific, verified quantitative metrics or benchmark data. Discussions should focus on logical first principles rather than speculative performance outcomes.
+
 ## Collaboration and Accuracy
 - **Evidence-Based Conclusions**: Strive for truthfulness in this technical content. Base all conclusions on solid evidence. Do not hallucinate.
 - **Mutual Questioning**: Maintain a collaborative learning relationship. Dare to question the user. Ask questions if something seems incorrect or unclear.
