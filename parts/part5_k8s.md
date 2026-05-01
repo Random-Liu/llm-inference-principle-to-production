@@ -1,37 +1,6 @@
 # Part 5: Orchestration —— Taming the Supercomputer: Leveraging Kubernetes for AI Compute
 
-## Table of Contents
-- [Chapter 21: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles](#chapter-21-when-loose-coupling-meets-tight-coupling-the-collision-of-k8s-and-llm-lifecycles)
-  - [Section 1: First Principles: Examining Lifecycle Contradictions under Distributed Inference](#section-1-first-principles-examining-lifecycle-contradictions-under-distributed-inference)
-  - [Section 2: Workload Lifecycle: Core Contradictions Throughout](#section-2-workload-lifecycle-core-contradictions-throughout)
-  - [Section 3: Cluster Lifecycle: Heterogeneous Hardware Bootstrapping and Expensive Graceful Termination](#section-3-cluster-lifecycle-heterogeneous-hardware-bootstrapping-and-expensive-graceful-termination)
-- [Chapter 22: Racing Against Time: Model Distribution and Cold Start Optimization](#chapter-22-racing-against-time-model-distribution-and-cold-start-optimization)
-  - [Section 1: Separation of Image and Weights: Choice of Model Formats](#section-1-separation-of-image-and-weights-choice-of-model-formats)
-  - [Section 2: Mass Data Distribution: Packaging Protocols and Pod Mounting](#section-2-mass-data-distribution-packaging-protocols-and-pod-mounting)
-  - [Section 3: VRAM Loading Optimization: Three Schools of Data Paths and Trade-offs](#section-3-vram-loading-optimization-three-schools-of-data-paths-and-trade-offs)
-- [Chapter 23: Tentacles Reaching into the Motherboard: DRA and Hardware Topology Aware Scheduling](#chapter-23-tentacles-reaching-into-the-motherboard-dra-and-hardware-topology-aware-scheduling)
-  - [Section 1: Topology Black Hole: Why Scalar Counting Fails in Distributed Inference](#section-1-topology-black-hole-why-scalar-counting-fails-in-distributed-inference)
-  - [Section 2: Evolution: DRA (Dynamic Resource Allocation) and Resource Management Paradigm Revolution](#section-2-evolution-dra-dynamic-resource-allocation-and-resource-management-paradigm-revolution)
-  - [Section 3: Single-Node Battle: Facing Hardware Locality](#section-3-single-node-battle-facing-hardware-locality)
-  - [Section 4: Beyond Single Node: Cluster-Level Network Topology and Multi-Machine Synergy](#section-4-beyond-single-node-cluster-level-network-topology-and-multi-machine-synergy)
-- [Chapter 24: Breaking Silos: LeaderWorkerSet and Distributed LLM Orchestration](#chapter-24-breaking-silos-leaderworkerset-and-distributed-llm-orchestration)
-  - [Section 1: Limitations of Traditional Controllers: Why the Microservices Paradigm Fails](#section-1-limitations-of-traditional-controllers-why-the-microservices-paradigm-fails)
-  - [Section 2: NCCL: The Fragile Lifeline of Distributed Inference](#section-2-nccl-the-fragile-lifeline-of-distributed-inference)
-  - [Section 3: The Birth of LeaderWorkerSet: Primitives Tailored for AI](#section-3-the-birth-of-leaderworkerset-primitives-tailored-for-ai)
-  - [Section 4: Practical Exercise: Deploying Distributed vLLM with LWS](#section-4-practical-exercise-deploying-distributed-vllm-with-lws)
-- [Chapter 25: All-or-Nothing: Gang Scheduling and Resource Deadlocks](#chapter-25-all-or-nothing-gang-scheduling-and-resource-deadlocks)
-  - [Section 1: From Loose to Tight Coupling: Limitations of Native K8s Scheduling](#section-1-from-loose-to-tight-coupling-limitations-of-native-k8s-scheduling)
-  - [Section 2: Return of a Classic Strategy: How Gang Scheduling Breaks Deadlocks](#section-2-return-of-a-classic-strategy-how-gang-scheduling-breaks-deadlocks)
-  - [Section 3: Gang Scheduling Implementations in Kubernetes](#section-3-gang-scheduling-implementations-in-kubernetes)
-  - [Section 4: Kueue: Job Queuing and Quota Management](#section-4-kueue-job-queuing-and-quota-management)
-- [Chapter 26: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference](#chapter-26-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference)
-  - [Section 1: Pod Autoscaling: Shifting from Metrics to Events](#section-1-pod-autoscaling-shifting-from-metrics-to-events)
-  - [Section 2: Autoscaling Bottlenecks: Latency and Atomicity](#section-2-autoscaling-bottlenecks-latency-and-atomicity)
-- [Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets](#chapter-27-operations-and-upgrades-continuity-vs-heavy-assets)
-  - [Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference](#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference)
-  - [Section 2: Seamless Upgrades: Engineering Practices](#section-2-seamless-upgrades-engineering-practices)
-  - [Section 3: Upgrade Cold Starts: State Retention Challenges](#section-3-upgrade-cold-starts-state-retention-challenges)
-- [Part 5 Summary: Core Contradictions and Breakthroughs in LLM Orchestration](#part-5-summary-core-contradictions-and-breakthroughs-in-llm-orchestration)
+
 
 
 ## Chapter 21: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles

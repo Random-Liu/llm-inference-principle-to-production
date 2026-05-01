@@ -1,6 +1,6 @@
 # LLM Inference from Principles to Production (LLM 从原理到生产级推理)
 
-[🌐 View Chinese Version / 中文版](README.cn.md)
+[🌐 View Chinese Version / 中文版](README.cn.md) | [📚 Read on GitHub Pages](https://random-liu.github.io/llm-inference-principle-to-production/)
 
 ## Foreword
 

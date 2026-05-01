@@ -1,29 +1,6 @@
 # Part 4: Distributed — Concerto Across Single Nodes: Parallel Strategies and High-Speed Interconnects
 
-## Table of Contents
-- [Chapter 16: Slicing the Giant: Tensor, Pipeline, and Context Parallelism](#chapter-16-slicing-the-giant-tensor-pipeline-and-context-parallelism)
-  - [Section 1: The Necessity of Multiple Machines: The Giant That Doesn't Fit](#section-1-the-necessity-of-multiple-machines-the-giant-that-doesnt-fit)
-  - [Section 2: TP and PP: Vertical and Horizontal Slicing](#section-2-tp-and-pp-vertical-and-horizontal-slicing)
-  - [Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory](#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory)
-  - [Section 4: The Impact of TP and PP on Core Metrics](#section-4-the-impact-of-tp-and-pp-on-core-metrics)
-  - [Section 5: Breaking the Sequence Wall: Context Parallelism](#section-5-breaking-the-sequence-wall-context-parallelism)
-  - [Section 6: Hybrid Parallelism: The 3D Concerto of TP, PP, and CP](#section-6-hybrid-parallelism-the-3d-concerto-of-tp-pp-and-cp)
-- [Chapter 17: Expert Parallelism (EP): Precision over Brute Force](#chapter-17-expert-parallelism-ep-precision-over-brute-force)
-  - [Section 1: The Dead End: Attempting to Shard MoE via TP and PP](#section-1-the-dead-end-attempting-to-shard-moe-via-tp-and-pp)
-  - [Section 2: The Dilemma: Cross-Host TP vs. Expert Parallelism (EP)](#section-2-the-dilemma-cross-host-tp-vs-expert-parallelism-ep)
-  - [Section 3: The Golden Duo: DP Attention + EP MoE](#section-3-the-golden-duo-dp-attention--ep-moe)
-- [Chapter 18: Disaggregated Serving: The Division of Labor](#chapter-18-disaggregated-serving-the-division-of-labor)
-  - [Section 1: The Mismatch: Hardware Asymmetry and Management Overheads](#section-1-the-mismatch-hardware-asymmetry-and-management-overheads)
-  - [Section 2: Physical Separation: Decoupling Hardware, Simplifying Management](#section-2-physical-separation-decoupling-hardware-simplifying-management)
-  - [Section 3: Typical Workflow of Disaggregated Serving](#section-3-typical-workflow-of-disaggregated-serving)
-- [Chapter 19: Content-Aware Routing: The Traffic Police](#chapter-19-content-aware-routing-the-traffic-police)
-  - [Section 1: AI Gateways: Business-Aware Traffic Control](#section-1-ai-gateways-business-aware-traffic-control)
-  - [Section 2: Cache-Aware Routing and Dynamic Replication](#section-2-cache-aware-routing-and-dynamic-replication)
-  - [Section 3: System Implementation via SGLang](#section-3-system-implementation-via-sglang)
-- [Chapter 20: Opening the Meridians: Network Communication and High-Speed Interconnects in Large Model Inference](#chapter-20-opening-the-meridians-network-communication-and-high-speed-interconnects-in-large-model-inference)
-  - [Section 1: Intra-Node Fabrics: PCIe, NVLink, and NVSwitch](#section-1-intra-node-fabrics-pcie-nvlink-and-nvswitch)
-  - [Section 2: Cross-Machine Bridge: RDMA and Its Implementations](#section-2-cross-machine-bridge-rdma-and-its-implementations)
-  - [Section 3: Parallel Modes, Data Volumes, and Metric Impacts](#section-3-parallel-modes-data-volumes-and-metric-impacts)
+
 
 This part zooms out to cluster-level architecture and explores how top technology companies serve billions of requests.
 

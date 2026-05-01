@@ -1,35 +1,6 @@
 # Part 3: Single Node — High-Performance Engines Squeezing Every Inch of VRAM
 
-## Table of Contents
-- [Chapter 9: Model Architecture VRAM Slimming: GQA](#chapter-9-model-architecture-vram-slimming-gqa)
-  - [Section 1: Evolution from MHA to GQA](#section-1-evolution-from-mha-to-gqa)
-  - [Section 2: Deep Dive — Why Scaling Down Only K and V Works](#section-2-deep-dive--why-scaling-down-only-k-and-v-works)
-  - [Section 3: Other Frontier Advances in KV Cache Compression](#section-3-other-frontier-advances-in-kv-cache-compression)
-- [Chapter 10: Precision Scaling: KV Cache Quantization (FP8/INT8)](#chapter-10-precision-scaling-kv-cache-quantization-fp8int8)
-  - [Section 1: A Wise Trade of Compute for Bandwidth](#section-1-a-wise-trade-of-compute-for-bandwidth)
-  - [Section 2: Why This Is Economical](#section-2-why-this-is-economical)
-  - [Section 3: INT8 vs. FP8: Two Distinct Quantization Paradigms](#section-3-int8-vs-fp8-two-distinct-quantization-paradigms)
-  - [Section 4: Dynamic vs. Static: Comparison with Model Weight Quantization](#section-4-dynamic-vs-static-comparison-with-model-weight-quantization)
-- [Chapter 11: Engine-Level VRAM Management: PagedAttention](#chapter-11-engine-level-vram-management-pagedattention)
-  - [Section 1: The Fragmentation Crisis: Waste from Static Allocation](#section-1-the-fragmentation-crisis-waste-from-static-allocation)
-  - [Section 2: OS Inspiration: Virtual Memory Paging](#section-2-os-inspiration-virtual-memory-paging)
-  - [Section 3: Block Tables: Achieving Near-Zero Memory Waste](#section-3-block-tables-achieving-near-zero-memory-waste)
-- [Chapter 12: Memory Time Machine: Prefix Caching (RadixAttention)](#chapter-12-memory-time-machine-prefix-caching-radixattention)
-  - [Section 1: Dilemmas in RAG and Multi-Round Dialogues](#section-1-dilemmas-in-rag-and-multi-round-dialogues)
-  - [Section 2: Radix Trees: Shared Physical Memory](#section-2-radix-trees-shared-physical-memory)
-- [Chapter 13: The Never-Stopping Train: Continuous Batching and Chunked Prefill](#chapter-13-the-never-stopping-train-continuous-batching-and-chunked-prefill)
-  - [Section 1: Continuous Batching: The Revolving Door Mechanism](#section-1-continuous-batching-the-revolving-door-mechanism)
-  - [Section 2: Chunked Prefill: Perfect Complementarity](#section-2-chunked-prefill-perfect-complementarity)
-- [Chapter 14: When VRAM Is Maxed Out: Preemption and Scheduling](#chapter-14-when-vram-is-maxed-out-preemption-and-scheduling)
-  - [Section 1: The Scheduler's Dilemma](#section-1-the-schedulers-dilemma)
-  - [Section 2: Evicting Inactive Caches and Tiered Offloading](#section-2-evicting-inactive-caches-and-tiered-offloading)
-  - [Section 3: Preempting Active Requests: Swap vs. Recompute](#section-3-preempting-active-requests-swap-vs-recompute)
-  - [Section 4: SGLang's Tree-Based Management: Unifying Preemption and Eviction](#section-4-sglangs-tree-based-management-unifying-preemption-and-eviction)
-- [Chapter 15: Trading Spare Compute for Minimum Latency: Speculative Decoding](#chapter-15-trading-spare-compute-for-minimum-latency-speculative-decoding)
-  - [Section 1: The Professor and the Assistant — Core Logic](#section-1-the-professor-and-the-assistant--core-logic)
-  - [Section 2: The "Reverse Deal" of Compute Intensity](#section-2-the-reverse-deal-of-compute-intensity)
-  - [Section 3: Evolution from Dual Models to External Heads](#section-3-evolution-from-dual-models-to-external-heads)
-  - [Section 4: Tree Attention and Trade-offs in Production](#section-4-tree-attention-and-trade-offs-in-production)
+
 
 In Part 2, we analyzed the physical and mathematical bottlenecks of LLM inference: the **VRAM tsunami triggered by KV Cache**, and the **core asymmetry between Prefill and Decode**. These bottlenecks directly stifle the concurrency capabilities and response speeds of large models in production environments.
 

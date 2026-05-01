@@ -1,23 +1,6 @@
 # Part 2: Bottlenecks — Why LLM Inference is So Difficult
 
-## Table of Contents
-- [Chapter 4: Core Metrics: Measuring the "Ruler" of Large Model Inference](#chapter-4-core-metrics-measuring-the-ruler-of-large-model-inference)
-- [Chapter 5: Starting from Scratch: How Naive LLM Inference Operates](#chapter-5-starting-from-scratch-how-naive-llm-inference-operates)
-    - [Section 1: The Unoptimized Inference Workflow](#section-1-the-unoptimized-inference-workflow)
-    - [Section 2: Bottleneck Anatomy: Explosion of Computational Complexity](#section-2-bottleneck-anatomy-explosion-of-computational-complexity)
-    - [Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?](#section-3-eliciting-optimizations-can-we-remember-past-calculations)
-- [Chapter 6: The Rule-Breaker: KV Cache and the Resulting "Memory Tsunami"](#chapter-6-the-rule-breaker-kv-cache-and-the-resulting-memory-tsunami)
-    - [Section 1: Trading Space for Time: Caching K and V](#section-1-trading-space-for-time-caching-k-and-v)
-    - [Section 2: Why Only K and V?](#section-2-why-only-k-and-v)
-    - [Section 3: The Memory Tsunami: A Multi-Terabyte Math Problem](#section-3-the-memory-tsunami-a-multi-terabyte-math-problem)
-- [Chapter 7: Maximizing GPU Utilization: The Evolution of Batching](#chapter-7-maximizing-gpu-utilization-the-evolution-of-batching)
-    - [Section 1: Compute-Bound vs. Memory-Bound](#section-1-compute-bound-vs-memory-bound)
-    - [Section 2: Batched Matrix Multiplication (BMM)](#section-2-batched-matrix-multiplication-bmm)
-    - [Section 3: The Padding Problem: Flaws in Static Batching](#section-3-the-padding-problem-flaws-in-static-batching)
-- [Chapter 8: Core Asymmetry: Prefill vs. Decode](#chapter-8-core-asymmetry-prefill-vs-decode)
-    - [Section 1: Prefill Phase — The "Blitzkrieg" Consuming Compute (Compute-Bound)](#section-1-prefill-phase--the-blitzkrieg-consuming-compute-compute-bound)
-    - [Section 2: Decode Phase — The "War of Attrition" Crushing Bandwidth (Memory-Bound)](#section-2-decode-phase--the-war-of-attrition-crushing-bandwidth-memory-bound)
-    - [Section 3: Asymmetry from a Data Perspective](#section-3-asymmetry-from-a-data-perspective)
+
 
 This part explains the physical and mathematical "brick walls" engineers hit when pushing LLMs into production.
 
