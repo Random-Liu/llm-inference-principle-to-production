@@ -43,6 +43,7 @@
     - [第三章：运转的艺术：自回归解码与文本生成](parts/part1_principles.cn.md#第三章运转的艺术自回归解码与文本生成)
         - [第一节：Prefill（预填充）：处理输入的具体过程](parts/part1_principles.cn.md#第一节prefill预填充处理输入的具体过程)
         - [第二节：Decode（解码）：自回归循环与文本生成](parts/part1_principles.cn.md#第二节decode解码自回归循环与文本生成)
+
 - [第二部分：瓶颈篇 —— 为什么 LLM 推理如此困难](parts/part2_bottlenecks.cn.md)
     - [第四章：衡量大模型推理的“尺子”：核心指标解析](parts/part2_bottlenecks.cn.md#第四章衡量大模型推理的尺子核心指标解析)
     - [第五章：从零开始：最朴素的 LLM 推理是如何运作的？](parts/part2_bottlenecks.cn.md#第五章从零开始最朴素的-llm-推理是如何运作的)
@@ -61,6 +62,7 @@
         - [第一节：Prefill 阶段 —— 吞噬算力的“闪电战”（计算密集型）](parts/part2_bottlenecks.cn.md#第一节prefill-阶段--吞噬算力的闪电战计算密集型)
         - [第二节：Decode 阶段 —— 压垮带宽的“持久战”（内存带宽密集型）](parts/part2_bottlenecks.cn.md#第二节decode-阶段--压垮带宽的持久战内存带宽密集型)
         - [第三节：数据视角下的“不对称性”](parts/part2_bottlenecks.cn.md#第三节数据视角下的不对称性)
+
 - [第三部分：单机篇 —— 榨干每一寸显存的高性能引擎](parts/part3_single_node.cn.md)
     - [第九章：模型架构层面的显存瘦身：GQA](parts/part3_single_node.cn.md#第九章模型架构层面的显存瘦身gqa)
         - [第一节：从 MHA 到 GQA 的演进](parts/part3_single_node.cn.md#第一节从-mha-到-gqa-的演进)
@@ -91,6 +93,7 @@
         - [第二节：计算强度的“逆向交易”](parts/part3_single_node.cn.md#第二节计算强度的逆向交易)
         - [第三节：从双模型到外挂头：架构的演进](parts/part3_single_node.cn.md#第三节从双模型到外挂头架构的演进)
         - [第四节：树状注意力与生产环境的取舍](parts/part3_single_node.cn.md#第四节树状注意力与生产环境的取舍)
+
 - [第四部分：分布式篇 —— 跨越单机的协奏：并行策略与高速互联](parts/part4_distributed.cn.md)
     - [第十六章：切分巨人：张量、流水线与上下文并行](parts/part4_distributed.cn.md#第十六章切分巨人张量流水线与上下文并行)
         - [第一节：多机必要性：装不下的巨人](parts/part4_distributed.cn.md#第一节多机必要性装不下的巨人)
@@ -115,6 +118,7 @@
         - [第一节：单机内的血脉：PCIe、NVLink 与 NVSwitch](parts/part4_distributed.cn.md#第一节单机内的血脉pcienvlink-与-nvswitch)
         - [第二节：跨机桥梁：RDMA 及其实现](parts/part4_distributed.cn.md#第二节跨机桥梁rdma-及其实现)
         - [第三节：并行模式、数据量与指标影响](parts/part4_distributed.cn.md#第三节并行模式数据量与指标影响)
+
 - [第五部分：编排篇 —— 驯服超级计算机：用 Kubernetes 驾驭 AI 算力](parts/part5_k8s.cn.md)
     - [第二十一章：当“松耦合”遇上“紧耦合”：K8s 与 LLM 的生命周期碰撞](parts/part5_k8s.cn.md#第二十一章当松耦合遇上紧耦合k8s-与-llm-的生命周期碰撞)
         - [第一节：第一性原理：审视分布式推理下的生命周期矛盾](parts/part5_k8s.cn.md#第一节第一性原理审视分布式推理下的生命周期矛盾)
