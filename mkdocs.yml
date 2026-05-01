@@ -66,3 +66,10 @@ nav:
     - "第三部分：单机篇": parts/part3_single_node.cn.md
     - "第四部分：分布式篇": parts/part4_distributed.cn.md
     - "第五部分：编排篇": parts/part5_k8s.cn.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Random-Liu
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/liu-lantao-96a97351/
