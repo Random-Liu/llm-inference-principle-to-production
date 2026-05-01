@@ -2,23 +2,23 @@
 
 ## Table of Contents
 - [Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V](#chapter-1-demystifying-the-transformer-the-magic-of-q-k-and-v)
-  - [Section 1: A Bird's-Eye View: Classic Transformer Architecture](#section-1-a-birds-eye-view-classic-transformer-architecture)
-  - [Section 2: Evolution: Decoder-Only Architecture](#section-2-evolution-decoder-only-architecture)
-  - [Section 3: The Library Analogy: Intuitive Meaning of QKV](#section-3-the-library-analogy-intuitive-meaning-of-qkv)
-  - [Section 4: Mathematical Principles: Matrix Computation of QKV](#section-4-mathematical-principles-matrix-computation-of-qkv)
-  - [Section 5: Feed-Forward Network: Knowledge Base](#section-5-feed-forward-network-knowledge-base)
-  - [Section 6: Multi-Head Attention: Parallel Perspectives](#section-6-multi-head-attention-parallel-perspectives)
-  - [Section 7: Mixture of Experts: Sparse Activation](#section-7-mixture-of-experts-sparse-activation)
+    - [Section 1: A Bird's-Eye View: Classic Transformer Architecture](#section-1-a-birds-eye-view-classic-transformer-architecture)
+    - [Section 2: Evolution: Decoder-Only Architecture](#section-2-evolution-decoder-only-architecture)
+    - [Section 3: The Library Analogy: Intuitive Meaning of QKV](#section-3-the-library-analogy-intuitive-meaning-of-qkv)
+    - [Section 4: Mathematical Principles: Matrix Computation of QKV](#section-4-mathematical-principles-matrix-computation-of-qkv)
+    - [Section 5: Feed-Forward Network: Knowledge Base](#section-5-feed-forward-network-knowledge-base)
+    - [Section 6: Multi-Head Attention: Parallel Perspectives](#section-6-multi-head-attention-parallel-perspectives)
+    - [Section 7: Mixture of Experts: Sparse Activation](#section-7-mixture-of-experts-sparse-activation)
 - [Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow](#chapter-2-building-the-skyscraper-stacking-layers-and-data-flow)
-  - [Section 1: Input Stage: Embeddings and Positional Encoding](#section-1-input-stage-embeddings-and-positional-encoding)
-  - [Section 2: Wisdom of Stacking: Hierarchical Feature Extraction](#section-2-wisdom-of-stacking-hierarchical-feature-extraction)
-  - [Section 3: The Translator: LM Head](#section-3-the-translator-lm-head)
-  - [Section 4: Logits and Softmax: Probabilistic Normalization](#section-4-logits-and-softmax-probabilistic-normalization)
-  - [Section 5: Parameter Breakdown: What Makes Up 8B/70B Models](#section-5-parameter-breakdown-what-makes-up-8b70b-models)
-  - [Section 6: Data Flow: End-to-End Pipeline](#section-6-data-flow-end-to-end-pipeline)
+    - [Section 1: Input Stage: Embeddings and Positional Encoding](#section-1-input-stage-embeddings-and-positional-encoding)
+    - [Section 2: Wisdom of Stacking: Hierarchical Feature Extraction](#section-2-wisdom-of-stacking-hierarchical-feature-extraction)
+    - [Section 3: The Translator: LM Head](#section-3-the-translator-lm-head)
+    - [Section 4: Logits and Softmax: Probabilistic Normalization](#section-4-logits-and-softmax-probabilistic-normalization)
+    - [Section 5: Parameter Breakdown: What Makes Up 8B/70B Models](#section-5-parameter-breakdown-what-makes-up-8b70b-models)
+    - [Section 6: Data Flow: End-to-End Pipeline](#section-6-data-flow-end-to-end-pipeline)
 - [Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation](#chapter-3-the-art-of-operation-autoregressive-decoding-and-text-generation)
-  - [Section 1: Prefill Phase: Handling Input Context](#section-1-prefill-phase-handling-input-context)
-  - [Section 2: Decode Phase: The Autoregressive Loop](#section-2-decode-phase-the-autoregressive-loop)
+    - [Section 1: Prefill Phase: Handling Input Context](#section-1-prefill-phase-handling-input-context)
+    - [Section 2: Decode Phase: The Autoregressive Loop](#section-2-decode-phase-the-autoregressive-loop)
 
 ## Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V
 
@@ -87,17 +87,20 @@ Modern LLMs (like GPT, Llama, and DeepSeek) evolved from the dual-tower Encoder-
 Why abandon the Encoder if it excels at understanding?
 
 This reflects an elegant paradigm shift:
+
 1.  **Translation vs. Continuation**: Transformers originally served translation, where input and output are separate (e.g., English and Chinese), requiring an Encoder to understand and a Decoder to translate.
 2.  **The Solitaire Paradigm**: Modern LLMs treat all tasks (Q&A, coding, reasoning) as text continuation: predict the next word given the preceding text.
 3.  **Unified Decoder**: Since everything is continuous text, we directly concatenate the prompt and response into the Decoder, eliminating the need for isolated towers.
 
 The Decoder-Only architecture simplifies the design:
+
 1.  **No Encoder**: Removes the independent encoder tower.
 2.  **No Cross-Attention**: Eliminates inter-tower interaction.
 3.  **Unified Input**: Concatenates Prompt and Response into a single sequence.
 4.  **Core Mechanism**: Composed entirely of stacked **Masked Self-Attention** and **Feed-Forward Network (FFN)** blocks.
 
 How it works:
+
 *   **Prefill Phase**: The model processes the Prompt all at once. Although using Masked Self-Attention, the known Prompt allows parallel computation of word relationships (like an Encoder).
 *   **Decode Phase**: The model generates words one by one. Each new word appends to the sequence to predict the next. Masked Self-Attention ensures the query only attends to preceding tokens, maintaining causality.
 
@@ -120,10 +123,12 @@ Imagine walking into a library to find "noise-canceling Bluetooth headphones". H
 Mapping back to large models, let's use the word "apple":
 
 Suppose we have two sentences:
+
 *   Sentence A: "At today's **new product launch**, **Apple** introduced..."
 *   Sentence B: "At the **supermarket**, the box of **apples** I bought is very..."
 
 When the model processes the word "apple":
+
 1.  **It generates its own Query (Q)**: Representing its "search intention".
     > [!NOTE]
     > This Query is a high-dimensional vector containing hundreds of abstract search dimensions learned during training. We use anthropomorphic language like "searching for 'technology' or 'fruit' clues" for intuition.
@@ -194,6 +199,7 @@ $H$ blends "who I am" (original meaning) with "what I experienced" (context). Th
 With only two matrices ($W_1$ and $W_2$), FFN seems to lack the QKV structure of Attention. However, a famous 2020 paper showed that **the FFN operates as a Key-Value memory retrieval system**.
 
 Compare the core formulas:
+
 *   **Attention**: $\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V$
 *   **FFN**: $\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2$
 
@@ -206,11 +212,13 @@ Here, the FFN calculation maps to Q, K, and V logic:
 Processing the "apple" example:
 
 For **Sentence B** ("At the **supermarket**, the box of **apples** I bought is very..."):
+
 1.  **Pattern Matching**: The input vector $H$ (already fused into "fruit apple" by Attention) yields a high matching score with the "fruit, food" pattern in $W_1$.
 2.  **Activation Filtering**: Function $\sigma$ zeroes out scores for unrelated patterns (like "tech company"), retaining only the "fruit" pattern.
 3.  **Knowledge Extraction**: The model weights the Values in $W_2$ by these scores, extracting knowledge like "crisp, juicy".
 
 For **Sentence A** ("At today's new product launch, Apple introduced..."):
+
 1.  **Pattern Matching**: The input vector $H$ ("tech company Apple") scores high with "technology, company" patterns in $W_1$.
 2.  **Activation Filtering**: The function filters out the "fruit" pattern.
 3.  **Knowledge Extraction**: The model extracts knowledge like "iPhone, high-tech" from $W_2$.
@@ -220,6 +228,7 @@ The knowledge retrieved by the FFN will not directly replace the original vector
 $$x_{new} = H + FFN(H)$$
 
 This is like a **"scratchpad"** carried by the Token:
+
 *   $H$ (written on the scratchpad): I am an "apple", and I am in the context of "eating".
 *   $FFN(H)$ (knowledge base supplement): Attributes are "crisp, juicy".
 *   **Addition**: Staple the supplementary material to the next page of the scratchpad. The Token now understands both context and knowledge.
@@ -234,6 +243,7 @@ Single-head attention blends all semantic relationships into one vector, risking
 
 **Why multiple heads?**
 Language is complex; a word plays multiple roles simultaneously.
+
 *   **Grammar Head**: Finds subject-verb-object relationships.
 *   **Emotion Head**: Captures emotional adjectives.
 *   **Coreference Head**: Resolves pronouns (like "he" or "it").
@@ -245,6 +255,7 @@ MHA observes sentences from dozens of perspectives in parallel. It concatenates 
 > Besides replicating $W_Q$, $W_K$, and $W_V$ for multiple heads, MHA introduces a fourth matrix: the **Output Projection Matrix $W_O$**. It integrates the concatenated outputs and fuses information across heads back to the original dimension.
 
 **Llama 3 405B MHA Workflow**:
+
 1.  **Input**: Sentence matrix of shape `[N, 16384]` ($N$ words, 16384 dimensions).
 2.  **Projection**: Matrices $W_Q, W_K, W_V$ (size `[16384, 16384]`) generate $Q, K, V$ of shape `[N, 16384]`.
 3.  **Split**: Slices the 16384 dimensions into 128 heads, each dimension 128. Shape becomes `[N, 128, 128]`.
@@ -266,11 +277,13 @@ Traditional **Dense** models use one FFN per layer. All tokens pass through it, 
 MoE splits the massive FFN into multiple smaller FFNs, called **Experts** (e.g., 8 or 16).
 
 Components:
+
 *   **Router (Gating Network)**: Calculates match scores between the token (Query) and each expert.
 *   **Experts**: Standard FFNs specializing in specific domains (e.g., code, literature) during training.
 
 #### 3. Sparse Activation
 When a token enters:
+
 1.  **Router Scoring**: Identifies the topic (e.g., quantum mechanics).
 2.  **Sparse Activation**: Activates only the Top-K relevant experts (e.g., Expert 3 and 5), leaving others idle.
 3.  **Fusion**: Fuses results from active experts based on weights.
@@ -322,6 +335,7 @@ Before entering the layers, data undergoes processing in the "lobby" to become m
 1.  **Word Embedding**: Converts tokens into high-dimensional vectors (e.g., 4096 dimensions) via table lookup, establishing initial semantic coordinates.
 2.  **Positional Encoding**:
     Self-attention is **time-blind**; it computes vector similarity without sequence order. Without help, "I eat the apple" and "the apple eats me" look identical. We must inject position information.
+
     *   **Rotary Position Embedding (RoPE)**: Modern models (like Llama and Qwen) use RoPE. Instead of adding position values early, it **twists** the Q and K vectors by an angle in multi-dimensional space when computing the dot product.
     *   Closer words have smaller angle differences, yielding larger dot products. This elegantly encodes relative position into the attention calculation.
 
@@ -403,6 +417,7 @@ Multiplying $h_{last}$ by the LM Head yields **raw scores (Logits)** for every w
 Logits are irregular real numbers (e.g., "apple": 12.5, "phone": 8.2). To select a word, the system converts these scores into a probability distribution using **Softmax**.
 
 Softmax exponentiates and normalizes logits across the vocabulary, ensuring:
+
 1.  All probabilities fall between 0 and 1.
 2.  Probabilities sum to 1.
 
@@ -418,7 +433,8 @@ What do 8B or 70B parameters refer to?
 
 Let's break down the 405 billion parameters of **Llama 3 405B**:
 
-**Core configuration**:
+Core configuration:
+
 *   Vocabulary Size: $128,256$
 *   Hidden Dimension ($d$): $16384$
 *   Number of Layers: $126$
@@ -426,6 +442,7 @@ Let's break down the 405 billion parameters of **Llama 3 405B**:
 *   GQA: 128 Query Heads, 8 KV Heads
 
 **The Bill**:
+
 1.  **Embedding Layer**: `Vocabulary Size * Hidden Dimension` = $128,256 \times 16384 \approx 2.10$ billion. (128.2k words $\times$ 16384 dimensions).
 2.  **Transformer Layers** ($126$ layers):
     *   **Attention**: $W_Q, W_K, W_V, W_O$ total $\approx 5.7$ billion per layer.

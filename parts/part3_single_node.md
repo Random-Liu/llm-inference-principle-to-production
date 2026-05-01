@@ -34,6 +34,7 @@
 In Part 2, we analyzed the physical and mathematical bottlenecks of LLM inference: the **VRAM tsunami triggered by KV Cache**, and the **core asymmetry between Prefill and Decode**. These bottlenecks directly stifle the concurrency capabilities and response speeds of large models in production environments.
 
 To break this deadlock, system engineers and algorithms scientists have launched soft-hardware cooperative rescues. This part delves into how modern inference engines (e.g., vLLM and SGLang) and the model architectures themselves resolve these bottlenecks. We unfold the analysis across two core battlefronts:
+
 1. **Shattering the VRAM Wall**: Escalating memory utilization multiple times via GQA (model architecture), PagedAttention (paging management), and RadixAttention (prefix caching).
 2. **Conquering the Asymmetry**: Eliminating Padding waste via Continuous Batching and Chunked Prefill, ensuring that GPU compute and bandwidth remain perpetually saturated.
 
@@ -49,18 +50,22 @@ Now, let us enter the first battleground—slimming down VRAM from the model arc
 ### Section 1: Evolution from MHA to GQA
 
 In the early designs of Transformers, **MHA (Multi-Head Attention)** was standard.
+
 *   **MHA**: If there are $H$ Query heads, there must be $H$ corresponding Key heads and $H$ corresponding Value heads. As we discussed in [Chapter 6 Section 3](part2_bottlenecks.md#chapter-6-kv-cache-solving-the-compute-bottleneck), KV Cache space complexity is $O(L \cdot N \cdot d)$. While the hidden dimension $d$ shards into $H$ heads ($d = H \times d_k$), the total KV Cache size remains governed by the full dimension $d$. In ultra-large parameters models, $d$ is set immensely large (e.g., $d = 16384$ for Llama 3 405B). Spanning long context lengths $N$ scales up KV Cache footprints exponentially.
 
 To compress KV Caches, researchers introduced **MQA (Multi-Query Attention)**:
+
 *   **MQA**: All Query heads **share a single set** of Key and Value heads. KV Cache footprints drop down to merely $1/H$ of their original size. VRAM pressure plummets, but at the expense of partial model expressivity loss.
 
 **GQA (Grouped Query Attention)** is the perfect compromise, widely adopted by open-source and proprietary large models alike (e.g., Llama 3 405B):
+
 *   **GQA**: Query heads group together (e.g., groups of 8), and each group shares a single set of Key and Value heads.
 *   **Benefits**: Slashes KV Cache VRAM occupancy, **improves system Throughput (accommodates higher concurrency)**, and since data movement in the Decode phase drops, **indirectly elevates individual request TPS**, with virtually no loss in expressivity.
 
 **Practical Comparison: Calculating Llama 3 405B KV Cache**
 
 To provide a clear view of these memory-slimming mechanisms, we examine the **Llama 3 405B** parameters ($L=126$, $d=16384$, $H=128$, $d_k=128$, FP16 format). We compute KV Cache footprints against a **1M token** context length:
+
 *   **Standard MHA Mode** (Assumes every Query head holds a dedicated KV head):
     *   Size per Token per Layer: $2 \times 128 \times 128 \times 2 \text{ Bytes} = 64 \text{ KB}$
     *   Total Size: $64 \text{ KB} \times 126 \text{ Layers} \times 1,000,000 \approx \mathbf{8.06 \text{ TB}}$
@@ -83,6 +88,7 @@ To understand this, we dissect three layers: **role asymmetry of $Q$, $K$, and $
 
 **1. Role Asymmetry: The Inquirer ($Q$) and the Indexed ($K, V$)**
 $Q$, $K$, and $V$ serve entirely different roles in Attention mechanisms:
+
 *   **Query ($Q$)**: Represents **"intent" or "question"** (What am I seeking now?). It is dynamic; as models generate each new token, intents fluctuate.
 *   **Key ($K$)**: Represents **"indices" or "tags"** (What do I hold here?).
 *   **Value ($V$)**: Represents **"content" or "substance"** (What is the real information I hold?).
@@ -102,6 +108,7 @@ Visual analyses show that in standard MHA, **multiple Key and Value heads acquir
 
 **3. Core "Knowledge" Resides in FFNs**
 The ultimate foundation is that **the absolute majority of an LLM’s knowledge resides in FFNs (Feed-Forward Networks), not in Attention modules**.
+
 *   **FFN**: Acts as a giant "knowledge hard drive," storing massive rules and facts. Accounts for ~82% of parameter counts in typical layers.
 *   **Attention**: Functions as a "scheduler" and "router," moving information and establishing correlations across contexts.
 *   Compressing KV Caches does not destroy the knowledge repository stored inside FFNs. The model still knows that "the capital of France is Paris"; it simply leverages fewer memory pointers (KVs) to pinpoint the fact during inference.
@@ -142,6 +149,7 @@ While GQA operates on **spatial structures**, KV Cache Quantization hits the **d
 In standard inference, K and V vectors are stored at 16-bit precision (FP16 or BF16), taking 2 bytes per element. **KV Cache Quantization** compresses them down to 8-bit (FP8 or INT8), demanding only 1 byte per element and slicing VRAM footprints by exactly half.
 
 This introduces minor compute overheads:
+
 1.  **Writing to Memory**: As Decode generates new tokens, K and V vectors undergo Scaling and Rounding from 16-bit down to 8-bit before persisting to VRAM.
 2.  **Reading from Memory**: During Attention compute, GPUs fetch 8-bit vectors and "de-quantize" them back to 16-bit (or calculate low-precision arithmetic natively).
 
@@ -152,6 +160,7 @@ This trades additional compute for VRAM compression—a highly economical trade-
 ### Section 2: Why This Is Economical
 
 As we examined in Chapter 8, the Decode phase is strictly **Memory-Bound**. GPU compute cores spend the vast majority of their time sitting idle, waiting for data transfers from memory.
+
 *   **Unquantized**: Voluminous data transfers cause slow movements, leaving GPUs starved.
 *   **Quantized**: While adding quantization translations, **transferred data volumes are halved**. VRAM bandwidth pressure drops by 50%, feeding GPU cores data much faster.
 
@@ -162,6 +171,7 @@ On modern GPUs like NVIDIA H100, low-precision tensor computations are natively 
 ### Section 3: INT8 vs. FP8: Two Distinct Quantization Paradigms
 
 KV Cache 8-bit quantization follows two separate technical routes:
+
 *   **INT8 (8-Bit Integer)**: A float-to-integer mapping. Continuous float points map into 256 discrete integer bins via Scaling and Rounding. It is mathematically lossy, but fine-grained quantization coefficients (e.g., per Token or per Channel) reduce precision losses to a minimum.
 *   **FP8 (8-Bit Floating Point)**: Preserves sign bits, exponent bits, and mantissa bits. Compared to FP16, it is merely "shorter," reducing range and precision. On hardware supporting FP8 Tensor Cores (e.g., H100), FP8 computations require no explicit de-quantization and are becoming the server-side standard.
 
@@ -170,10 +180,12 @@ KV Cache 8-bit quantization follows two separate technical routes:
 ### Section 4: Dynamic vs. Static: Comparison with Model Weight Quantization
 
 Model weights themselves also utilize quantization (e.g., GPTQ, AWQ). The effects and complexities between weight and KV Cache quantization remain distinct:
+
 *   **Model Weight Quantization (Static)**: Model parameters are fixed after training. Engineers hold ample time to analyze distributions off-line and calibrate datasets. As a result, even sharding weights down to 4-bit preserves model intelligence.
 *   **KV Cache Quantization (Dynamic)**: Generated dynamically based on user inputs. Outliers cannot be predicted. Sharding down to 4-bit collapses dynamic ranges, crushing output quality. Consequently, KV Caches rarely drop below 8-bit.
 
 Production environments combine both:
+
 *   **W4A16 (Weight-Only Quantization)**: Resolves "VRAM Capacity," allowing massive models to load onto smaller cards.
 *   **W8A8 / FP8 (Full Quantization)**: Focuses on "Inference Speed," serving as the standard choice for high-concurrency cloud providers.
 
@@ -192,6 +204,7 @@ Even with GQA and quantization, context expansions eventually trigger severe mem
 Static allocation strategies traditionally provision VRAM statically since engines cannot predict final sequence lengths. Systems must pre-allocate a contiguous memory block according to a model’s maximum context limit (e.g., 8000 tokens).
 
 This causes immense waste:
+
 *   **Internal Fragmentation and Reserved Waste**: Pre-allocating contiguous VRAM gives requests exclusive occupancy. Whether the resulting text is short or long, **unused spaces reserved for future tokens** cannot be shared with other requests until current sessions are released.
 *   **External Fragmentation**: Total free VRAM might be sufficient, but if physically non-contiguous, engines cannot allocate it to new requests demanding large contiguous blocks.
 
@@ -206,6 +219,7 @@ Facing this memory chasm, UC Berkeley researchers (the authors of vLLM) looked b
 Operating systems resolve physical RAM fragmentation using **Virtual Memory Paging**. Programs perceive memory as contiguous, but the OS fragments data into fixed-size Pages scattered across physical hardware.
 
 vLLM migrates this **paging mechanism onto GPU VRAM management**:
+
 1.  **Block Management**: Systems segment physical VRAM into fixed physical Blocks instead of provisioning monolithic contiguous spaces. For example, 1 block holds the K and V matrices for exactly 16 Tokens.
 2.  **Non-Contiguous Physical Allocation**: Logically, a token sequence is continuous. Physically, token blocks scatter non-contiguously across the VRAM array.
 
@@ -220,6 +234,7 @@ PagedAttention introduces **Block Tables**—mapping logical blocks to physical 
 **Understanding Mapping Mechanisms**:
 To visualize how the `BlockTable` tracks `Request -> Token Block -> Memory Block`, consider its tensor dimensions:
 `block_table` functions as a 2D tensor shaped `[max_num_reqs, max_num_blocks_per_req]`:
+
 *   **Dimension 1 (Row)**: Corresponds to distinct **Requests**, indexed by `req_idx`.
 *   **Dimension 2 (Column)**: Corresponds to a request’s **Token Block** (logical block), indexed by `logical_block_idx`.
 *   **Stored Value**: The corresponding **Memory Block** (Physical VRAM Block ID).
@@ -245,6 +260,7 @@ Chapter 8 discussed multi-user shared system prompts. Real applications (e.g., m
 Modern LLM applications feature large volumes of background text.
 
 **Scenario 1: Multi-Round Dialogue**
+
 *   Round 1: You ask "What is an apple?" (Model computes and generates).
 *   Round 2: You ask "Does it taste good?". The prompt sent to the model is: [Round 1 Question + Round 1 AI Answer + Round 2 Question].
 
@@ -271,6 +287,7 @@ To resolve this, frameworks like SGLang and vLLM introduced **RadixAttention**, 
 Due to positional encodings and attention traits, as long as preceding token sequences are identical, the generated KV Caches remain identical.
 
 Radix Trees operate as follows:
+
 *   **Root**: The null sequence.
 *   **Edge**: Represents contiguous Token sequences (e.g., a 16-token Block).
 *   **Node**: Points to the physical blocks for these tokens.
@@ -334,6 +351,7 @@ To crush the static batching "weakest link" effect, Orca introduced **Continuous
 
 **Analogy: The Perpetual Bullet Train**
 Imagine an ongoing bullet train. At each station (forward propagation step lasting milliseconds), people dynamic enter and leave.
+
 *   **Dynamic entry/exit**: Schedulers don't wait for batches to complete. Between token generation intervals, schedulers monitor for End-of-Sequence (EOS) tags. Finished requests exit the batch, and queued requests board immediately.
 *   **Destroying Padding**: Engines flatten input tokens into 1D continuous streams for GPUs. Boundaries are isolated using offset indices (`cu_seqlens`), **eliminating Padding entirely**.
 
@@ -360,6 +378,7 @@ Continuous batching multiplies **Throughput** and stabilizes **TBT**, ensuring s
 
 #### The Inner Engine: 3 Core Data Structures
 To manage 1D continuous streams without dynamic lookups, engines track three structures:
+
 1.  **`cu_seqlens` (Cumulative Sequence Length Array)**: Isolates token boundaries for distinct requests in the stream, ensuring Attention Kernels do not "cross-read" neighbor data.
 2.  **`Block Table`**: Tracks historical KV access, mapped as a 2D array. GPUs lookup `BlockTable[request_index]` to instantly read physical block IDs.
 3.  **`slot_mapping`**: Manages precise physical memory writes. It directs GPUs on where to write new K and V vectors directly using tensor indexing.
@@ -373,11 +392,13 @@ Continuous Batching optimizes Decode, but Prefill (prompt processing) faces **He
 If a 1,000-token prompt arrives, processing it in a single step stalls all older, ongoing Decode requests.
 
 **The Solution: Chunked Prefill**
+
 *   Systems set an iteration token budget (e.g., 256).
 *   A 1,000-token prompt shards into `[256, 256, 256, 232]`, processed sequentially across multiple iterations.
 
 **Perfect Symbiosis**
 Systems batch **1 chunked prefill block** alongside **ongoing decode requests**:
+
 *   **Decode requests** fetch few tokens, occupying memory bandwidth but idling Tensor Cores.
 *   **Prefill blocks** contain hundreds of tokens, saturating the idle compute capacity.
 
@@ -394,6 +415,7 @@ Under high concurrency or ultra-long contexts, physical HBM will saturate. How d
 ### Section 1: The Scheduler's Dilemma
 
 When 100% of HBM is utilized and new blocks cannot allocate, the system faces two memory types:
+
 1.  **Inactive Data**: Prefix caches retained on Radix trees (reference counts equal 0).
 2.  **Active Data**: In-flight requests requesting new blocks for subsequent tokens.
 Left unmanaged, VRAM triggers OOM crashes.
@@ -406,6 +428,7 @@ Systems first attempt to evict unused cache data using **LRU (Least Recently Use
 
 **Tiered Offloading**
 Rather than discarding calculated data, modern engines deploy **Tiered KV Cache Offloading**:
+
 *   **Hot Tier (GPU HBM)**: Extreme bandwidth and lowest latency, housing active caches.
 *   **Warm Tier (CPU RAM)**: Slower PCIe connection but inexpensive capacities. Least recently used blocks are **offloaded** here.
 *   **Cold Tier (NVMe SSD)**: Infinite capacity but slow access. Used for ultra-long contexts and conversational histories.
@@ -418,11 +441,13 @@ If evicting inactive caches yields insufficient memory, schedulers **preempt** a
 
 **Preemption Triage**
 Modern engines use **Reverse FCFS (First Come First Served)** policies to pick victims:
+
 1.  **Minimize Wasted Work**: Old requests hold heavy prefill compute investments. Preempting new requests minimizes compute waste.
 2.  **Prevent Starvation**: Long-context requests would never finish if repeatedly preempted.
 3.  **Priority Levels**: Requests with lower priorities are preempted first.
 
 **Dealing with Victim Caches:**
+
 *   **Swapping**: Shunts victim KV Caches via PCIe to **CPU RAM**. Saves GPU compute but threatens to choke PCIe bandwidth under high concurrency.
 *   **Recomputation**: Wipes the victim's KV Cache from VRAM. Upon resumption, engines re-run its prompt prefill. On top-tier GPUs (e.g., H100), recomputing prompt matrices is frequently faster than swapping gigabytes over PCIe.
 
@@ -431,6 +456,7 @@ Modern engines use **Reverse FCFS (First Come First Served)** policies to pick v
 ### Section 4: SGLang's Tree-Based Management: Unifying Preemption and Eviction
 
 SGLang unifies cache sharing, eviction, and active preemption within the Radix Tree:
+
 1.  **Preemption via De-referencing**: Preempting a request merely sets its Radix Tree reference count to zero without media transfers or instant deletions.
 2.  **Best-Effort Retention**: Null-referenced nodes linger. If VRAM pressure alleviates before LRU eviction strikes, requests resume instantly at zero cost.
 3.  **Ultimate Simplicity**: If memory saturates, LRU sweeps the oldest nodes. When evicted requests resume, they default to Recompute.
@@ -450,10 +476,12 @@ PagedAttention solves fragmentation, and Continuous Batching crushes padding was
 ### Section 1: The Professor and the Assistant — Core Logic
 
 Speculative Decoding acts like a **"Professor and an Assistant"**:
+
 *   **Target Model**: The Professor. Profound knowledge but slow writer. Evaluates drafts instantaneously.
 *   **Draft Model**: The Assistant (small model or external head). Drafts text rapidly but prone to minor errors.
 
 **Operational Workflow:**
+
 1.  **Drafting**: The Assistant quickly generates $K$ draft tokens (e.g., 5 tokens).
 2.  **Verification**: The Target Model ingests all 5 tokens simultaneously. It calculates parallel attention (like Prefill) across all 5 positions concurrently.
 3.  **Triage**: If the Professor accepts the first 3 tokens but rejects the 4th, the 4th is corrected, and the 5th is purged (KV Cache rollback). The single forward pass yielded 4 high-quality tokens.
@@ -491,6 +519,7 @@ Introduces a lightweight, single-layer Transformer at the hidden state level. It
 Medusa and Eagle spread wide nets, branching out Top-K candidates and forming a **"Draft Tree"**. Targets evaluate the tree concurrently. KV Caches expand into tree topologies, correct pathways are identified, and unsuccessful branches are pruned.
 
 **2. Dynamic Trade-offs in Production**
+
 *   **Low Concurrency**: Activate Speculative Decoding. Excess compute cores are traded for rapid TBTs.
 *   **High Concurrency**: Deactivate Speculative Decoding. Cores are saturated with incoming batches; speculating wastes bandwidth.
 

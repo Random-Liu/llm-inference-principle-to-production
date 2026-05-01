@@ -45,9 +45,11 @@ This file contains instructions and conventions for AI agents working on this re
   - Section Title: `###` (Level 3)
   - Sub-sections should use `####` and beyond accordingly.
 - **No Stray Blank Lines**: When deleting content (lines, sections, or headers), the AI agent MUST ensure that it does not leave behind redundant, consecutive blank lines. Clean up the surrounding lines to maintain proper document flow (typically at most one blank line between paragraphs or sections).
+- **Block-Level Spacing**: In accordance with CommonMark and Python-Markdown specs, any block-level elements (including unordered/ordered lists, blockquotes, and tables) MUST have exactly one blank line preceding and following them to ensure they are not swallowed as plain paragraph text by the MkDocs parser.
 - **TOC Maintenance**: When modifying any title or header in a file, the AI agent MUST review and update:
   1. The file's own Table of Contents (at the beginning of the file). **Note**: The file-specific TOC should only include Chapter and Section level headers (i.e., the top two levels of the document's content hierarchy), ignoring deeper sub-sections.
   2. The Table of Contents in both `README.md` and `README.cn.md` to ensure consistency and accuracy across all language versions.
+  3. **TOC Indentation**: When generating or modifying any Table of Contents (TOC), all nested lists MUST be strictly indented by multiples of 4 spaces (e.g., 0, 4, 8 spaces) for the MkDocs Material parser (`pymdownx`) to render nested bullet points accurately.
 
 ## Collaboration and Accuracy
 - **Evidence-Based Conclusions**: Strive for truthfulness in this technical content. Base all conclusions on solid evidence. Do not hallucinate.

@@ -127,11 +127,13 @@ To maximize I/O throughput and minimize cold starts, the industry has adopted Hu
 
 ##### 1. The Past: Pickle's Security Nightmare and Performance Bottleneck
 Before Safetensors, PyTorch's default `.pt` or `.bin` formats dominated. These formats rely on Python's `pickle` library for serialization.
+
 *   **Security Risks**: Pickle can execute arbitrary Python code during deserialization. A downloaded model could execute malicious code upon loading. This created significant security concerns for production environments.
 *   **Performance Issues**: Pickle lacks a clear separation between metadata and data. The CPU must parse the entire file and reconstruct complex objects, consuming massive CPU cycles. This prevents using `mmap` for zero-copy loading, leading to slow memory copies and long cold starts.
 
 ##### 2. The Present: Design Essence and Advantages of Safetensors
 Hugging Face designed Safetensors to solve these pain points:
+
 *   **Absolute Safety**: It stores pure tensor data and a light JSON header, preventing code execution.
 *   **Header and Data Separation**: The file begins with a JSON string describing tensor topologies (names, shapes, data types) and file offsets. Engines only need to read a few kilobytes of the header to map the model in virtual memory instantly.
 *   **Perfect for mmap**: The data section contains continuous, uncompressed raw binary data. The OS reads data from disk only when accessed, eliminating CPU copy overhead and minimizing loading times.
@@ -139,11 +141,13 @@ Hugging Face designed Safetensors to solve these pain points:
 ##### 3. Sharding and On-Demand Loading
 Large models are usually split into shards (e.g., `model-00001-of-00004.safetensors`) with an `index.json` file mapping tensors to shards. For example, in the Hugging Face repository for [google/gemma-4-31B](https://huggingface.co/google/gemma-4-31B/tree/main), the model is stored in shards following this convention.
 This sharding enables real optimizations in distributed inference:
+
 *   In **Pipeline Parallelism**, GPUs only download and read shards containing the layers they need, skipping the rest to save bandwidth.
 *   In **Tensor Parallelism**, all cards read all files, but `mmap` eliminates eager preloading — weights are faulted in on access, spreading load across inference rather than front-loading it at startup. This is widely used in engines like vLLM.
 
 ##### Other Model Formats
 Besides Safetensors, the industry uses other formats for different scenarios:
+
 *   **`.pt` / `.bin` (Legacy PyTorch)**: Based on Python's `pickle`. Phased out due to code execution risks and high CPU deserialization costs preventing effective `mmap` usage.
 *   **`GGUF`**: Popular for edge and local inference. Designed for CPU/GPU hybrid execution and single-machine quantization, but lacks efficient support for large-scale distributed inference (TP and PP).
 *   **`.tensors` (CoreWeave Tensorizer)**: An extremely optimized format from CoreWeave. It loads data directly from S3/HTTP to GPU VRAM, bypassing CPU memory. While offering impressive cold start performance, its ecosystem is closed and lacks general support.
@@ -161,6 +165,7 @@ Separating weights from images turns distribution into a distributed storage and
 Before data reaches containers, we must package it. A battle of packaging protocols is playing out at the intersection of AI and cloud-native.
 
 **Background:**
+
 *   **Git LFS (Large File Storage)**: Git was designed for text code. Storing hundreds of gigabytes of binary files directly would crash repositories. Git LFS solves this by leaving small text pointer files in the Git repo and storing the actual large files on dedicated LFS servers (usually backed by object storage). **Thanks to Hugging Face, Git LFS is the de facto standard for AI asset management.**
 *   **OCI Artifact**: Driven by the **OCI (Open Container Initiative)** under the Linux Foundation. Originally for container images, OCI specifications now extend to any file type (like model weights or Helm Charts). OCI Artifact packages files into specifications similar to Docker images, stored in standard **OCI Registries**. **As a newcomer in cloud-native infrastructure, it represents the future.**
 
@@ -212,6 +217,7 @@ In response to these three dimensions, the aforementioned schools have converged
 
 ##### ① Corresponding to Route 1 (CSI + PVC): Volume / Filesystem-centric Mode (Model as Data)
 <!-- TODO: Currently modifying weight caching -->
+
 *   **Representative Stack**: **`Fluid + Alluxio / JuiceFS`**
 *   **Principle**: Embedding a distributed cache network under the Persistent Volume Claim (PVC). Fluid acts as the data orchestration control plane on K8s, while Alluxio pools each node's local SSD into a distributed cache.
 *   **Advantages**: Entirely transparent to serving engines like vLLM. The engine reads the mount point as a local filesystem, reducing integration overhead.
@@ -247,8 +253,10 @@ The default for most engines like vLLM.
 
 *   **Data Path**:
     Storage Medium -> [DMA] -> Kernel Page Cache (Pageable) -> [CPU Copy] -> CUDA Internal Pinned Buffer -> [DMA] -> GPU VRAM
+
 *   **Principle**:
     Engines use `mmap` to map files to virtual memory. Reading triggers page faults, reading data from storage to page cache on demand. `mmap` shares memory between kernel and user space, eliminating the CPU copy from kernel to user space found in traditional `read`. **However, when calling `cudaMemcpy` to send data from `mmap` memory to the GPU, CUDA must first copy data to a hidden pinned buffer (Staging Buffer) because `mmap` memory is pageable. It then moves it to the GPU via DMA.**
+
 *   **Trade-offs**:
     *   **Advantages**: No hardware or driver dependencies; works on any Linux system and storage medium.
     *   **Disadvantages**: Implicit CPU memory copies exist; high page fault overhead; single-threaded reads cannot saturate bandwidth.
@@ -259,8 +267,10 @@ An advanced solution in high-performance scenarios leveraging CPU multi-core cap
 
 *   **Data Path**:
     Storage Medium -> [DMA] -> Kernel Page Cache -> [CPU Copy] -> User Pinned Memory -> [DMA] -> GPU VRAM
+
 *   **Principle**:
     Abandon `mmap` and page fault mechanisms. The application actively requests large blocks of **Pinned Memory**. Multiple CPU threads concurrently issue **`pread`** calls at different file offsets; the kernel copies data from the page cache into pinned memory, which is then sent to the GPU via DMA.
+
 *   **Trade-offs**:
     *   **Advantages**: **Multi-threaded concurrency** and **pipelining**. Reading files and sending to GPU happen concurrently, perfectly overlapping I/O and H2D transfer, much faster than `mmap`.
     *   **Disadvantages**: Still involves one CPU-participated memory copy (from page cache to pinned memory), consuming some CPU cycles.
@@ -271,8 +281,10 @@ A "heavy armor" solution for physical limit performance, common in high-end HPC 
 
 *   **Data Path**:
     Storage Medium (Local NVMe or Remote RDMA Storage) -> [Hardware Direct DMA] -> GPU VRAM
+
 *   **Principle**:
     Files must be opened with **`O_DIRECT`** (bypassing page cache). Utilizing NVIDIA's GDS technology, data flows directly from the storage controller (or NIC) over the PCIe bus via DMA to GPU VRAM. **The CPU only issues commands and touches no data throughout the process.**
+
 *   **Trade-offs**:
     *   **Advantages**: **Zero CPU memory transit, zero CPU compute overhead**; physical limit I/O throughput.
     *   **Disadvantages**: High threshold. Requires specific hardware (NVMe/RDMA) and drivers, and because of mandatory `O_DIRECT`, it is incompatible with many virtual filesystems (like Nydus) that rely on page cache.
@@ -281,6 +293,7 @@ A "heavy armor" solution for physical limit performance, common in high-end HPC 
 
 **Summary and Linkage**:
 The choice of loading solution is closely related to the "distribution and mounting solution" in the previous section:
+
 * If you use **Nydus**, a stream distribution system heavily reliant on page cache, Route 2 (Streamer) is the best partner because they both use POSIX interfaces, and Streamer's concurrent reads can trigger Nydus's concurrent pulls.
 * If you pursue extreme performance and use **GDS**, you must give up Nydus and turn to high-performance shared filesystems supporting `O_DIRECT` (e.g., WekaFS/VAST) or HostPath pre-downloading.
 
@@ -300,6 +313,7 @@ Ignoring topology in distributed LLM inference causes severe problems across mul
 
 ##### 1. Intra-node GPU Topology Black Hole
 Tensor Parallelism (TP) splits model layers across GPUs, requiring high-frequency `All-Reduce` per layer.
+
 *   **Problem**: If K8s randomly assigns 4 GPUs across different PCIe switches or NUMA nodes (on PCIe servers without NVSwitch), communication falls back to slow CPU buses instead of NVLink, crashing performance.
 
 ```mermaid
@@ -331,6 +345,7 @@ graph TD
 
 ##### 2. GPU-NIC Alignment Mismatch
 Large-scale inference (cross-node TP/PP or disaggregated serving) relies heavily on RDMA.
+
 *   **Problem**: **GPUDirect RDMA** achieves peak performance when the GPU and RDMA NIC share the same **PCIe Switch**.
     *   **Worst Case (Cross-NUMA)**: If the scheduler assigns a GPU on NUMA 0 and a NIC on NUMA 1, data must cross the CPU interconnect (e.g., UPI). Since UPI's effective bandwidth (~40GB/s) is less than the 50GB/s needed by a 400G NIC (400Gbps ÷ 8), the bus becomes a bottleneck, destroying the RDMA advantage.
     *   **Suboptimal Case (Cross-Switch within same NUMA)**: Even within the same NUMA node, pairing devices on different PCIe switches (e.g., GPU 0 and NIC 3) forces data up to the CPU's PCIe Root Complex. This prevents direct forwarding within the switch, adding latency (PCIe Gen5 x16 provides 64GB/s in one direction, perfectly covering the 50GB/s requirement of a 400G NIC).
@@ -390,6 +405,7 @@ graph TD
 
 ##### 3. CPU-GPU Alignment Issues
 While inference runs on GPUs, CPU-GPU affinity matters in critical scenarios:
+
 *   **Cold Starts & Weight Loading**: Loading huge models from disk/RAM to VRAM across NUMA nodes prolongs cold starts and degrades TTFT.
 *   **KV Cache Offloading**: In serving engines (like vLLM), when VRAM is full due to high concurrency or long contexts, systems often use a swapping mechanism to offload KV cache to CPU RAM to avoid OOM. Cross-NUMA bandwidth limits stall requests during this offload and reload process.
 *   **Control Plane Overhead**: The inference engine (e.g., vLLM) scheduler runs on the CPU, launching CUDA kernels frequently. Cross-NUMA placement increases CUDA launch latency, impacting ultra-low latency tasks.
@@ -421,6 +437,7 @@ graph TD
 
 ##### 4. Cluster-Level Network Topology Collision
 Distributed inference also depends on cluster networks (RDMA blocks).
+
 *   **Problem**: Multi-node TP/PP or **disaggregated serving** (for quantitative comparison, see [Part 4 Chapter 20 Section 3](part4_distributed.md#section-3-parallel-modes-data-volumes-and-metric-impacts)) requires frequent cross-node communication. Schedulers lacking network topology awareness might scatter Pods for the same model across racks (crossing Spine switches). Long-tail latency from multiple hops drags down the entire NCCL ring.
 
 ```mermaid
@@ -467,6 +484,7 @@ To break free from scalar counting, Kubernetes introduced **DRA (Dynamic Resourc
 DRA replaces the traditional Device Plugin model, which was designed for simple discovery and static allocation. Similar to PVCs in storage, DRA uses decoupled API objects to manage resources granularly.
 
 The core data model consists of:
+
 *   **ResourceClass**: Analogous to `StorageClass`. It defines a resource class, specifies the handling **Resource Driver**, and includes parameters.
 *   **ResourceClaim**: Analogous to `PVC`. It represents a Pod's resource request. Pods reference a claim instead of requesting `gpu: 4`. It describes granular needs (e.g., "4 GPUs", "NVLink connected").
 *   **ResourceClaimTemplate**: Analogous to `PersistentVolumeClaimTemplate`. It creates templates to generate claims dynamically for Pods managed by controllers like StatefulSet.
@@ -483,6 +501,7 @@ DRA is not just for expressing topology. It solves several hardware management p
 
 *   **Motivation 2: Parameterized Dynamic Hardware Configuration**
     Traditional allocation is static. DRA allows passing parameters in claims for dynamic runtime configuration without node reboots.
+
     *   **Example 1: Dynamic GPU Slicing (Dynamic MIG)**: Instead of static admin configuration, a Pod requests a "15GB VRAM" claim. The driver slices the card in real-time and recycles it on termination, improving utilization.
     *   **Example 2: Dynamic Network Configuration**: In distributed inference, Pods may need specific RDMA isolation. With DRA, a Pod claims specific network needs (e.g., "exclusive RDMA VF"), and the network driver dynamically configures the NIC (like SR-IOV VF) for isolation.
 
@@ -497,6 +516,7 @@ DRA is not just for expressing topology. It solves several hardware management p
 After understanding the upper abstraction of DRA, we must still dive into the physical reality of the motherboard. The three pain points mentioned in Section 1 (GPU interconnect, GPU-NIC alignment, CPU-GPU alignment) are all, in essence, problems of **hardware locality**.
 
 Hardware locality determines the speed and cost of data movement between components, directly impacting distributed inference performance:
+
 *   **GPU Interconnect Topology (Problem 1)**: Determines whether GPUs can use ultra-fast NVLink or are forced to fallback to slow cross-CPU buses.
 *   **GPU-NIC Alignment (Problem 2)**: Determines whether **GPUDirect RDMA** can be completed within the same PCIe Switch or must cross CPU/NUMA boundaries, causing bandwidth bottlenecks on buses like UPI.
 *   **CPU-GPU Alignment (Problem 3)**: Involves the strict **NUMA (Non-Uniform Memory Access)** architecture. If the inference process on the CPU and the controlled GPU span across NUMA nodes, KV Cache offloading and CUDA Launch overheads suffer severe performance penalties (e.g., TTFT jitter and throughput drops). Before DRA, K8s relied on Kubelet's **Topology Manager** to reject cross-zone allocations, but it was too pessimistic and failed to handle complex multi-dimensional alignments.
@@ -629,6 +649,7 @@ However, in most current data centers, large model inference (e.g., hybrid TP/PP
 
 #### 1. Problem Restated: Random Collisions of Cluster Network Topology (Problem 4)
 As mentioned in Section 1, large-scale distributed inference relies heavily on RDMA communication. Random node assignment by K8s causes:
+
 *   **Cost of Network Hops**: In multi-node TP, nodes frequently sync tensors. Random assignment to different racks forces data across the core switch (Spine Switch), causing long-tail latency and traffic jams in NCCL rings.
 *   **KV Cache Transfer Problem**: In disaggregated serving, Prefill nodes instantly transfer massive KV Cache to Decode nodes. If they are far apart, cross-node network bottlenecks will significantly increase Time to First Token (TTFT) and severely weaken the benefits of separation.
 
@@ -638,6 +659,7 @@ To solve cross-node network bottlenecks, Kubernetes provides native **Affinity a
 Administrators typically label nodes with their physical location (e.g., rack or switch), such as `topology.kubernetes.io/rack=rack-1`.
 
 For distributed inference Pod groups, the scheduler aligns topology via:
+
 *   **Pod Affinity**: Declaring that Pods sharing the same inference task must be scheduled in the same `topologyKey` (e.g., `rack`), ensuring communication stays within a high-bandwidth, low-latency domain.
 
 #### 3. Configuration Example: Rack Alignment via Pod Affinity
@@ -692,6 +714,7 @@ Large-scale distributed LLM inference often requires deploying a model across mu
 In microservices, Pods are stateless and independent. Deployments maintain replica counts, replacing failed Pods independently. Pods are loosely coupled.
 
 Distributed LLM inference changes this fundamentally:
+
 1.  **All-or-Nothing**: A TP group of 4 Pods must exist simultaneously to build the NCCL ring. Starting only 3 is useless.
 2.  **Tight Coupling**: Leader Pods expose endpoints and coordinate Workers. Workers require high-speed interconnects (NVLink/RDMA).
 3.  **Linked Lifecycles**: If one Worker crashes, others hang due to timeouts. Restarting a single Pod fails because it cannot join the existing communication domain. The entire group must restart.
@@ -710,6 +733,7 @@ NCCL **abstracts complex hardware topologies like NVLink, PCIe switches, and Inf
 Unlike traditional HTTP interfaces or microservices, NCCL is a **tightly coupled** system. It requires all participating GPUs to handshake and establish a closed communication Ring or Tree at startup.
 
 This architecture is extremely fragile:
+
 *   **All-or-Nothing**: NCCL requires all participating nodes to be online and enter the same state at the **same time**.
 *   **Single Point of Failure**: In a communication ring of 8 cards, if 1 card crashes due to OOM, hardware failure, or network packet loss, the entire NCCL ring breaks instantly.
 *   **Deadlocks and Hangs**: When the ring breaks, the remaining 7 cards do not exit automatically. They hang indefinitely in `cudaMemcpy` or NCCL calls, waiting until high timeout thresholds are reached.
@@ -718,10 +742,12 @@ This architecture is extremely fragile:
 In microservices, K8s defaults to restarting the failed Pod in place or elsewhere.
 
 For NCCL, this local self-healing is **completely ineffective**:
+
 *   The restarted Pod is a new process with new network handles; it cannot join the broken NCCL ring.
 *   Remaining Pods are deadlocked and cannot handshake with the new Pod.
 
 Therefore, when an NCCL ring breaks, the only correct solution is an **"All-or-Nothing" group-level restart**:
+
 1.  **Identify Failure**: Monitors or Operators must quickly sense NCCL timeouts or Pod anomalies.
 2.  **Group Termination**: Immediately kill **all** Pods in the group to clean up deadlocked processes.
 3.  **Rebuild Ring**: The controller allocates clean resources for all Pods to restart and rebuild the NCCL ring from scratch.
@@ -745,17 +771,20 @@ To handle the harsh lifecycle challenges in distributed inference, LWS provides 
 
 ##### ① `restartPolicy`: The Ultimate Weapon for NCCL Ring Breaks
 In traditional K8s, failed Pods restart independently. In LWS, you can configure `restartPolicy: RecreateGroupOnPodRestart`.
+
 *   **Mechanism**: If any Worker Pod in a group fails (e.g., OOM or hardware hang), LWS does not attempt to restart it alone. Instead, it **takes decisive action and immediately kills and recreates all Pods in the group**.
 *   **Value**: This ensures the NCCL communication domain rebuilds cleanly from scratch, eliminating zombie Pods and deadlock waits, serving as the foundation for high availability.
 
 ##### ② `startupPolicy`: Elegant Startup Orchestration
 Startup order often matters in distributed inference.
+
 *   **Mechanism**: LWS supports `LeaderCreated` (Workers created immediately when Leader is created) and `LeaderReady` (Workers created only after the Leader Pod is fully Ready).
 *   **Value**: In complex engines, the Leader may need to load metadata or establish control planes first. Using `LeaderReady` prevents Workers from starting blindly and idling, saving valuable GPU compute.
 
 #### 2. Upgrade Policy and Behavior
 
 Besides runtime policies, LWS provides `rolloutStrategy` (rolling update strategy).
+
 *   **Behavior**: It supports partition update mechanisms similar to StatefulSets. During model upgrades, you can control updating only a portion of inference groups at a time, ensuring surviving groups continue serving.
 *   **Note**: Upgrading a group involves reloading hundreds of gigabytes of weights, a slow and expensive process. We will discuss graceful traffic shifting and draining requests during updates in detail in the subsequent "Cluster Upgrades" chapter.
 
@@ -764,10 +793,12 @@ Besides runtime policies, LWS provides `rolloutStrategy` (rolling update strateg
 In distributed LLM inference (like NCCL ring building), Pods need to know each other's identity (Rank) and network addresses. LWS adopts a highly regular and predictable naming strategy to solve this pain point.
 
 LWS naming rules:
+
 *   **Leader Pods**: Named `[LWS_NAME]-[GroupIndex]`. For example, if the LWS is named `vllm-model`, the Leader Pod of group 0 is `vllm-model-0`.
 *   **Worker Pods**: Named `[LeaderPodName]-[WorkerIndex]`. **Notably, worker indices start from 1**. For example, workers under `vllm-model-0` are named `vllm-model-0-1`, `vllm-model-0-2`, etc.
 
 Additionally, LWS automatically injects labels via a webhook, allowing inference engines to determine their roles easily:
+
 *   `leaderworkerset.sigs.k8s.io/group-index`: The index of the replica group.
 *   `leaderworkerset.sigs.k8s.io/worker-index`: The index within the group (Leader is always `0`, Workers are `1, 2, 3...`).
 
@@ -781,6 +812,7 @@ Using traditional Pod Affinity or Anti-Affinity rules becomes extremely complex 
 
 ##### How LWS "Sets the Rules" (Under the Hood)
 When you configure LWS with `exclusive-topology: rack`, the LWS controller acts as a smart translator. Before Pods are submitted to Kubernetes, it **automatically rewrites the Pod YAMLs in the background** to generate complex affinity rules:
+
 *   **Injecting Identity**: It labels Pods in group 0 with `group-index: 0`, group 1 with `group-index: 1`, and so on.
 *   **Injecting Affinity (Intra-group Aggregation)**: It generates a rule: "Pods with `group-index: 0` must be in the same `rack`."
 *   **Injecting Anti-Affinity (Inter-group Exclusivity)**: It generates another rule: "The `rack` containing Pods with `group-index: 0` must NOT contain Pods with other `group-index` values."
@@ -788,6 +820,7 @@ When you configure LWS with `exclusive-topology: rack`, the LWS controller acts 
 **For example**:
 Suppose we have an LWS with `replicas: 3` (deploying 3 independent inference groups) and `leaderworkerset.sigs.k8s.io/exclusive-topology: rack` set.
 LWS guarantees to the scheduler that:
+
 *   All Pods of **Inference Group 0** (Replica 0) are forced onto **Rack A**.
 *   All Pods of **Inference Group 1** (Replica 1) are forced onto **Rack B**.
 *   All Pods of **Inference Group 2** (Replica 2) are forced onto **Rack C**.
@@ -908,6 +941,7 @@ After exploring low-level Gang Scheduling, we must introduce **Kueue**, another 
 
 #### 1. Problems Solved by Kueue
 In multi-tenant shared large AI clusters, traditional K8s resource management faces the following pain points:
+
 * **Lack of Job-Perspective Queuing**: The native K8s scheduler treats Pods as the smallest unit. When a Job containing 100 Pods is submitted, K8s processes Pods individually. If resources are insufficient, it leads to a deadlock where some Pods start while others are pending, causing resource idling and waste.
 * **Limitations of Static Quotas (ResourceQuota)**: Native ResourceQuota imposes rigid hard limits. It cannot achieve cross-namespace **resource borrowing**, **dynamic reclamation**, or **priority-based fair-share**.
 
@@ -930,6 +964,7 @@ Autoscaling in LLM inference occurs at two levels: **Pod Autoscaling** and **Nod
 
 #### 1. Failure of Native HPA: Why CPU/Memory Metrics Fail in LLM Scenarios
 Kubernetes native Horizontal Pod Autoscaler (HPA) defaults to CPU or memory utilization. This fails in LLM inference:
+
 *   **Bottleneck Mismatch**: The bottleneck is usually **GPU memory bandwidth** and **KV Cache occupancy**, not CPU. When concurrency spikes, CPU might remain low while VRAM is full.
 *   **Reactive Lag**: Native HPA is reactive. For LLM Pods with long cold starts, reacting to metric spikes causes request timeouts.
 
@@ -939,6 +974,7 @@ To reflect congestion accurately, the industry uses custom metrics from inferenc
 **KEDA (Kubernetes Event-driven Autoscaling)** acts as an extension to HPA. While native HPA supports Custom/External Metrics, configuring adapters for different sources is complex. KEDA shields this complexity by providing a unified, pluggable framework that maps external events to HPA-consumable metrics and automatically manages HPA lifecycles.
 
 Key advantages of KEDA:
+
 *   **Rich Scalers**: With over 60 built-in scalers (including Prometheus), it easily pulls real vLLM business metrics like waiting requests (`vllm:num_requests_waiting`) and KV Cache usage (`vllm:gpu_cache_usage_perc`).
 *   **Zero-to-One Scaling**: Native HPA cannot scale from 0 to 1. KEDA's Operator monitors event sources (like queues) and forces the first Pod creation when events > 0. HPA then handles 1-to-N scaling.
 
@@ -946,6 +982,7 @@ Key advantages of KEDA:
 In distributed inference (e.g., multi-node TP), scaling individual Pods breaks NCCL rings.
 
 By targeting **LeaderWorkerSet (LWS)** instead of Deployments:
+
 *   HPA scales the number of LWS `replicas`.
 *   LWS controller creates or destroys Pods atomically as a group, ensuring atomicity.
 
@@ -965,6 +1002,7 @@ Both Cluster Autoscaler and Karpenter face two critical flaws in LLM inference: 
 Autoscalers trigger only on "Pending Pods." Provisioning starts only after resources exhaust. Node booting, weight pulling, and engine initialization take minutes.
 
 Scaling involves:
+
 1.  **HPA Sensing**: HPA polls metrics (default 15s). The delay from traffic spike to Pending Pod creation adds tens of seconds.
 2.  Cloud provider VM provisioning (seconds to minutes).
 3.  Node bootstrapping and driver installation (minutes).
@@ -976,6 +1014,7 @@ Total cold start takes minutes, causing request timeouts during spikes.
 ##### ② Lack of Atomicity: Resource Idling and Retries
 In LWS (LeaderWorkerSet) distributed inference, a replica (1 Leader + N Workers) must be **fully ready** to serve. This is essentially the **"All-or-Nothing"** atomic scheduling problem discussed in the previous chapter.
 However, default K8s schedulers and autoscalers process Pods individually. This causes efficiency issues:
+
 *   **GPU Idling Cost**: If the autoscaler provisions only partial nodes (e.g., Leader schedules but Worker pends due to stock shortages), ready GPUs idle and waste money.
 *   **Retry Latency & Compounded Waste**: Although systems eventually converge via timeouts and retries (e.g., Kueue's `waitForPodsReady`), this loop significantly prolongs cold starts. Worse, while waiting for retries, GPUs on already-provisioned nodes continue to idle, exponentially compounding costs.
 
@@ -1034,6 +1073,7 @@ Native K8s upgrades rely on **Rolling Updates** and **Node Draining (Cordon & Dr
 
 #### 2. Eviction and Version Dilemmas in All-or-Nothing Scenarios
 In distributed inference (e.g., multi-node TP), both Pods and their bound Nodes exhibit extreme coupling (Gang). Traditional sequential eviction and upgrade strategies fail at two levels:
+
 *   **Pod-Level "All-or-Nothing"**: Killing a single worker breaks the NCCL ring, bringing down the entire group (Leader + Workers). Sequential draining causes repeated interruptions and restarts, wasting resources. Native PodDisruptionBudget (PDB) operates at the Pod level and cannot natively define a budget for *inference groups*.
 *   **Node-Level "Strong Consistency" and Topology Requirements**:
     *   **Driver and Software Stack Version Risks**: While CUDA and drivers offer backward compatibility, version mismatches (NVIDIA drivers, OFED) across nodes can cause subtle performance jitter or disable advanced features like GPUDirect RDMA in high-performance distributed inference. Maintaining consistency during the upgrade window is a best practice to avoid unpredictable risks.
@@ -1049,6 +1089,7 @@ To upgrade nodes without affecting business continuity, the industry relies on a
 
 #### 1. Connection Draining and Extra-Long Graceful Termination
 To achieve seamless upgrades, fine-grained control over traffic shifting and process termination is mandatory:
+
 *   **Stopping New Requests (Gateway Switching)**: Before upgrading a node, mark it as unschedulable (Cordon). At this moment, rely on the Endpoint controller's asynchronous synchronization. By deploying the native **[`sleep` action](https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks)** recently added to the `preStop` phase, an engine can enforce a pause before receiving the `SIGTERM` signal. This grants enough time for endpoints to be removed from the upstream gateway or load balancers (LB) without having to maintain fragile shell scripts with `sleep` commands.
 *   **Processing Existing Requests (Handling `SIGTERM` in vLLM)**:
     *   **Engine Behavior**: When inference engines like vLLM receive a `SIGTERM` signal, they stop accepting new requests by default but continue processing active ones in the queue.
@@ -1058,10 +1099,12 @@ To achieve seamless upgrades, fine-grained control over traffic shifting and pro
 
 #### 2. Addressing All-or-Nothing: Group Upgrades vs. Blue-Green
 Engineering teams address PDB and sequential eviction limitations at both Pod and Node levels:
+
 *   **Pod-Level Solutions**:
     *   **LWS Native Rolling Update**: This is LWS's base capability. LWS provides a rolling update mechanism similar to Deployment and StatefulSet, but operates at the **Group** level. By configuring `rolloutStrategy.type: RollingUpdate`, LWS performs a unified Readiness check for the entire group of Pods and supports parameters similar to `maxUnavailable` to control the number of unavailable groups, ensuring each update occurs at the unit of a complete inference group and avoiding deadlocks caused by rolling individual Pods.
 *   **Node-Level Solutions (Breaking Single-Node Upgrade Inertia)**:
     To avoid repeated disruptions and capacity avalanches, node upgrades must be Gang-aware.
+
     1.  **Blue-Green Node Pool Upgrades**: Spin up a new, matching Node Pool (Green), deploy a completely new set of inference groups (e.g., LeaderWorkerSets) onto it, wait for the entire group to be Ready before seamlessly switching traffic, and then destroy the old pool (Blue) along with its previous workloads. This avoids in-place upgrade risks entirely but **requires extra redundant resources (the volume of extra resources depends on the number of inference groups being upgraded simultaneously)**.
     2.  **HA Upgrades Based on Upgrade Domains and Delegated Readiness**: To address PDB's inability to perceive groups, the author proposes a generic HA upgrade solution linking Upgrade Domains, Readiness probe aggregation, and standard PDBs. The strategy utilizes a three-layer contract to achieve secure rolling upgrades for multi-host workloads while strictly relying on Kubernetes native mechanisms. For details, see the standalone proposal [idea_multi_host_inference_ha_upgrade.md](./ideas/idea_multi_host_inference_ha_upgrade.md).
 
@@ -1073,12 +1116,14 @@ During upgrades, the goal shifts from just speeding up Pod readiness to leveragi
 
 #### 1. Model Weights: Reusing Local Cache
 Scaling out forces new Pods onto new nodes, requiring full weight downloads. Pod upgrades (e.g., updating the vLLM engine version without changing the model) differ:
+
 *   **Download Necessity**: Depends on storage architecture and scheduling.
 *   **Local Cache Dividends**: If the cluster uses `hostPath`, Local PV, or local blob caches (like Dragonfly), and the new Pod schedules onto the **same node** (or updates in-place), the weights already exist in the node's disk or OS page cache. The new Pod only needs to load them into VRAM (via `mmap`), bypassing network downloads.
 *   **Challenge**: Default K8s `RollingUpdate` creates new Pods before deleting old ones, usually placing new Pods on other nodes with free resources. This loses the local cache advantage. Exploiting this requires strict node affinity or In-place Update mechanisms.
 
 #### 2. KV Cache: From Scratch vs. State Inheritance
 True cold starts begin with empty VRAM. Upgrades, however, occur in an active system with rich KV states:
+
 *   **VRAM State Evaporation**: Evicting a node destroys its cached KV Cache (system prompts, RAG contexts). Migrated traffic forces the new Pod to redo Prefill computations, spiking TTFT.
 *   **Inheritance Potential**: Unlike fresh starts, upgrades allow new Pods to potentially inherit these states:
     *   **KV Cache Live Migration**: Before a forced restart, copy the KV Cache from the source GPU VRAM to a standby node's VRAM over high-speed RDMA.
@@ -1094,6 +1139,7 @@ Stepping back from these specific components and engineering details, the core p
 ### Contradiction 1: Heavy "Soft State" — The Cost of Creation and Reconstruction
 
 Traditional Kubernetes assumes **stateless** microservices, where Pods are disposable and easily recreated. LLM inference, however, deals with extremely heavy "soft states":
+
 *   **Definition**: Hundreds of gigabytes of **model weights** and dynamically generated, massive **KV Caches**. Losing them causes no data corruption, but rebuilding them consumes enormous **network bandwidth** or **GPU compute**.
 *   **Pain Point Mapping**:
     *   **Cold Start Optimization (Chapter 21)**: Accelerating initial weight loading forces us to use P2P distribution (Dragonfly) and lazy loading (Nydus).
@@ -1103,6 +1149,7 @@ Traditional Kubernetes assumes **stateless** microservices, where Pods are dispo
 ### Contradiction 2: Rigid "Compute Topology" — Collision Between Tight and Loose Coupling
 
 Traditional Kubernetes adheres to a **loose coupling** philosophy with scalar resource counting ("fit what you can"). Distributed LLM inference is a **topology-aware** and **tightly coupled** system:
+
 *   **Definition**: GPUs must use NVLink intra-node, align with NICs under the same PCIe Switch (GPUDirect RDMA), exclusively occupy racks cross-node, and all Pods in a group must share a linked lifecycle.
 *   **Pain Point Mapping**:
     *   **Breaking Scalar Counting (Chapter 22)**: To let the scheduler see physical reality, K8s introduces DRA, replacing Device Plugins.

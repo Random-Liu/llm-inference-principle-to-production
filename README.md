@@ -5,6 +5,7 @@
 ## Foreword
 
 This book is a systematic organization of Large Language Model (LLM) inference technology, originating from the author's study notes and reflections during paternity leave (and welcoming my second baby, Emerson! 👶🍼🧸). With daily work focused on internal clusters supporting inference and other business, the author rarely had time to follow open-source progress. Therefore, the core objectives of this book are:
+
 1. **Build Mental Models (End-to-End)**: Connect scattered knowledge points to help myself understand core LLM inference principles and serving frameworks end-to-end, establishing a global mindset.
 2. **Track Open-Source Progress**: Follow frontier progress in the open-source community to look beyond daily work, focusing especially on Kubernetes evolution and how it can better adapt to LLM inference.
 3. **Establish a Sustainable Framework**: Serve as a foundation for easier continuous updates in the future to stay up-to-date myself.
@@ -29,18 +30,25 @@ The primary audience for this book is **the author themselves**. It is open-sour
     - [Section 3: The Library Analogy: Intuitive Meaning of QKV](parts/part1_principles.md#section-3-the-library-analogy-intuitive-meaning-of-qkv)
     - [Section 4: Mathematical Principles: Matrix Computation of QKV](parts/part1_principles.md#section-4-mathematical-principles-matrix-computation-of-qkv)
     - [Section 5: Feed-Forward Network: Knowledge Base](parts/part1_principles.md#section-5-feed-forward-network-knowledge-base)
-    - [Section 6: Multi-Head Attention: Parallel Perspectives](parts/part1_principles.md#section-6-multi-head-attention-parallel-perspectives)
-    - [Section 7: Mixture of Experts: Sparse Activation](parts/part1_principles.md#section-7-mixture-of-experts-sparse-activation)
-  - [Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow](parts/part1_principles.md#chapter-2-building-the-skyscraper-stacking-layers-and-data-flow)
-    - [Section 1: Input Stage: Embeddings and Positional Encoding](parts/part1_principles.md#section-1-input-stage-embeddings-and-positional-encoding)
-    - [Section 2: Wisdom of Stacking: Hierarchical Feature Extraction](parts/part1_principles.md#section-2-wisdom-of-stacking-hierarchical-feature-extraction)
-    - [Section 3: The Translator: LM Head](parts/part1_principles.md#section-3-the-translator-lm-head)
-    - [Section 4: Logits and Softmax: Probabilistic Normalization](parts/part1_principles.md#section-4-logits-and-softmax-probabilistic-normalization)
-    - [Section 5: Parameter Breakdown: What Makes Up 8B/70B Models](parts/part1_principles.md#section-5-parameter-breakdown-what-makes-up-8b70b-models)
-    - [Section 6: Data Flow: End-to-End Pipeline](parts/part1_principles.md#section-6-data-flow-end-to-end-pipeline)
-  - [Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation](parts/part1_principles.md#chapter-3-the-art-of-operation-autoregressive-decoding-and-text-generation)
-    - [Section 1: Prefill Phase: Handling Input Context](parts/part1_principles.md#section-1-prefill-phase-handling-input-context)
-    - [Section 2: Decode Phase: The Autoregressive Loop](parts/part1_principles.md#section-2-decode-phase-the-autoregressive-loop)
+- [Part 1: Principles —— Transformer and LLM Foundations](parts/part1_principles.md)
+    - [Chapter 1: Demystifying Transformer: The Magic of Q, K, and V](parts/part1_principles.md#chapter-1-demystifying-transformer-the-magic-of-q-k-and-v)
+        - [Section 1: Birds-Eye View: The Macro Division of Labor in Classic Transformer Architecture](parts/part1_principles.md#section-1-birds-eye-view-the-macro-division-of-labor-in-classic-transformer-architecture)
+        - [Section 2: Evolution: Modern LLM Decoder-Only Architecture](parts/part1_principles.md#section-2-evolution-modern-llm-decoder-only-architecture)
+        - [Section 3: The Library Analogy: Understanding the Logical Meaning of Q, K, and V Self-Attention](parts/part1_principles.md#section-3-the-library-analogy-understanding-the-logical-meaning-of-q-k-and-v-self-attention)
+        - [Section 4: Mathematical Principles: Self-Attention Weight Matrix and Dynamic Vector Generation](parts/part1_principles.md#section-4-mathematical-principles-self-attention-weight-matrix-and-dynamic-vector-generation)
+        - [Section 5: Feed-Forward Network (FFN): The Model's Knowledge Base](parts/part1_principles.md#section-5-feed-forward-network-ffn-the-models-knowledge-base)
+        - [Section 6: Expanding Self-Attention: Multi-Head Attention](parts/part1_principles.md#section-6-expanding-self-attention-multi-head-attention)
+        - [Section 7: Expanding FFN: Mixture of Experts (MoE)](parts/part1_principles.md#section-7-expanding-ffn-mixture-of-experts-moe)
+    - [Chapter 2: Constructing a Skyscraper: Layer Stacking and Data Flow](parts/part1_principles.md#chapter-2-constructing-a-skyscraper-layer-stacking-and-data-flow)
+        - [Section 1: The Skyscraper Entrance: Word Embedding and Positional Encoding](parts/part1_principles.md#section-1-the-skyscraper-entrance-word-embedding-and-positional-encoding)
+        - [Section 2: The Wisdom of Stacking: Why Multiple Transformer Layers?](parts/part1_principles.md#section-2-the-wisdom-of-stacking-why-multiple-transformer-layers)
+        - [Section 3: The Translator: LM Head](parts/part1_principles.md#section-3-the-translator-lm-head)
+        - [Section 4: Logits and Softmax: Converting Raw Scores into Probability Distributions](parts/part1_principles.md#section-4-logits-and-softmax-converting-raw-scores-into-probability-distributions)
+        - [Section 5: Science Tip: What Weights Do the 8B/70B Parameters We Often Talk About Refer To?](parts/part1_principles.md#section-5-science-tip-what-weights-do-the-8b70b-parameters-we-often-talk-about-refer-to)
+        - [Section 6: Data Flow: End-to-End Panoramic View from Bottom to Top](parts/part1_principles.md#section-6-data-flow-end-to-end-panoramic-view-from-bottom-to-top)
+    - [Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation](parts/part1_principles.md#chapter-3-the-art-of-operation-autoregressive-decoding-and-text-generation)
+        - [Section 1: Prefill: The Specific Process of Handling Input](parts/part1_principles.md#section-1-prefill-the-specific-process-of-handling-input)
+        - [Section 2: Decode: Autoregressive Loop and Text Generation](parts/part1_principles.md#section-2-decode-autoregressive-loop-and-text-generation)
 - [Part 2: Bottlenecks — Why LLM Inference is Hard](parts/part2_bottlenecks.md)
   - [Chapter 4: Performance Metrics: Measuring Inference Speed](parts/part2_bottlenecks.md#chapter-4-performance-metrics-measuring-inference-speed)
   - [Chapter 5: Naive Inference: How Unoptimized Systems Work](parts/part2_bottlenecks.md#chapter-5-naive-inference-how-unoptimized-systems-work)

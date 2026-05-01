@@ -40,6 +40,7 @@ When model parameters soar from 7B to 400B or larger, the physical limitations o
 Why must we deploy distributed inference? The most direct reason is that **VRAM simply cannot fit the model**.
 
 Take a 400B parameter model as an example:
+
 *   If storing the model in half-precision (FP16), model weights alone consume **800 GB** of VRAM!
 *   Using a classic **NVIDIA H100** as a baseline, single-card VRAM typically stands at $80$ GB. You would need at least $10$ H100 cards just to load the model—leaving zero capacity for KV Caches.
 *   Since a standard AI server holds at most $8$ cards ($640$ GB VRAM), you are physically forced to cross single-machine boundaries and utilize at least $2$ physical servers.
@@ -59,10 +60,12 @@ Consequently, multi-machine, multi-GPU distributed inference is an absolute nece
 To facilitate collaborative work across multiple GPUs, the industry relies on two classic slicing strategies:
 
 **1. Tensor Parallelism (TP) — Vertical Slicing**
+
 *   **Method**: Shard a large matrix multiplication (tensor) within the model "vertically" or "horizontally" across different GPUs. For example, GPU 1 calculates the left half, GPU 2 calculates the right half, and results are aggregated via high-speed interconnects (e.g., NVLink) using All-Reduce.
 *   **Characteristics**: Occurs **within a single network layer**. Communication is frequent and bandwidth demands are extremely high, confining it to **intra-node** deployment.
 
 **2. Pipeline Parallelism (PP) — Horizontal Slicing**
+
 *   **Method**: Split the model by layers. If a model has 80 layers, Machine A manages layers 1 to 40, and Machine B manages layers 41 to 80. After Machine A computes hidden states for the first 40 layers, it transmits them over the network to Machine B.
 *   **Characteristics**: Occurs **between network layers**. Communication frequency is relatively low, making it ideal for distributed deployment across distinct physical hosts.
 
@@ -77,11 +80,13 @@ When sharding large models across GPUs or physical nodes, both **Compute** and *
 We examine this from two distinct dimensions:
 
 **1. Distributed Allocation of Compute**
+
 *   **Tensor Parallelism (TP)**: Shards **computation inside single layers**. A large matrix multiplication gets sliced into smaller blocks, distributing workloads across distinct GPUs.
 *   **Pipeline Parallelism (PP)**: Shards **computation between layers**. Machine A calculates earlier layers and Machine B calculates later layers, establishing a pipeline-style temporal relay.
 
 **2. Distributed Allocation of Memory (VRAM Breakdown)**
 Under distributed environments, VRAM footprints are partitioned across isolated components:
+
 1.  **Model Weights**: TP stores sharded matrix weights across individual GPUs, while PP allocates the layers across distinct physical machines.
 2.  **KV Cache**: Under TP, sliced attention heads cause each GPU to store only the K and V vectors assigned to its heads. Under PP, KV Caches tie to specific layers, residing only on the node handling those layers.
 3.  **Activations and Temporary Buffers**: Feature maps generated during forward propagation are distributed across local GPUs. TP frequently syncs these activations, while PP shunts activations across node boundaries.
@@ -93,11 +98,13 @@ This decentralized architecture removes the need for centralized memory pools, b
 ### Section 4: The Impact of TP and PP on Core Metrics
 
 Having understood the basic principles of TP and PP, we analyze their systematic impacts on core metrics defined in Chapter 4 (TTFT, TBT, Throughput). To ensure precise analysis, we divide the time into three distinct phases:
+
 *   **Queueing Time**: Time spent waiting in scheduling queues for GPU resources.
 *   **Execution TTFT**: Pure compute time elapsed from when the model initiates processing to the generation of the first Token.
 *   **User-facing TTFT**: Total perceived latency by users (approx. Queueing Time + Execution TTFT + Network Latency).
 
 **1. Tensor Parallelism (TP): Brute Force and Lane Expansion**
+
 *   **Impact on Execution TTFT**: **Significantly Reduced**. The Prefill phase is compute-bound; TP shunts matrix calculations to slash raw computation time (assuming All-Reduce bandwidth isn't a bottleneck, e.g., with NVLink).
 *   **Impact on TBT / TPS**: **Slightly Reduced (TPS Improved)**. In the Decode phase, TP accelerates individual steps. Since computation volume is small, cross-GPU All-Reduce communication overhead increases, yielding non-linear speedups.
 *   **Impact on Queueing Time and Throughput**: **Dual Optimization with Trade-offs**.
@@ -106,6 +113,7 @@ Having understood the basic principles of TP and PP, we analyze their systematic
     *   *Trade-off*: Applying TP to models that natively fit on a single GPU introduces redundant communication overheads, penalizing total throughput.
 
 **2. Pipeline Parallelism (PP): Multi-Stage Relay and Throughput**
+
 *   **Impact on Execution TTFT**: **Slightly Increased**. Requests sequentially pass through distinct physical nodes, introducing cross-node latency and pipeline warm-up costs.
 *   **Impact on TBT / TPS**: **Minimal Improvement**. Horizontal slicing does not accelerate the compute cycle of individual tokens.
 *   **Impact on Queueing Time and Throughput**: **Significantly Increased**.
@@ -120,6 +128,7 @@ As the context windows of large models soar from thousands of tokens to millions
 
 **1. What Problem Does It Solve?**
 Against ultra-long contexts, core bottlenecks are not only model weights, but also the **KV Cache growing linearly with sequence length** and **attention computation growing quadratically**.
+
 *   Even with weights sharded across 8 GPUs via TP, a single GPU cannot fit KV Caches generated by hundreds of thousands or millions of tokens.
 *   Traditional TP focuses on slicing the Hidden Dimension, failing to mitigate sequence length expansion.
 *   Therefore, the core goal of CP is to **smash the sequence wall**. It enables systems to accommodate contexts far exceeding single-GPU VRAM limits and divides exponentially growing attention compute across multiple GPUs in parallel, dramatically shortening long-context processing time.
@@ -130,6 +139,7 @@ Against ultra-long contexts, core bottlenecks are not only model weights, but al
 
 **2. How Does It Work?**
 The core idea of Context Parallelism is to **slice along the Sequence Dimension**:
+
 1.  **Sequence Chunking**: A sequence of millions of tokens splits into $N$ chunks across $N$ GPUs. Each GPU stores and processes only its segment of the KV Cache.
 2.  **Ring Attention**: Causal attention requires tokens to calculate against all preceding tokens. GPUs arrange into a ring topology, calculating local attention while passing KV Cache chunks sequentially in a ring. This fulfills global attention compute without aggregating data centrally.
 
@@ -214,6 +224,7 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 > ```
 
 **3. Impact on Performance**
+
 1.  **Impact on Execution TTFT**: **Dramatically optimizes long-context TTFT**. CP shards sequence compute across multiple GPUs, significantly shortening the Prefill time for massive prompts.
 2.  **Impact on TBT / TPS**: **Minor Impact**. Decoders process a single Token at a time without scaling against the entire prompt, resulting in negligible inter-token latency improvements.
 3.  **Impact on Throughput and Cost**: **Trading network overhead for feasibility**. CP introduces high ring communication costs. While yielding no advantages in short-text workloads, it stands as the **only viable solution for ultra-long context generation**.
@@ -240,6 +251,7 @@ A typical 3D parallel (TP + PP + CP) architecture yields the following physical 
 ![3D Topology](../images/hybrid_parallelism_topology.svg)
 
 **Transformer Block Data Flow**:
+
 *   **Attention Layers**: Require inter-node CP communication (e.g., Ring Attention) to exchange KV Caches, as tokens must "see" one another.
 *   **FFN Layers**: Act independently. Host nodes calculate local tokens autonomously without sequence-wide cross-host communication (only intra-node TP synchronization).
 
@@ -262,6 +274,7 @@ MoE models decouple model capacity from compute costs. They allow parameter size
 When tackling MoE models with massive parameter footprints (e.g., DeepSeek V3’s $671\text{B}$), the most intuitive approach is relying on **Tensor Parallelism (TP)** and **Pipeline Parallelism (PP)** to shard weights.
 
 **The Deduction Process:**
+
 1.  **Step 1: Intra-node TP for Small Models**: If a model is small (e.g., Mixtral 8x7B at $47\text{B}$), all experts add up to mere gigabytes. Loading the model into an 8-GPU server with **intra-node Tensor Parallelism ($\text{TP}=8$)** is the simplest approach. All GPUs process all experts under NVLink's $900\text{GB/s}$ bandwidth without cross-machine latencies.
 2.  **Step 2: Cross-host PP for Larger Models**: When parameter counts grow and a single machine can no longer fit the layers, we introduce **Pipeline Parallelism (PP)**—sharding the model horizontally by network layers into multiple stages across physical hosts. Stage relay communications remain infrequent and lightweight, bypassing limited network bandwidth bottlenecks.
 3.  **Step 3: Dead Ends via Pipeline Bubbles**: Pipeline Parallelism cannot be sliced infinitely. PP introduces rigid pipeline bubbles. During word-by-word Decode phases, these bubbles stretch Time Between Tokens (TBT) beyond acceptable user thresholds, confining real-world PP depth to 4 or 8 stages.
@@ -311,6 +324,7 @@ Engineers face two divergent architectural paradigms when slicing single layers 
 Production serving (e.g., DeepSeek V3/R1) deploys a hybrid topology: **DP (Data Parallelism) for Attention layers, and EP (Expert Parallelism) for FFN (MoE) layers**.
 
 This division leverages architectural **heterogeneity**:
+
 1.  **Attention Layers (Dense & Lightweight)**: Modern mechanisms like GQA or MLA compress attention weights enough (typically under 10% of total parameters) to replicate across all GPUs. Attention layers apply **DP**—nodes process local requests without communication, avoiding All-Reduce overhead.
 2.  **FFN Layers (Sparse & Heavy)**: Massive expert weights shard across nodes via **EP**, routing tokens over the network.
 
@@ -347,10 +361,12 @@ The answer is that single-machine optimizations are mere **"tactical-level"** sq
 ### Section 1: The Mismatch: Hardware Asymmetry and Management Overheads
 
 As mentioned in [Chapter 8: Core Asymmetry: Prefill vs. Decode](../parts/part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-vs-decode), Prefill and Decode have completely opposite hardware requirements:
+
 *   **Prefill**: Processes massive inputs, craving immense **Compute Power (FLOPs)** while carrying relatively small VRAM requirements.
 *   **Decode**: Spits out tokens sequentially, consuming minimal compute power (yielding idle compute) while requiring frequent movements of massive KV Caches from memory. It thrives on **Memory Bandwidth** and **Memory Capacity**.
 
 Running a unified deployment architecture (mixed deployment) strikes the system with a double blow:
+
 1.  **Wasted Hardware Mismatch**: When teams deploy expensive B200 graphics cards to handle Decode phases, their high Tensor Core compute spends most of the time "sleeping" while waiting for memory data transfers. This amounts to cutting firewood with a dragon-slaving sword, causing immense cost waste.
 2.  **The "Tightrope Walking" of Scheduling**: To manage this conflict on a single GPU, engineers developed complex scheduling algorithms like Continuous Batching and Chunked Prefill. System managers must walk a tightrope, balancing the resource occupations of both phases. Minor slip-ups immediately trigger jitters in Time to First Token (TTFT) or Time Between Tokens (TBT), turning resource planning and capacity management into complex affairs.
 
@@ -361,6 +377,7 @@ Running a unified deployment architecture (mixed deployment) strikes the system 
 To fundamentally break the deadlock, top technology companies deploy the **Disaggregated Serving** architecture (such as various internal systems at Google and open-source DistServe).
 
 The core philosophy centers on **Physical Isolation**:
+
 1.  **Prefill Cluster**: Composed of compute-rich nodes with average memory capacities, dedicated exclusively to receiving users' long Prompts, completing prefilling at maximum speed, and generating initial KV Caches.
 2.  **Decode Cluster**: Houses memory-bandwidth nodes equipped with massive HBM memory and ultra-high memory bandwidth, dedicated to hosting KV Caches and streaming tokens sequentially.
 
@@ -371,6 +388,7 @@ Teams can purchase independent hardware for different clusters—**targeting ext
 
 **2. Simplifying Resource Management (Dimensionality Reduction)**
 More importantly, Disaggregated Serving **transforms complex mixed scheduling problems into straightforward capacity planning questions**:
+
 *   **Farewell to "Micromanagement"**: Prefill nodes focus purely on processing Prompts; Decode nodes focus purely on streaming text. The system no longer requires complex resource balancings within a single GPU, improving system stability and maintainability.
 *   **Business-Driven Minimalist Scaling**: Resource management directly links to business workload profiles instead of black-box algorithm tunings.
     *   **RAG and Long Document Q&A**: High input text followed by short answers. This is a **"heavy Prefill, light Decode"** scenario. Under disaggregated serving, engineers directionally scale up only the Prefill cluster.
@@ -441,6 +459,7 @@ Traditional load balancers (e.g., NGINX or F5) only inspect basic physical metri
 In an LLM inference cluster, such blind routing triggers disasters, as inference costs are heavily determined by **Prompt content and length**.
 
 Consequently, **AI Gateways** act as business-aware traffic police:
+
 *   **Request Inspection**: Before a request reaches the GPU, the gateway parses it to determine how many tokens it holds and what business type it falls under.
 *   **Intelligent Routing Decisions**: Since resource consumption differences across Prefill and Decode phases are immense, the gateway routes intelligently based on **request profiles** (input length versus expected output length) rather than employing blind round-robin scheduling.
 
@@ -467,6 +486,7 @@ Consequently, **AI Gateways** act as business-aware traffic police:
 Building on **RadixAttention** (Prefix Caching), if multiple requests share the same System Prompt, long document background, or dialogue history, memory nodes cache their prefix KV Caches locally. If the gateway blindly routes requests via round-robin, requests with identical prefixes scatter across different nodes, forcing nodes to repeatedly calculate the same prefill. This wastes massive compute and elongates TTFT. Consequently, gateways must track prefix content and route requests to nodes already housing those caches.
 
 **2. Operational Flow**
+
 *   **Prefix Matching**: The gateway tracks an internal "cache index table," identifying which text prefixes reside on which memory nodes. When requests come in, the gateway routes them to nodes yielding the highest cache hit rate to reuse KV Caches.
 *   **Dynamic Replication**: If a prefix becomes an internet-wide hotspot, requests can overwhelm the memory node. The gateway monitors imbalances, shunts traffic to idle nodes, and prompts idle nodes to pull replicas of that cache, achieving load balancing.
 
@@ -478,11 +498,13 @@ Currently, cutting-edge inference engines like **SGLang** pair soft gateway rout
 
 **1. The Gateway's "Approximate Prefix Tree" (Solving Matching Overhead)**
 SGLang’s Rust-based gateway maintains a global **Approximate Radix Tree**:
+
 *   **Tokenizer-Free Optimization**: To sustain high gateway throughputs, the tree stores **raw text strings** instead of Token IDs. Gateways don't load massive vocabularies for tokenization; they match strings directly to locate caches.
 *   **Dual-Mode Switching**: When system load is balanced, the gateway routes by cache match rate. If hotspot requests overload memory nodes, gateways switch dynamically to "Shortest Queue" routing, shunting incoming requests to idle nodes.
 
 **2. The Backend's "L3 Shared Cache" (Solving Replica Generation)**
 Idle nodes inheriting split traffic don't hold local KV Caches. To bypass expensive recomputing, SGLang introduces **HiCache**, partitioning caches into GPU (L1), CPU (L2), and **Distributed Shared Storage (L3)** (such as DeepSeek 3FS).
+
 *   Once hotspot nodes flush caches to L3, idle nodes receive redirected requests and **prefetch** KV Caches directly from shared L3.
 *   Once the new node finishes processing, it houses the cache locally. The gateway updates its Radix tree, marking the idle node as a new replica for the hotspot prefix.
 
@@ -521,6 +543,7 @@ When distributed inference spans physical hosts, traditional Ethernet and TCP/IP
 RDMA (Remote Direct Memory Access) enables NICs to read and write remote GPU VRAM directly, **bypassing the CPU and kernel** for zero-copy transfers. It drops latency from milliseconds to microseconds and frees up CPU compute for scheduling and control flow.
 
 **2. InfiniBand vs. RoCE**
+
 *   **InfiniBand (IB)**: A dedicated HPC network combining hardware and software. Inherently lossless (credit-based flow control), delivering 400–800Gbps bandwidth at sub-microsecond latencies. Demands specialized NICs and switches.
 *   **RoCE**: Runs RDMA over standard Ethernet. Saves on hardware costs but requires complex PFC and ECN configurations to construct a "lossless Ethernet".
 

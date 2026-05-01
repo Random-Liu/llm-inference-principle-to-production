@@ -7,12 +7,14 @@ The goal is to achieve generic, decoupled high availability during Kubernetes no
 In traditional Kubernetes cluster upgrades, the control plane (e.g., Node Drain) is typically **workload-agnostic** and operates at the **Pod level**. However, LLM multi-host inference is a **tightly-coupled (Gang)** workload, requiring all Pods in a group to live or die together.
 
 This leads to the following core conflicts:
+
 1. **Native PDB Blind Spot**: Native PodDisruptionBudget controls disruptions only by Pod count. It cannot enforce the group-level semantic where losing a single worker paralyzes the entire group.
 2. **Repeated Disruptions and Capacity Avalanches**: Draining nodes sequentially disrupts the same group repeatedly. Random concurrent draining can crush multiple groups simultaneously, leading to service capacity avalanches.
 3. **Platform-Application Coupling**: Solutions often resort to custom Webhooks or heavy AI schedulers (like Kueue) that require the platform to understand application-specific labels (like LWS's `group-index`), breaking the platform-application decoupling principle.
 
 ## Assumptions
 The effectiveness of this idea is based on the following engineering premises and assumptions:
+
 1. **Resource Constraints or Cost Sensitivity**: Cluster hardware resources are fixed, or the team is unwilling to waste resources by spinning up large-scale Blue-Green pools for upgrades.
 2. **Draining is Mandatory**: Upgrading cluster nodes and OS requires node draining. Although the industry is exploring "drainless" live upgrade technologies, they are not natively supported and cannot always apply (e.g., when fixing data plane CVE vulnerabilities or updating the kernel, nodes must be rebooted).
 3. **Business Must Tolerate Capacity Degradation**: From the first two assumptions, it follows that during upgrades we must **trade time for space**—actively reducing the total service capacity during the upgrade window while maintaining minimal High Availability (HA). Upper-layer applications must accept this temporary capacity degradation.
