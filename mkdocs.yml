@@ -50,14 +50,14 @@ extra_javascript:
 
 nav:
   - "中文版":
-    - "前言": index.cn.md
+    - "前言": index.md
     - "第一部分：原理篇": parts/part1_principles.cn.md
     - "第二部分：瓶颈篇": parts/part2_bottlenecks.cn.md
     - "第三部分：单机篇": parts/part3_single_node.cn.md
     - "第四部分::分布式篇": parts/part4_distributed.cn.md
     - "第五部分：编排篇": parts/part5_k8s.cn.md
   - "English":
-    - "Preface": index.md
+    - "Preface": index.en.md
     - "Part 1: Principles": parts/part1_principles.md
     - "Part 2: Bottlenecks": parts/part2_bottlenecks.md
     - "Part 3: Single-Node": parts/part3_single_node.md

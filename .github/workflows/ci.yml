@@ -27,6 +27,6 @@ jobs:
           mkdir docs
           cp -r parts docs/
           cp -r javascripts docs/
-          cp README.md docs/index.md
-          cp README.cn.md docs/index.cn.md
+          cp README.cn.md docs/index.md
+          cp README.md docs/index.en.md
       - run: mkdocs gh-deploy --force
