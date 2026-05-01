@@ -198,9 +198,9 @@ In response to these three dimensions, the aforementioned schools have converged
 *   **Representative Stack**: **`Dragonfly + Nydus`**
 *   **Principle**: Packaging weights as a standard **OCI Artifact**. Nydus acts as the Snapshotter in the container runtime (containerd), paired with Dragonfly to hijack network traffic and provide topology-aware P2P transfers.
     *   **Local Cache**: This is standard **Kubelet Local Image Cache**. As long as Kubelet's Image Garbage Collection isn't triggered, the cached weight Artifact on the node will remain for subsequent Pods to reuse at will.
-    *   **P2P Sharing**: Powered entirely by Dragonfly. Peers deployed on each compute node construct a topology-aware network based on a **True P2P Protocol**, feeding downloaded slices to one another with extreme speed.
-    *   **Streaming / Lazy Loading**: Nydus provides container-level Lazy Loading. Weights are packaged into special chunk collections akin to image layers. Pods enter Running states instantly, and dynamic I/O requests are intercepted and translated into targeted large-chunk network pulls.
-*   **Advantages and Selection**: If you decide to go down the OCI Artifact route, this stack represents the mature solution. Its primary advantage lies in **reusing the industry's battle-tested large-scale container image distribution optimizations**, utilizing a true P2P protocol for faster deliveries alongside streaming specifically optimized for large chunks.
+    *   **P2P Sharing**: Powered entirely by Dragonfly. Peers deployed on each compute node construct a topology-aware network, feeding downloaded slices to one another.
+    *   **Streaming / Lazy Loading**: Nydus provides container-level Lazy Loading. Weights are packaged into special chunk collections akin to image layers. Pods enter Running states, and dynamic I/O requests are intercepted and translated into targeted large-chunk network pulls.
+*   **Advantages and Selection**: If you decide to go down the OCI Artifact route, this stack represents the mature solution. Its advantage lies in **reusing the industry's battle-tested large-scale container image distribution optimizations**, securing cross-machine P2P sharing alongside streaming specifically optimized for large chunks.
 
 ##### Direct Streaming in Public Clouds (Without Local Cache)
 In mature public clouds (e.g., AWS, GCP), setups such as `Run:ai Model Streamer`, `Mountpoint for Amazon S3`, or `AIBrix` are common.
