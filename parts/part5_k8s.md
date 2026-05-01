@@ -201,18 +201,39 @@ Delivering weights to containers quickly involves four approaches, each with tra
         *   **Disadvantages**: Violating "immutable infrastructure" principles, making nodes stateful pets, and causing scheduling constraints and resource waste.
 
 #### 3. P2P and Streaming: Accelerating Weight Distribution and Cold Starts
-Distributing hundreds of gigabytes of model weights to thousands of nodes and minimizing Pod cold starts is a core challenge for cloud-native AI platforms. The industry combines **P2P (peer-to-peer) distribution** and **streaming pull (lazy loading)** for extreme optimization.
 
-*   **Dragonfly: P2P-Based Massive Distribution Acceleration**
-    *   **Principle**: Dragonfly is an open-source P2P file distribution system. Traditional pulls hit centralized storage (Object Storage or Registry) simultaneously, bottlenecking the center node's bandwidth. Dragonfly uses a P2P architecture, splitting large files into chunks. Nodes download chunks while acting as seeds to share data with other nodes.
-    *   **Advantages in AI**: For massive model weights, Dragonfly shifts central storage pressure to node-to-node assistance. As node count increases, total distribution bandwidth grows significantly, drastically speeding up weight distribution during massive scale-outs.
+Distributing hundreds of gigabytes of model weights to thousands of nodes and minimizing Pod cold starts is a core challenge for cloud-native AI platforms. Optimization solutions incorporate three core optimization dimensions at the substrate:
 
-*   **Nydus: On-Demand Loading Streaming Filesystem**
-    *   **Principle**: Nydus is an open-source container image service that implements "lazy loading." Traditional images/files require full download and decompression before use. Nydus separates file metadata from data, supporting stream loading.
-    *   **Advantages in AI**: Paired with FUSE (User-space Filesystem) or EROFS (Read-only Filesystem), a Pod only pulls tiny metadata to instantly start the container. Nydus fetches remote data only when the inference engine actually reads a specific weight chunk. This eliminates waiting for full downloads, compressing cold start times from minutes to seconds.
+*   **Local Cache**: Caching downloaded data blocks locally on computing nodes (e.g., NVMe SSDs). Pod recreations or local scale-outs short-circuit reads directly from disk, bypassing network overhead.
+*   **P2P Sharing**: Leveraging high-speed intra-cluster networks so nodes missing weight files pull data from adjacent Peers, breaking the bandwidth bottleneck of centralized storage.
+*   **Streaming / Lazy Loading**: Slicing large files into Chunks. A Pod pulls just a few megabytes of metadata to become Ready. The underlying filesystem faults in necessary chunks only when the engine accesses a specific weight, eliminating full download wait times.
 
-**The Ultimate Combo: Dragonfly + Nydus**
-Nydus alone enables second-level Pod starts. However, if massive Pods start simultaneously and access the same initial data blocks (e.g., the first model layer), they still overload the backend storage. The best practice combines both: **Nydus handles on-demand stream reading, while Nydus fetches chunks via Dragonfly's P2P network**. This achieves second-level cold starts without overloading central storage.
+In response to these three dimensions, the aforementioned schools have converged on the following technical combinations:
+
+##### ① Corresponding to Route 1 (CSI + PVC): Volume / Filesystem-centric Mode (Model as Data)
+<!-- TODO: Currently modifying weight caching -->
+*   **Representative Stack**: **`Fluid + Alluxio / JuiceFS`**
+*   **Principle**: Embedding a distributed cache network under the Persistent Volume Claim (PVC). Fluid acts as the data orchestration control plane on K8s, while Alluxio pools each node's local SSD into a distributed cache.
+*   **Advantages**: Entirely transparent to serving engines like vLLM. The engine reads the mount point as a local filesystem, reducing integration overhead.
+
+##### ② Corresponding to Route 2 (Asset Image-ization): Artifact / Image-centric Mode (Model as Image)
+*   **Representative Stack**: **`Dragonfly + Nydus`**
+*   **Principle**: Packaging weights as a standard **OCI Artifact**. Nydus acts as the Snapshotter in the container runtime (containerd), paired with Dragonfly to hijack network traffic and provide topology-aware P2P transfers.
+*   **Advantages**: Fits container image distribution networks, offers native OCI Tag versioning, requires no heavy persistent cache cluster deployment, and keeps the operational footprint stateless.
+
+##### ③ Evolution of Route 3 (Pod-Level Glue): Object-storage-native Mode (Direct Stream Reading)
+*   **Representative Stack**: **`Run:ai Model Streamer / Mountpoint for Amazon S3 / AIBrix`**
+*   **Principle**: Skipping distributed cache clusters and initiating high-concurrency sharded streaming directly via object storage SDKs or FUSE drivers.
+*   **Trade-offs**: Highly lightweight, eliminating persistent cluster planning and operations, but sacrifices intra-cluster P2P sharing.
+*   **Scenario Considerations**: Common in premium public cloud environments (e.g., AWS, GCP). Backed by hyperscaler infrastructure and object storage delivering tens of gigabytes of bandwidth, they can guarantee performance even **without Local Caching**. However, not all on-prem compute centers share these lavish network baselines. In bandwidth-constrained setups, lacking local caching and P2P sharing often leads to network gridlocks.
+
+> [!IMPORTANT]
+> **Determining Factors for Adopting P2P**
+> 
+> The deciding factor for architects assessing **P2P** deployment is the strength of the underlying infrastructure:
+> *   **On-prem / Air-gapped Environments**: Centralized registries or object storage face extreme concurrent bandwidth limits. P2P is an **absolute necessity** to prevent a Thundering Herd from crashing the central cluster.
+> *   **Public Cloud Environments**: Hyperscaler storage like S3 / GCS delivers massive throughput, making P2P less critical. It remains a **cost and latency optimization** for reducing cross-AZ / egress traffic charges and compressing cold starts during large-scale autoscaling.
+
 
 ---
 
