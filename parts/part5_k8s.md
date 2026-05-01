@@ -1024,7 +1024,7 @@ In distributed inference (e.g., multi-node TP), both Pods and their bound Nodes 
 
 ### Section 2: Seamless Upgrades: Engineering Practices
 
-To upgrade nodes without affecting business continuity, the industry combines "soft eviction" with intelligent traffic routing.
+To upgrade nodes without affecting business continuity, the industry relies on a combination of Connection Draining, graceful termination, and group-level rollouts.
 
 #### 1. Connection Draining and Extra-Long Graceful Termination
 To achieve seamless upgrades, fine-grained control over traffic shifting and process termination is mandatory:
