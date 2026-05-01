@@ -206,6 +206,7 @@ In response to these three dimensions, the aforementioned schools have converged
 > **Determining Factors for Adopting P2P**
 > 
 > The deciding factor for architects assessing **P2P** deployment is the strength of the underlying infrastructure:
+> 
 > *   **On-prem / Air-gapped Environments**: Centralized registries or object storage face extreme concurrent bandwidth limits. P2P is an **absolute necessity** to prevent a Thundering Herd from crashing the central cluster.
 > *   **Public Cloud Environments**: Hyperscaler storage like S3 / GCS delivers massive throughput, making P2P less critical. It remains a **cost and latency optimization** for reducing cross-AZ / egress traffic charges and compressing cold starts during large-scale autoscaling.
 
@@ -439,6 +440,7 @@ Distributed inference also depends on cluster networks (RDMA blocks).
 
 > [!NOTE]
 > **Note on Network Architecture and Oversubscription Ratio**:
+> 
 > *   **What is Oversubscription Ratio**: It is the ratio of the total **downlink bandwidth** (to servers) to the total **uplink bandwidth** (to upper switches) of a switch. It stems from cost-performance trade-offs in data center design. In traditional microservices, not all servers communicate across racks at full speed simultaneously, so engineers reduce uplink counts to save costs on expensive optical modules and core switches. However, in AI distributed computing, concurrent collective communication demands are extremely high, making oversubscription a direct cause of network congestion and performance degradation.
 > *   **Architecture A (Non-blocking Network)**: Top-tier AI clusters (like InfiniBand Fat-Tree) typically use a 1:1 non-blocking design where cross-rack bandwidth is identical to intra-rack bandwidth (both 400Gbps). The main penalty is the extra hops and microsecond-level latency.
 > *   **Architecture B (Oversubscribed Network)**: To visually illustrate the penalty of scheduling mismatch, this diagram assumes a **1:2 oversubscription ratio** (uplink bandwidth is half of the downlink). In this case, cross-rack communication suffers from both higher latency (from <1μs to ~2μs) and reduced bandwidth (from 400Gbps to 200Gbps).

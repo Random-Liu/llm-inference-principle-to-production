@@ -127,6 +127,7 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 >
 > **1. Asynchronous Relay Coordination**
 > Suppose 3 GPUs collaboratively compute a sequence. GPU 1 holds $Q_1, K_1, V_1$; GPU 2 holds $Q_2, K_2, V_2$; GPU 3 holds $Q_3, K_3, V_3$. In Causal Attention mode, the process unfolds as follows:
+> 
 > *   **Step 1**: All GPUs calculate Attention for local data while initiating asynchronous KV chunk transfers (GPU 1 to 2, 2 to 3, 3 to 1).
 > *   **Step 2**: Upon receiving upstream KV chunks, GPUs calculate Attention for the new data. In Causal mode, invalid computations (e.g., GPU 1 examining future data $KV_3$) are masked out.
 > *   **Step 3**: Continuing the relay ensures all GPUs calculate against required historical contexts. GPUs integrate Online Softmax to dynamically update Softmax maximums and accumulated sums.
@@ -170,11 +171,13 @@ The core idea of Context Parallelism is to **slice along the Sequence Dimension*
 >
 > **2. Load Imbalance and Zig-zag Optimization**
 > In Causal Attention, effective workload calculations present a lower triangular shape:
+> 
 > *   GPU 1 calculates 1 unit of effective workload ($Q_1$ and $KV_1$).
 > *   GPU 2 calculates 2 units of effective workload ($Q_2$ with $KV_1, KV_2$).
 > *   GPU 3 calculates 3 units of effective workload ($Q_3$ with $KV_1, KV_2, KV_3$).
 >
 > This structural imbalance forces earlier GPUs to sit idle or waste compute. There are two standard fixes:
+> 
 > *   **Option A (Brute Force)**: Process the full sequence and mask future tokens, wasting ~50% of total compute.
 > *   **Option B (Zig-zag / Striping)**: Deal chunks non-contiguously (e.g., GPU 1 gets blocks 1 and 6, GPU 2 gets 2 and 5, GPU 3 gets 3 and 4). All nodes process equal workloads, neutralizing idle wait times.
 >
@@ -312,14 +315,17 @@ This division leverages architectural **heterogeneity**:
 > [!NOTE]
 > **Trade-offs between DP and CP for Context Volumes**
 > DP and CP both shard **input data** rather than weights, but target different dimensions:
+> 
 > *   **DP Attention**: Slices the **Batch / Request dimension**, targeting maximum throughput.
 > *   **CP Attention**: Slices the **Sequence dimension** for a single request, relying on Ring Attention syncs.
 >
 > Production deployments profile these trade-offs based on text lengths:
+> 
 > *   **Short Text Limits**: Naive CP on short sequences shards compute too finely, choking GPUs on frequent cross-node ring syncs.
 > *   **Long Text Limits**: Conversely, heavy contexts will OOM individual cards unless CP is engaged.
 >
 > **Engineering Practices:**
+> 
 > *   **Example 1: Compromise Efficiency for Consistency**: Deploy subtle CP (e.g., $\text{CP}=2$ or 4). Short context throughput drops by 10–20%, but guarantees universal compatibility.
 > *   **Example 2: Physical Isolation for Performance**: Implement a routing gateway to shunt traffic at the boundary. High-frequency short context traffic routes to a pure `DP Attention + EP MoE` topology, keeping Attention zero-communication to secure maximum throughput, while heavy long context traffic enters a dedicated `CP Attention + EP MoE` cluster.
 

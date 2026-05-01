@@ -69,6 +69,7 @@ $Q$, $K$, and $V$ serve entirely different roles in Attention mechanisms:
 > [!NOTE]
 > **Analogy: Researchers in a Library**
 > Imagine 128 researchers (representing 128 $Q$ heads) in a library. Everyone studies a distinct topic and poses separate questions.
+> 
 > *   **In standard MHA**: The system is extravagant. To serve the 128 researchers, the library not only employs all 128 researchers but also purchases an exclusive set of encyclopedias for each one (128 $K$ and $V$ heads). Even though these books cover identical historical facts with vast overlap, they are printed in 128 slightly different editions. Each researcher only references their personal desk copy, wasting immense space.
 > *   **In GQA**: The system optimizes. 128 researchers remain, but the library buys only 8 sets of encyclopedias (8 $K$ and $V$ heads). Every 16 researchers share a single set of books.
 > 
@@ -269,6 +270,7 @@ Radix Caches cut first-token pop latencies from seconds down to milliseconds.
 
 > [!NOTE]
 > **Indexing and Implementation Differences**
+> 
 > 1.  **Integer Comparisons**: Radix Trees match **Token IDs** (integers) rather than text. Matching entails efficient integer sequence comparisons or Hash computations.
 > 2.  **vLLM vs. SGLang**: **SGLang** implements **Token-level** RadixAttention, allowing edges to hold arbitrary token lengths. **vLLM**’s Automatic Prefix Caching inherits PagedAttention genetics, managing fixed **Block-level** sequences (e.g., 16 tokens).
 > 3.  **Co-existence with Block Tables**: Radix trees do not replace Block Tables; both point to identical physical blocks across different dimensions:
@@ -478,6 +480,7 @@ Introduces a lightweight, single-layer Transformer at the hidden state level. It
 
 > [!NOTE]
 > **Core Insights**
+> 
 > 1.  **Plugin Customization**: Heads are trained for specific domains (e.g., legal text) where vocabulary distributions are predictable.
 > 2.  **Structural Decoupling**: Base models focus on intellect, while inference frameworks customize speculative plugins.
 > 3.  **Inference Framework Supremacy**: All schedulers, communication, and tree KV Cache rollbacks reside in the inference engines (e.g., vLLM).
