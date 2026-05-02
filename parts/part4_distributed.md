@@ -305,7 +305,7 @@ Production serving (e.g., DeepSeek V3/R1) deploys a hybrid topology: **DP (Data 
 
 This division leverages architectural **heterogeneity**:
 
-1.  **Attention Layers (Dense & Lightweight)**: Modern mechanisms like GQA or MLA compress attention weights enough (typically under 10% of total parameters) to replicate across all GPUs. Attention layers apply **DP**—nodes process local requests without communication, avoiding All-Reduce overhead.
+1.  **Attention Layers (Dense & Lightweight)**: Modern mechanisms (like GQA or MLA studied in [Chapter 9: Model Architecture VRAM Optimization: GQA](./part3_single_node.md#chapter-9-model-architecture-vram-optimization-gqa)) compress attention weights enough (typically under 10% of total parameters) to replicate across all GPUs. Attention layers apply **DP**—nodes process local requests without communication, avoiding All-Reduce overhead.
 2.  **FFN Layers (Sparse & Heavy)**: Massive expert weights shard across nodes via **EP**, routing tokens over the network.
 
 **DP Attention + EP MoE Architecture:**
@@ -466,7 +466,7 @@ Consequently, **AI Gateways** act as business-aware traffic police:
 **Cache-Aware Routing** stands as the AI Gateway's most powerful optimization capability.
 
 **1. Why Do We Need It?**
-Building on **RadixAttention** (Prefix Caching), if multiple requests share the same System Prompt, long document background, or dialogue history, memory nodes cache their prefix KV Caches locally. If the gateway blindly routes requests via round-robin, requests with identical prefixes scatter across different nodes, forcing nodes to repeatedly calculate the same prefill. This wastes massive compute and elongates TTFT. Consequently, gateways must track prefix content and route requests to nodes already housing those caches.
+Building on **RadixAttention** (Prefix Caching) studied in [Chapter 12: Prefix Caching Mechanism Based on Radix Tree (RadixAttention)](./part3_single_node.md#chapter-12-prefix-caching-mechanism-based-on-radix-tree-radixattention), if multiple requests share the same System Prompt, long document background, or dialogue history, memory nodes cache their prefix KV Caches locally. If the gateway blindly routes requests via round-robin, requests with identical prefixes scatter across different nodes, forcing nodes to repeatedly calculate the same prefill. This wastes massive compute and elongates TTFT. Consequently, gateways must track prefix content and route requests to nodes already housing those caches.
 
 **2. Operational Flow**
 

@@ -313,7 +313,7 @@ MoE 模型的核心思想是解耦“模型容量”与“计算成本”。你�
 
 为什么要在同一层网络里切换两种并行角色？这源于 MoE 模型内部的 **异质性（Heterogeneity）** ：
 
-1.  **Attention 层（小而稠密）**：在现代架构中（如在 [第九章：模型架构层面的显存瘦身：GQA](./part3_single_node.cn.md#第九章模型架构层面的显存瘦身gqa) 中学过的 GQA 或是 MLA 技术），Attention 层的权重被大幅压缩（通常占总参数量的不到 10%），小到每张卡都可以轻松复制一份完整副本。因此，Attention 环节非常适合用 **DP（数据并行）** —— 每张卡独立处理自己那部分 Request，互不通信，完美避免了 TP 的 All-Reduce 开销。
+1.  **Attention 层（小而稠密）**：在现代架构中（如在 [第九章：模型架构层面的显存优化：GQA](./part3_single_node.cn.md#第九章模型架构层面的显存优化gqa) 中学过的 GQA 或是 MLA 技术），Attention 层的权重被大幅压缩（通常占总参数量的不到 10%），小到每张卡都可以轻松复制一份完整副本。因此，Attention 环节非常适合用 **DP（数据并行）** —— 每张卡独立处理自己那部分 Request，互不通信，完美避免了 TP 的 All-Reduce 开销。
 2.  **FFN 层（大而稀疏）**：到了 MoE 环节，全量专家权重巨大，必须用 EP 切分到不同机器上，通过网络路由 Token。
 
 这种混合策略式的切换（Attention 时横向数据并行，FFN 时纵向专家路由），将 MoE 模型的算法优势与分布式硬件的物理特性结合到了极致。
@@ -479,7 +479,7 @@ sequenceDiagram
 在大模型集群中， **缓存感知路由（Cache-aware Routing）** 是 AI 网关核心技术。
 
 **1. 为什么需要它？**
-结合我们在 [第十二章：内存时光机：前缀缓存 (RadixAttention)](./part3_single_node.cn.md#第十二章内存时光机前缀缓存-radixattention) 中学过的 **RadixAttention（前缀缓存）** ，如果多个请求共享相同的 System Prompt、长文档背景或历史对话，节点本地会缓存这些前缀的 KV Cache。
+结合我们在 [第十二章：基于基数树的前缀缓存机制 (RadixAttention)](./part3_single_node.cn.md#第十二章基于基数树的前缀缓存机制-radixattention) 中学过的 **RadixAttention（前缀缓存）** ，如果多个请求共享相同的 System Prompt、长文档背景或历史对话，节点本地会缓存这些前缀的 KV Cache。
 如果网关只是盲目地轮询分发，带有相同前缀的请求会被散落到不同节点，导致每个节点都要重复计算一遍 Prefill。这不仅浪费了海量的 GPU 算力，还极大地拉长了 TTFT。
 因此，我们需要网关能够感知请求的前缀内容，把请求精准路由到已经持有该缓存的节点。
 
