@@ -46,14 +46,15 @@ This file contains instructions and conventions for AI agents working on this re
   - Sub-sections should use `####` and beyond accordingly.
 - **No Stray Blank Lines**: When deleting content (lines, sections, or headers), the AI agent MUST ensure that it does not leave behind redundant, consecutive blank lines. Clean up the surrounding lines to maintain proper document flow (typically at most one blank line between paragraphs or sections).
 - **Block-Level Spacing**: In accordance with CommonMark and Python-Markdown specs, any block-level elements (including unordered/ordered lists, blockquotes, and tables) MUST have exactly one blank line preceding and following them to ensure they are not swallowed as plain paragraph text by the MkDocs parser.
-- **TOC Maintenance**: When modifying any title or header in a file, the AI agent MUST review and update:
-  1. The file's own Table of Contents (at the beginning of the file). **Note**: The file-specific TOC should only include Chapter and Section level headers (i.e., the top two levels of the document's content hierarchy), ignoring deeper sub-sections.
-  2. The Table of Contents in both `README.md` and `README.cn.md` to ensure consistency and accuracy across all language versions.
-  3. **TOC Indentation**: When generating or modifying any Table of Contents (TOC), all nested lists MUST be strictly indented by multiples of 4 spaces (e.g., 0, 4, 8 spaces) for the MkDocs Material parser (`pymdownx`) to render nested bullet points accurately.
+- **TOC Maintenance**: When modifying any title or header in a file, the AI agent MUST review and update the Table of Contents in both `README.md` and `README.cn.md` to ensure consistency and accuracy across all language versions. Individual part files (`part*.md` and `part*.cn.md`) do not maintain their own Table of Contents.
+- **Internal Link Maintenance**: When modifying any title or header in a file, the AI agent MUST also search for and update all internal hyperlinks (references) within the repository that point to that header, ensuring that anchors and file paths remain accurate across all language versions.
+- **TOC Indentation**: When generating or modifying any Table of Contents (TOC), all nested lists MUST be strictly indented by multiples of 4 spaces (e.g., 0, 4, 8 spaces) for the MkDocs Material parser (`pymdownx`) to render nested bullet points accurately.
 
 ## Tone and Descriptive Language
-- **Objective and Neutral Tone**: Maintain an evidence-based, qualitative, and neutral tone when presenting architectural designs, engineering tradeoffs, or comparative analysis.
-- **Avoid Absolute Terminology**: Never use overly assertive, absolute, or dramatic vocabulary (e.g., "blazingly fast", "infinite", "uncompromising", "absolute necessity") unless presenting specific, verified quantitative metrics or benchmark data. Discussions should focus on logical first principles rather than speculative performance outcomes.
+- **Objective and Neutral Tone**: Maintain an evidence-based, qualitative, and neutral tone when presenting architectural designs, engineering tradeoffs, or comparative analysis. Discussions should focus on logical first principles rather than speculative performance outcomes.
+- **Avoid Absolute and Exaggerated Terminology**: Never use overly assertive, absolute, or dramatic vocabulary unless presenting specific, verified quantitative metrics or benchmark data.
+  - **English Context**: Avoid terms like "blazingly fast", "infinite", "uncompromising", "absolute necessity".
+  - **Chinese Context**: Prohibit the use of exaggerated metaphors (e.g., "海啸" [tsunami], "终极武器" [ultimate weapon], "雷霆手段" [thunderous means]) and overly emotional words. Pedagogical analogies that aid in explaining complex concepts (e.g., comparing attention to a library search) are permitted, provided they avoid flowery or sensational language.
 
 ## Collaboration and Accuracy
 - **Evidence-Based Conclusions**: Strive for truthfulness in this technical content. Base all conclusions on solid evidence. Do not hallucinate.
