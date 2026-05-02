@@ -2,9 +2,9 @@
 
 
 
-## Chapter 1: Demystifying the Transformer: The Magic of Q, K, and V
+## Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V
 
-In Large Language Models (LLMs), all magic stems from the **Transformer** architecture, and its core is the **Self-Attention mechanism**. This chapter breaks down the three most famous letters in self-attention: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the soul of the model's ability to understand context.
+In Large Language Models (LLMs), the foundational architecture is the **Transformer**, and its core is the **Self-Attention mechanism**. In this chapter, we will analyze the core vectors of self-attention: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the core of the model's ability to understand context.
 
 ### Section 1: A Bird's-Eye View: Classic Transformer Architecture
 
@@ -68,29 +68,27 @@ Modern LLMs (like GPT, Llama, and DeepSeek) evolved from the dual-tower Encoder-
 
 Why abandon the Encoder if it excels at understanding?
 
-This reflects an elegant paradigm shift:
+This reflects an important paradigm shift:
 
 1.  **Translation vs. Continuation**: Transformers originally served translation, where input and output are separate (e.g., English and Chinese), requiring an Encoder to understand and a Decoder to translate.
-2.  **The Solitaire Paradigm**: Modern LLMs treat all tasks (Q&A, coding, reasoning) as text continuation: predict the next word given the preceding text.
-3.  **Unified Decoder**: Since everything is continuous text, we directly concatenate the prompt and response into the Decoder, eliminating the need for isolated towers.
-
-The Decoder-Only architecture simplifies the design:
+2.  **The core task of modern LLMs is text completion** : scientists discovered that all natural language tasks (Q&A, code generation, reasoning, even translation) can be unified as a "predict the next word given the previous sequence" completion game.
+3.  **Unified Decoder**: Since the Encoder is good at understanding, why do modern models no longer adopt this structure, becoming Decoder-Only "single-tower" architectures? simplifies the design:
 
 1.  **No Encoder**: Removes the independent encoder tower.
 2.  **No Cross-Attention**: Eliminates inter-tower interaction.
 3.  **Unified Input**: Concatenates Prompt and Response into a single sequence.
-4.  **Core Mechanism**: Composed entirely of stacked **Masked Self-Attention** and **Feed-Forward Network (FFN)** blocks.
+4.  **Core Mechanism**: Composed entirely of stacked **Masked Self-Attention** blocks.
 
 How it works:
 
 *   **Prefill Phase**: The model processes the Prompt all at once. Although using Masked Self-Attention, the known Prompt allows parallel computation of word relationships (like an Encoder).
 *   **Decode Phase**: The model generates words one by one. Each new word appends to the sequence to predict the next. Masked Self-Attention ensures the query only attends to preceding tokens, maintaining causality.
 
-This "great truth is simple" design makes training more efficient and provides the foundation for inference optimizations like **KV Cache**.
+This simplified design makes training more efficient and provides the foundation for inference optimizations like **KV Cache**.
 
 ### Section 3: The Library Analogy: Intuitive Meaning of QKV
 
-Let's use a library analogy to understand Q, K, and V before diving into math.
+Before diving into complex mathematical formulas, let us use an intuitive real-world scenario to understand the logical meaning of Q, K, and V.
 
 Imagine walking into a library to find "noise-canceling Bluetooth headphones". Here is how Q, K, and V operate:
 
@@ -98,13 +96,11 @@ Imagine walking into a library to find "noise-canceling Bluetooth headphones". H
 2.  **K (Key)**: The book's index or tags (e.g., title, author, abstract).
     *   Book A Key: "Wired Gaming Headset Review".
     *   Book B Key: "Teardown of Sony Noise-Canceling Bluetooth Headphones".
-3.  **V (Value)**: The actual content inside the book. If you read Book B, the text you absorb about acoustic principles is the Value.
+3.  **V (Value)**: Represents the **actual knowledge content contained in the book**. If you eventually decide to read book B, the detailed text about noise reduction chips and acoustic principles you acquire is the Value.
 
 **Self-Attention** matches your **Query** against all **Keys** to calculate relevance scores, then uses these scores to weight how much you read from each book's **Value**.
 
-Mapping back to large models, let's use the word "apple":
-
-Suppose we have two sentences:
+Mapping back to large models, let us use the word "apple" for a concrete comparison:
 
 *   Sentence A: "At today's **new product launch**, **Apple** introduced..."
 *   Sentence B: "At the **supermarket**, the box of **apples** I bought is very..."
@@ -113,7 +109,7 @@ When the model processes the word "apple":
 
 1.  **It generates its own Query (Q)**: Representing its "search intention".
     > [!NOTE]
-    > This Query is a high-dimensional vector containing hundreds of abstract search dimensions learned during training. We use anthropomorphic language like "searching for 'technology' or 'fruit' clues" for intuition.
+    > In reality, this Query is a complex high-dimensional continuous vector, containing hundreds or thousands of abstract search dimensions, all of which are knowledge "solidified" in the matrix during massive data training. Here we use personified language like "I am an 'apple', I need to search for 'technology' or 'fruit' clues" just to facilitate intuitive understanding.
 2.  **Match with Keys of preceding words**: The Query of "Apple" matches with Keys of words before it.
     *   In **Sentence A**, "Apple" matches strongly with "new product launch".
     *   In **Sentence B**, "apples" matches strongly with "supermarket".
@@ -127,13 +123,7 @@ Through this dynamic matching, the same word can be given completely different, 
 
 ### Section 4: Mathematical Principles: Matrix Computation of QKV
 
-Let's see how matrices dynamically calculate Q, K, and V.
-
-#### 0. Word Vector (Embedding)
-Computers need numbers. The model converts "apple" via a learned Embedding table into a high-dimensional vector $X$ (e.g., 4096 dimensions), representing its initial coordinates in semantic space.
-
-#### 1. Linear Projection
-The model multiplies the input vector $X$ by three learned weight matrices ($W_Q$, $W_K$, $W_V$) to generate Q, K, and V:
+Before starting the calculation, we need to first convert text into numerical representations. Suppose the input is the word "apple". The model first looks up a dictionary (Embedding table) to convert "apple" into a continuous sequence of numbers, such as a 4096-dimensional vector $X$. This sequence of numbers represents the initial coordinates of "apple" in a multi-dimensional semantic space (please note that the values in this dictionary are also learned through massive data training, rather than artificially specified). The model multiplies the input vector $X$ by three learned weight matrices ($W_Q$, $W_K$, $W_V$) to generate Q, K, and V:
 
 $$
 \begin{aligned}
@@ -144,8 +134,7 @@ V &= X W_V
 $$
 
 > [!NOTE]
-> **Static Weights vs. Dynamic Data**
-> $W_Q, W_K, W_V$ are **static model weights** fixed in VRAM. Q, K, and V are **dynamically generated data**, calculated on the fly for each specific input. This enables the same word to yield different semantics in different contexts.
+> This is an important conceptual boundary: $W_Q, W_K, W_V$ are **static model weights**. They are fixed in VRAM after training completes and are shared "processing rules" for all tokens. Conversely, Q, K, and V are **dynamically generated data**. They are computed in real-time by multiplying input vectors $X$ by weight matrices every time you input a different sentence. This is also the root cause why the same word can generate different semantics in different contexts.
 
 #### 2. Calculating Similarity and Attention Weights
 To determine how much attention the current word (Query) gives to preceding words (Keys), the model computes the dot product of the current word's Q and preceding words' K:
@@ -280,9 +269,9 @@ Note that MoE only reduces **compute cost** by activating fewer experts. It does
 
 ---
 
-## Chapter 2: Building the Skyscraper: Stacking Layers and Data Flow
+## Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms
 
-We have explored the core parts: self-attention and FFN. Now, let's see how they assemble into a large model "skyscraper" and how data flows through it.
+We have explored the core parts of the Transformer: the self-attention mechanism and FFN. However, these parts alone are not enough to form a large model with reasoning capabilities. In this chapter, we will look from a more macro perspective to see how these parts are assembled into a giant "skyscraper" of a large model and how data shuttles through it.
 
 **Complete Model Architecture Diagram**
 
@@ -320,14 +309,14 @@ Before entering the layers, data undergoes processing in the "lobby" to become m
 
 1.  **Word Embedding**: Converts tokens into high-dimensional vectors (e.g., 4096 dimensions) via table lookup, establishing initial semantic coordinates.
 2.  **Positional Encoding**:
-    Self-attention is **time-blind**; it computes vector similarity without sequence order. Without help, "I eat the apple" and "the apple eats me" look identical. We must inject position information.
+    Self-attention cannot perceive the sequence order; it computes vector similarity without sequence order. Without help, "I eat the apple" and "the apple eats me" look identical. We must inject position information.
 
     *   **Rotary Position Embedding (RoPE)**: Modern models (like Llama and Qwen) use RoPE. Instead of adding position values early, it **twists** the Q and K vectors by an angle in multi-dimensional space when computing the dot product.
-    *   Closer words have smaller angle differences, yielding larger dot products. This elegantly encodes relative position into the attention calculation.
+    *   Closer words have smaller angle differences, yielding larger dot products. This effectively encodes relative position into the attention calculation.
 
 ---
 
-### Section 2: Wisdom of Stacking: Hierarchical Feature Extraction
+### Section 2: The Mechanism of Stacking: Hierarchical Feature Extraction
 
 After embedding, the word vector begins climbing the Transformer skyscraper. Modern LLMs stack dozens or hundreds of **Transformer Blocks** (e.g., Llama-3 70B has 80 layers).
 
@@ -339,7 +328,7 @@ This stacking enables **Hierarchical Feature Extraction**:
 2.  **Multi-Layer Emergence**:
     *   **Bottom Layers**: Extract grammar and local relationships (e.g., identifying subjects and modifiers).
     *   **Middle Layers**: Capture entity relationships and common sense. The FFN consults its "soft memory base" to add background knowledge.
-    *   **Top Layers**: Handle abstract concepts and logical reasoning, distilling the sentence into an abstract intent to answer the prompt.
+    *   **Top Layers**: At this stage, the model no longer processes specific words, but distills the semantics of the entire sentence into an abstract intent to answer the prompt.
 
 This layer-by-layer progression from concrete to abstract is key to LLM "intelligence".
 
@@ -400,7 +389,7 @@ Multiplying $h_{last}$ by the LM Head yields **raw scores (Logits)** for every w
 
 ### Section 4: Logits and Softmax: Probabilistic Normalization
 
-Logits are irregular real numbers (e.g., "apple": 12.5, "phone": 8.2). To select a word, the system converts these scores into a probability distribution using **Softmax**.
+Logits are a series of unnormalized real numbers (e.g., "apple": 12.5, "phone": 8.2). To select a word, the system converts these scores into a probability distribution using **Softmax**.
 
 Softmax exponentiates and normalizes logits across the vocabulary, ensuring:
 
@@ -466,9 +455,9 @@ This completes a **single forward pass**, predicting the next word.
 
 ---
 
-## Chapter 3: The Art of Operation: Autoregressive Decoding and Text Generation
+## Chapter 3: Autoregressive Decoding and Text Generation Mechanisms
 
-In Chapter 2, we understood the static structure of the skyscraper. Now, we are going to make this building truly operate. When a user's request (input) arrives, how does the model process it step by step and ultimately "speak" the answer out?
+In Chapter 2, we understood the static structure of the skyscraper. Now, we are going to make this building truly operate. When a user's request (input) arrives, how does the model process it step by step and ultimately output the answer?
 
 ### Section 1: Prefill Phase: Handling Input Context
 
@@ -500,6 +489,6 @@ While this ensures coherence, it demands heavy computation: generating a 1000-wo
 
 In Part One, we explored the Transformer's core mechanics: self-attention, FFNs, and data flow. We saw how the model predicts the next word. However, this "solitaire" game demands massive compute and VRAM for long texts and heavy traffic.
 
-What bottlenecks LLM inference speed? How does VRAM usage grow? In **Part Two**, we will confront these physical and mathematical limits.
+The factors limiting LLM inference speed and how VRAM is consumed are the questions we need to address next. In **Part Two**, we will analyze these physical and mathematical bottlenecks.
 
 ---
