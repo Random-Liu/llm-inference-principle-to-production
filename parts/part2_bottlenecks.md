@@ -1,12 +1,10 @@
 # Part 2: Bottlenecks — Why LLM Inference is So Difficult
 
-
-
 This part explains the physical and mathematical "brick walls" engineers hit when pushing LLMs into production.
 
 ---
 
-## Chapter 4: Core Metrics: Measuring the "Ruler" of Large Model Inference
+## Chapter 4: Core Metrics of Large Model Inference
 
 Before discussing large model inference optimizations, we must establish evaluation criteria. The step-by-step autoregressive trait means we cannot gauge performance merely by using "Response Time" of traditional Web services. This chapter outlines core performance metrics.
 
@@ -20,7 +18,7 @@ Before discussing large model inference optimizations, we must establish evaluat
 
 ## Chapter 5: Starting from Scratch: How Naive LLM Inference Operates
 
-Before introducing advanced optimizations, we must examine how "early ancestors" performed LLM inference to appreciate the severity of inference bottlenecks.
+Before introducing advanced optimizations, we must examine the most basic LLM inference mode to understand the severity of the bottlenecks.
 
 ---
 
@@ -34,7 +32,7 @@ Suppose the model generates text following the prompt "Large models are". The un
     *   **Output**: Predicts the next word is "the". We get ["Large", "models", "are", "the"].
 2.  **Generating Token 2**:
     *   **Input**: ["Large", "models", "are", "the"]
-    *   **Processing**: **The 4 words are fed back from layer 1**, traversing the full 80 layers again!
+    *   **Processing**: **The 4 words are fed back from layer 1**, traversing the full 80 layers again.
     *   **Output**: Predicts the next word is "future". We get ["Large", "models", "are", "the", "future"].
 3.  **Generating Token 3**:
     *   **Input**: ["Large", "models", "are", "the", "future"]
@@ -69,13 +67,13 @@ Examining the SOTA **Llama 3 (405B)** ($d = 16384$, $L = 126$):
 
 ### Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?
 
-Naive inference effectively kills large model serving. It fails to handle long text sequences or tolerate concurrent workloads.
+Naive inference makes large model serving unviable. It fails to handle long text sequences or tolerate concurrent workloads.
 
 Engineers wondered: Can we cache the calculated results of preceding words and exclusively compute newly appended tokens? This intuition gave birth to the foundational cornerstone of LLM serving—**KV Cache**.
 
 ---
 
-## Chapter 6: The Rule-Breaker: KV Cache and the Resulting "Memory Tsunami"
+## Chapter 6: KV Cache Mechanism and Massive VRAM Footprints
 
 To break the $O(N^2)$ computational deadlock, KV Cache trades space for time, rewriting large model serving rules.
 
@@ -98,7 +96,7 @@ Why don't we cache Q? Because Query vectors represent "active intents" used up i
 
 ---
 
-### Section 3: The Memory Tsunami: A Multi-Terabyte Math Problem
+### Section 3: Massive VRAM Footprints: A Multi-Terabyte Math Problem
 
 We compare **Naive** vs. **KV Cache** complexities against generating the $N\text{-th}$ Token ($L$ layers, $d$ dimension):
 
@@ -109,16 +107,16 @@ We compare **Naive** vs. **KV Cache** complexities against generating the $N\tex
 
 **Core Divergence:**
 
-1.  **Compute Dominance**: KV Cache cuts linear layer computations from $O(N)$ to $O(1)$, and attention computations from $O(N^2)$ to $O(N)$.
+1.  **Substantial Compute Reduction**: KV Cache cuts linear layer computations from $O(N)$ to $O(1)$, and attention computations from $O(N^2)$ to $O(N)$.
 2.  **VRAM Space Penalty**: Compute drops at the cost of VRAM footprints scaling linearly against context length $N$ ($O(L \cdot N \cdot d)$).
 3.  **Dynamic Activations**: Transient activation memory releases instantly upon forward passes and is omitted in long-term static analyses.
 
-**Calculating the Tsunami via Llama 3 405B** ($L = 126, d = 16384$, unoptimized MHA, 1 Million Tokens):
+**Calculating Massive VRAM Footprints via Llama 3 405B** ($L = 126, d = 16384$, unoptimized MHA, 1 Million Tokens):
 
 *   **Footprint per Token**: K and V vectors across 126 layers consume `64 KB * 126 = 8064 KB (~8 MB)` in FP16 formats.
-*   **Total Footprint**: `8064 KB * 1,000,000 \approx \mathbf{8.26 \text{ TB}}$`! A single request consumes over **8 Terabytes of VRAM**.
+*   **Total Footprint**: `8064 KB * 1,000,000 \approx \mathbf{8.26 \text{ TB}}$`. A single request consumes over **8 Terabytes of VRAM**.
 
-KV Cache shifts LLMs from "Compute-Bound" (stalling on raw arithmetic) to "Memory-Bound" (stalling on VRAM capacities). We resolve this monster using **GQA**, **PagedAttention**, and **RadixAttention**.
+KV Cache shifts LLMs from "Compute-Bound" (stalling on raw arithmetic) to "Memory-Bound" (stalling on VRAM capacities). We resolve this massive VRAM footprint issue using **GQA**, **PagedAttention**, and **RadixAttention**.
 
 ---
 
@@ -130,7 +128,7 @@ Having resolved single-user compute via KV Cache, engineers faced concurrent wor
 
 ### Section 1: Compute-Bound vs. Memory-Bound
 
-Production LLMs are frequently starved of **Memory Bandwidth** rather than raw compute. Model parameters and KV Caches sit in VRAM, while compute takes place inside SMC cores.
+Production LLMs are frequently limited by **Memory Bandwidth** rather than raw compute. Model parameters and KV Caches sit in VRAM, while compute takes place inside SMC cores.
 
 *   **Single User Inference**: For every generated token, GPUs must read monolithic model weights and all accumulated KV Caches from VRAM to the cores. The core spends most of its time **idle, waiting for data transfers**.
 
@@ -155,7 +153,7 @@ Standard **Static Batching** forces all requests in a batch to begin and end sim
 
 ---
 
-### Section 1: Prefill Phase — The "Blitzkrieg" Consuming Compute (Compute-Bound)
+### Section 1: Prefill Phase — Compute-Bound Task
 
 **1. Mathematical Workflow**
 Models absorb **$N$ input tokens** in one shot.
@@ -186,7 +184,7 @@ A modern H100 GPU’s inflection threshold sits at roughly 300 FLOPs/Byte. Excee
 
 ---
 
-### Section 2: Decode Phase — The "War of Attrition" Crushing Bandwidth (Memory-Bound)
+### Section 2: Decode Phase — Memory-Bound Task
 
 Once the first word is output, autoregressive Decode iterations begin.
 
@@ -198,7 +196,7 @@ Models ingest merely **1 newly generated Token**.
 *   **Complexity**: $O(L \cdot (d^2 + N \cdot d))$.
 
 **2. Why Is It Memory-Bound?**
-To generate a **single token**, GPUs execute an absurd action: **they must drag monolithic model weights (hundreds of GBs) plus all accumulated KV Caches from VRAM to the SRAM cores!** Compute volumes are minuscule, leaving cores idle while HBM bandwidth is maxed out.
+To generate a **single token**, GPUs must execute a seemingly inefficient operation: **they must drag monolithic model weights (hundreds of GBs) plus all accumulated KV Caches from VRAM to the SRAM cores.** Compute volumes are minuscule, leaving cores idle while HBM bandwidth is fully utilized.
 
 Evaluating Llama 3 405B at $N = 100,000$ (with 100,000 currently accumulated context):
 
@@ -234,6 +232,8 @@ Arithmetic intensity (1.9) falls vastly below hardware inflection points (~300).
 1.  **Throughput vs. Latency**: Elevating Batch Size dilutes weight reading costs to raise throughput. In Decode, larger batches translate to fetching larger discrete KV Caches, stretching out individual TBT latencies.
 2.  **Scheduler Dilemmas**: Mixing compute-heavy Prefills alongside memory-heavy Decodes causes the **Straggler Effect**, triggering jitters in ongoing TBTs and breaking output fluency.
 
-We resolve this paradox via **Continuous Batching** and **Chunked Prefill** in Part 3.
+Part 2 analyzed the two core challenges of LLM inference: massive VRAM footprints from KV Cache and asymmetry between Prefill and Decode phases. These physical and mathematical laws constrain concurrency and speed.
+
+Part 3 will explore how high-performance engines like vLLM and SGLang overcome these bottlenecks through advanced algorithms and architectural designs.
 
 ---
