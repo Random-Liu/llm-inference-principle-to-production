@@ -35,7 +35,7 @@
         - [第七节：FFN 的拓展：混合专家模型（MoE）](parts/part1_principles.cn.md#第七节ffn-的拓展混合专家模型moe)
     - [第二章：多层堆叠与数据流机制](parts/part1_principles.cn.md#第二章多层堆叠与数据流机制)
         - [第一节：摩天大楼的入口：词嵌入与位置编码](parts/part1_principles.cn.md#第一节摩天大楼的入口词嵌入与位置编码)
-        - [第二节：层层堆叠的智慧：为什么要多层 Transformer？](parts/part1_principles.cn.md#第二节层层堆叠的智慧为什么要多层-transformer)
+        - [第二节：多层堆叠的机制：为什么要多层 Transformer？](parts/part1_principles.cn.md#第二节多层堆叠的机制为什么要多层-transformer)
         - [第三节：翻译官：LM Head](parts/part1_principles.cn.md#第三节翻译官lm-head)
         - [第四节：Logits 和 Softmax：将原始分数转换为概率分布](parts/part1_principles.cn.md#第四节logits-和-softmax将原始分数转换为概率分布)
         - [第五节：科普小贴士：我们常说的 8B/70B 参数到底是指哪些权重？](parts/part1_principles.cn.md#第五节科普小贴士我们常说的-8b70b-参数到底是指哪些权重)

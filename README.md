@@ -34,7 +34,7 @@ The primary audience for this book is **the author themselves**. It is open-sour
         - [Section 7: Expanding FFN: Mixture of Experts (MoE)](parts/part1_principles.md#section-7-expanding-ffn-mixture-of-experts-moe)
     - [Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms](parts/part1_principles.md#chapter-2-multi-layer-stacking-and-data-flow-mechanisms)
         - [Section 1: The Skyscraper Entrance: Word Embedding and Positional Encoding](parts/part1_principles.md#section-1-the-skyscraper-entrance-word-embedding-and-positional-encoding)
-        - [Section 2: The Wisdom of Stacking: Why Multiple Transformer Layers?](parts/part1_principles.md#section-2-the-wisdom-of-stacking-why-multiple-transformer-layers)
+        - [Section 2: The Mechanism of Stacking: Hierarchical Feature Extraction](parts/part1_principles.md#section-2-the-mechanism-of-stacking-hierarchical-feature-extraction)
         - [Section 3: The Translator: LM Head](parts/part1_principles.md#section-3-the-translator-lm-head)
         - [Section 4: Logits and Softmax: Converting Raw Scores into Probability Distributions](parts/part1_principles.md#section-4-logits-and-softmax-converting-raw-scores-into-probability-distributions)
         - [Section 5: Science Tip: What Weights Do the 8B/70B Parameters We Often Talk About Refer To?](parts/part1_principles.md#section-5-science-tip-what-weights-do-the-8b70b-parameters-we-often-talk-about-refer-to)
