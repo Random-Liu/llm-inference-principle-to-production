@@ -10,7 +10,7 @@ To resolve these issues, system engineers and algorithm scientists have proposed
 2. **Optimizing Asymmetry**: Eliminating Padding waste via Continuous Batching and Chunked Prefill, ensuring that GPU compute and bandwidth remain perpetually saturated.
 
 > [!IMPORTANT]
-> While Continuous Batching and Chunked Prefill greatly elevate single-node efficiencies, they remain "tactical-level" local optimizations. They do not fundamentally resolve hardware mismatches or resource contention between Prefill and Decode. In Part 4, we will unveil a more thorough "strategic-level" evolution—**Disaggregated Serving**.
+> While Continuous Batching and Chunked Prefill greatly elevate single-node efficiencies, they remain "tactical-level" local optimizations. They do not fundamentally resolve hardware mismatches or resource contention between Prefill and Decode. In Part 4, we will analyze a deeper "strategic-level" evolution—**Disaggregated Serving**.
 
 Now, let us enter the first battleground—slimming down VRAM from the model architecture perspective.
 
@@ -326,7 +326,7 @@ To crush the static batching "weakest link" effect, Orca introduced **Continuous
 Imagine an ongoing bullet train. At each station (forward propagation step lasting milliseconds), people dynamic enter and leave.
 
 *   **Dynamic entry/exit**: Schedulers don't wait for batches to complete. Between token generation intervals, schedulers monitor for End-of-Sequence (EOS) tags. Finished requests exit the batch, and queued requests board immediately.
-*   **Destroying Padding**: Engines flatten input tokens into 1D continuous streams for GPUs. Boundaries are isolated using offset indices (`cu_seqlens`), **eliminating Padding entirely**.
+*   **Destroying Padding**: Engines flatten input tokens into 1D continuous streams for GPUs. Boundaries are isolated using offset indices (`cu_seqlens`), **eliminating Padding**.
 
 **Matrix vs. Vector:**
 
@@ -394,7 +394,7 @@ When 100% of HBM is utilized and new blocks cannot allocate, the system faces tw
 
 1.  **Inactive Data**: Prefix caches retained on Radix trees (reference counts equal 0).
 2.  **Active Data**: In-flight requests requesting new blocks for subsequent tokens.
-Left unmanaged, VRAM triggers OOM crashes.
+Left unmanaged, VRAM triggers OOM crashes. As the core scheduling component of the system, the scheduler must initiate different response mechanisms.
 
 ---
 
@@ -416,7 +416,7 @@ Rather than discarding calculated data, modern engines deploy **Tiered KV Cache 
 If evicting inactive caches yields insufficient memory, schedulers **preempt** active requests, pausing them to free VRAM.
 
 **Preemption Triage**
-Modern engines use **Reverse FCFS (First Come First Served)** policies to pick victims:
+Modern engines use **Reverse FCFS (First Come First Served)** policies to select requests for preemption:
 
 1.  **Minimize Wasted Work**: Old requests hold heavy prefill compute investments. Preempting new requests minimizes compute waste.
 2.  **Prevent Starvation**: Long-context requests would never finish if repeatedly preempted.
@@ -424,7 +424,7 @@ Modern engines use **Reverse FCFS (First Come First Served)** policies to pick v
 
 **Dealing with Victim Caches:**
 
-*   **Swapping**: Shunts victim KV Caches via PCIe to **CPU RAM**. Saves GPU compute but threatens to choke PCIe bandwidth under high concurrency.
+*   **Swapping**: Shunts victim KV Caches via PCIe to **CPU RAM**. Saves GPU compute but can cause severe congestion on the PCIe bus under high concurrency.
 *   **Recomputation**: Wipes the victim's KV Cache from VRAM. Upon resumption, engines re-run its prompt prefill. On top-tier GPUs (e.g., H100), recomputing prompt matrices is frequently faster than swapping gigabytes over PCIe. vLLM defaults to attempting Swap first, but under extreme scenarios of tight VRAM and bandwidth, Recomputation is often the key strategy to ensure stable system operation.
 
 ---
@@ -439,7 +439,7 @@ SGLang unifies cache sharing, eviction, and active preemption within the Radix T
 
 > [!NOTE]
 > **Evolution to Tiered Offloading**
-> Modern SGLang has incorporated **HiCache**, allowing inactive Radix Tree nodes to offload to CPU RAM or SSD, combining tree management with memory hierarchies.
+> Modern SGLang has incorporated **HiCache**, allowing inactive Radix Tree nodes to offload to CPU RAM or SSD, combining tree management with memory hierarchies. For details, refer to the [LMSYS Blog: SGLang HiCache](https://www.lmsys.org/blog/2025-09-10-sglang-hicache/).
 
 ---
 
@@ -466,7 +466,7 @@ Speculative Decoding acts like a **"Professor and an Assistant"**:
 
 ### Section 2: The "Reverse Deal" of Compute Intensity
 
-While total **FLOPs** grow (drafting plus target verification), it remains an advantageous trade. In Decode phases, GPU arithmetic intensity is below the hardware inflection threshold. Verifying 5 tokens reads the exact same weight footprints (hundreds of GBs) as generating 1 token. Processing 5 workloads within a single memory fetch increases compute intensity, utilizing idle cores to slash latencies.
+As calculated in [Chapter 8](part2_bottlenecks.md#chapter-8-core-asymmetry-prefill-vs-decode), the compute intensity in the Decode phase is extremely low. While total **FLOPs** grow (drafting plus target verification), it remains an advantageous trade. In Decode phases, GPU arithmetic intensity is below the hardware inflection threshold. Verifying 5 tokens reads the exact same weight footprints (hundreds of GBs) as generating 1 token. Processing 5 workloads within a single memory fetch increases compute intensity, utilizing idle cores to slash latencies.
 
 ---
 
@@ -475,11 +475,11 @@ While total **FLOPs** grow (drafting plus target verification), it remains an ad
 **1. Dual-Model Schema**
 The archetype loaded two independent models in VRAM: a heavy Target (e.g., Llama 3 70B) and a lightweight Draft (e.g., Llama 3 8B). Managing two KV Caches is complex, and drafting accuracy drifted.
 
-**2. Medusa: Parallel Guessing Heads**
-Eliminates the Draft Model. It stacks lightweight non-autoregressive heads onto the Target Model's final hidden states. Head 1 guesses $t+1$, Head 2 guesses $t+2$, and Head 3 guesses $t+3$. Accuracy plummets across sequential steps.
+**2. Medusa: Multi-Head Parallel Prediction**
+To resolve the complexity of dual models, **Medusa** introduced a new approach: avoiding independent draft models. It stacks lightweight non-autoregressive heads onto the Target Model's final hidden states. Head 1 guesses $t+1$, Head 2 guesses $t+2$, and Head 3 guesses $t+3$. Accuracy decreases rapidly across sequential steps.
 
 **3. Eagle: Feature-Level Autoregression**
-Introduces a lightweight, single-layer Transformer at the hidden state level. It blends $h_t$ with predicted tokens to autoregressively project $h'_{t+1}$. Preserves accuracy without heavy network overheads.
+To address the limitations of Medusa, **Eagle** introduced a design more aligned with the chain rule of language. It introduces a lightweight, single-layer Transformer at the hidden state level. It blends $h_t$ with predicted tokens to autoregressively project $h'_{t+1}$. This maintains high prediction accuracy while avoiding the massive time consumption of the large model's dozens of layers, providing a more effective way to "draft".
 
 > [!NOTE]
 > **Core Insights**
@@ -493,7 +493,7 @@ Introduces a lightweight, single-layer Transformer at the hidden state level. It
 ### Section 4: Tree Attention and Trade-offs in Production
 
 **1. Tree Attention**
-Medusa and Eagle spread wide nets, branching out Top-K candidates and forming a **"Draft Tree"**. Targets evaluate the tree concurrently. KV Caches expand into tree topologies, correct pathways are identified, and unsuccessful branches are pruned. It should be pointed out that although the target model guarantees final output accuracy, performing this tree-structured pruning and physical rollback of the KV Cache on the GPU also entails corresponding overheads. If the draft model's hit rate is too low, the system will frequently loop in an invalid "generate-verify-discard-rollback" cycle, which not only fails to accelerate but also slows down the overall inference speed due to frequent VRAM pointer operations and management overhead. This further explains why speculative decoding requires dynamic trade-offs in production environments based on concurrency and hit rates.
+Medusa and Eagle generate multiple candidate branches, branching out Top-K candidates and forming a **"Draft Tree"**. Targets evaluate the tree concurrently. KV Caches expand into tree topologies, correct pathways are identified, and unsuccessful branches are pruned. It should be pointed out that although the target model guarantees final output accuracy, performing this tree-structured pruning and physical rollback of the KV Cache on the GPU also entails corresponding overheads. If the draft model's hit rate is too low, the system will frequently loop in an invalid "generate-verify-discard-rollback" cycle, which not only fails to accelerate but also slows down the overall inference speed due to frequent VRAM pointer operations and management overhead. This further explains why speculative decoding requires dynamic trade-offs in production environments based on concurrency and hit rates.
 
 **2. Dynamic Trade-offs in Production**
 
@@ -504,6 +504,6 @@ In production environments, speculative decoding is typically enabled dynamicall
 
 ---
 
-Part 3 explored tactical single-node optimizations: GQA, PagedAttention, Continuous Batching, and Speculative Decoding. When parameters reach trillions or contexts hit millions, physical single-node limits are broken. In **Part 4**, we zoom out onto cluster orchestration and distributed execution.
+Part 3 explored the core technologies of single-node inference optimization, analyzing how methods like GQA, PagedAttention, Continuous Batching, and Speculative Decoding work together to push single-GPU performance to its limit. These optimizations successfully brought large models out of the lab, enabling them to serve massive users. When parameters reach trillions or contexts hit millions, physical single-node limits are broken. How can we coordinate hundreds or thousands of GPUs? How do we achieve deeper "strategic-level" resource isolation? Please follow me into **Part 4**, where we leave the confines of single nodes and survey the overall architecture of distributed inference and cluster scheduling.
 
 ---
