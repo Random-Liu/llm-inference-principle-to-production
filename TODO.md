@@ -14,7 +14,6 @@ Follows the principles in `GEMINI.md`:
 - [ ] Complete Part 6: Frontier ([part6_frontier.md](parts/part6_frontier.md))
 - [ ] Add evaluation for new challenges: MoE, CoT, Agent
 
-
 ## Research & Learning
 - [ ] Explore unseen content:
     - [ ] Agent architecture (e.g., OpenClaw)
@@ -27,4 +26,4 @@ Follows the principles in `GEMINI.md`:
     - [ ] Study system optimizations and trade-off changes tailored for cross-machine NVLink Switch (e.g., multi-node Tensor Parallelism expansions, reduced PP requirements)
     - [ ] Understand how `DisaggregatedSet` works in LeaderWorkerSet (for Disaggregated Serving). Ref KEP: https://github.com/kubernetes-sigs/lws/pull/773
     - [ ] Learn the complete CUDA software stack to understand its dependencies
-    - [ ] Explore Kubernetes Gateway API Inference Extension
+    - [ ] Explore Kubernetes Gateway API Inference Extension and learn llm-d
