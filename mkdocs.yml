@@ -54,8 +54,8 @@ extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
+  - "返回主页": https://random-liu.github.io/
   - "English":
-    - "Home": https://random-liu.github.io/
     - "Preface": index.md
     - "Part 1: Principles": parts/part1_principles.md
     - "Part 2: Bottlenecks": parts/part2_bottlenecks.md
@@ -63,7 +63,6 @@ nav:
     - "Part 4: Distributed": parts/part4_distributed.md
     - "Part 5: Orchestration": parts/part5_k8s.md
   - "中文版":
-    - "返回主页": https://random-liu.github.io/
     - "前言": index.cn.md
     - "第一部分：原理篇": parts/part1_principles.cn.md
     - "第二部分：瓶颈篇": parts/part2_bottlenecks.cn.md
