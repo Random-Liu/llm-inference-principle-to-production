@@ -1,7 +1,5 @@
 # 第一部分：原理篇 —— Transformer 与 LLM 的工作底座
 
-
-
 ## 第一章：Transformer 架构解析：Q、K、V 的机制
 
 在大语言模型（LLM）的世界里，核心的基础架构是 **Transformer** ，而 Transformer 的核心则是 **自注意力机制（Self-Attention）** 。在这一章中，我们将解析 Q、K、V 三个核心向量：**Q（Query）**、**K（Key）** 和 **V（Value）**。它们是模型理解上下文、捕捉词语间复杂关系的核心所在。

@@ -1,7 +1,5 @@
 # Part 3: Single Node — High-Performance Engines with Optimized VRAM
 
-
-
 In Part 2, we analyzed the physical and mathematical bottlenecks of LLM inference: the **VRAM tsunami triggered by KV Cache**, and the **core asymmetry between Prefill and Decode**. These bottlenecks constrain the concurrency capabilities and response speeds of large models in production environments.
 
 To resolve these issues, system engineers and algorithm scientists have proposed various software-hardware cooperative optimizations. This part delves into how modern inference engines (e.g., vLLM and SGLang) and the model architectures themselves resolve these bottlenecks. We unfold the analysis across two core battlefronts:

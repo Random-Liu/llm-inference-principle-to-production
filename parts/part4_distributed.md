@@ -1,7 +1,5 @@
 # Part 4: Distributed — Orchestration Across Single Nodes: Parallel Strategies and High-Speed Interconnects
 
-
-
 This part zooms out to cluster-level architecture and explores how top technology companies serve billions of requests.
 
 ---

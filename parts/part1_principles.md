@@ -1,7 +1,5 @@
 # Part 1: Principles — The Foundational Engine of Transformers and LLMs
 
-
-
 ## Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V
 
 In Large Language Models (LLMs), the foundational architecture is the **Transformer**, and its core is the **Self-Attention mechanism**. In this chapter, we will analyze the core vectors of self-attention: **Q (Query)**, **K (Key)**, and **V (Value)**. They are the core of the model's ability to understand context.

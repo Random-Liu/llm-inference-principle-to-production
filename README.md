@@ -148,6 +148,6 @@ The primary audience for this book is **the author themselves**. It is open-sour
     - [Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets](parts/part5_k8s.md#chapter-27-operations-and-upgrades-continuity-vs-heavy-assets)
         - [Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference](parts/part5_k8s.md#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference)
         - [Section 2: Seamless Upgrades: Engineering Practices](parts/part5_k8s.md#section-2-seamless-upgrades-engineering-practices)
-        - [Section 3: In-Place Updates and Local State Reuse](parts/part5_k8s.md#section-3-in-place-updates-and-local-state-reuse)
+        - [Section 3: Accelerating Upgrade Cold Start: In-Place Update and Local State Reuse](parts/part5_k8s.md#section-3-accelerating-upgrade-cold-start-in-place-update-and-local-state-reuse)
     - [Part 5 Summary: Core Contradictions and Breakthroughs in LLM Orchestration](parts/part5_k8s.md#part-5-summary-core-contradictions-and-breakthroughs-in-llm-orchestration)
 
