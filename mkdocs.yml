@@ -54,7 +54,7 @@ extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - "返回主页": https://random-liu.github.io/
+  - "返回主页 (Home)": https://random-liu.github.io/
   - "English":
     - "Preface": index.md
     - "Part 1: Principles": parts/part1_principles.md
