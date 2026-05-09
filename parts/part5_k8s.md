@@ -201,6 +201,7 @@ In response to these three dimensions, the aforementioned schools have converged
 
 ##### Direct Streaming in Public Clouds (Without Local Cache)
 In mature public clouds (e.g., AWS, GCP), setups such as `Run:ai Model Streamer`, `Mountpoint for Amazon S3`, or `AIBrix` are common.
+
 *   **Principle**: They bypass distributed cache clusters entirely, initiating high-concurrency streaming via object storage SDKs or FUSE drivers.
 *   **Trade-off Considerations**: Backed by hyperscaler infrastructure and object storage delivering tens of gigabytes of bandwidth, these architectures operate without heavy cache management and perform well even **without Local Caching**. In private or cost-sensitive data centers, however, bandwidth limitations make local caching and P2P architectures indispensable for architects:
     *   **On-prem / Air-gapped Environments**: Because centralized registries or object storage face concurrent bandwidth limits, P2P mechanisms spread traffic and are crucial for preventing a Thundering Herd from crashing the core storage cluster.
@@ -1103,6 +1104,7 @@ Reusing model weights offers highly pragmatic dividends. As discussed in Chapter
 In LLM inference scenarios, engineering teams are also exploring **in-place upgrades of the cluster data plane (such as Kubelet) without draining nodes**, to avoid extremely time-consuming physical cold starts caused by evicting Pods.
 
 In traditional Kubernetes upgrade paradigms, for both OS upgrades and K8s component upgrades, the community strongly recommends or even mandates executing `kubectl drain` to evict Pods on the node first.
+
 *   **OS Upgrades**: Due to changes in the kernel or base libraries, **OS upgrades definitely require draining nodes, and Pods definitely need to restart**.
 *   **K8s Data Plane Upgrades**: For Kubernetes' own data plane (such as Kubelet and Kube-Proxy), the community does not officially support in-place upgrades without draining.
     *   **Minor Version Upgrades**: When upgrading across minor versions (e.g., 1.35 to 1.36), the `kubeadm` official documentation explicitly states that **you must drain the node first**, to prevent inconsistencies in APIs or internal states caused by the version span.
