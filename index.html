@@ -1,0 +1,1260 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://random-liu.github.io/llm-inference-principle-to-production/">
+      
+      
+      
+        <link rel="next" href="parts/part1_principles/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Preface - LLM 从原理到生产级推理 (LLM Inference from Principles to Production)</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#llm-inference-from-principles-to-production-llm" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-header__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Preface
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://random-liu.github.io/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  返回主页 (Home)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="." class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="index.cn/" class="md-tabs__link">
+          
+  
+  
+  中文版
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-nav__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://random-liu.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    返回主页 (Home)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#foreword" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foreword
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part1_principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part2_bottlenecks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part3_single_node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3: Single-Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part4_distributed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part5_k8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5: Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文版
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文版
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part1_principles.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part2_bottlenecks.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part3_single_node.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第三部分：单机篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part4_distributed.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第四部分：分布式篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="parts/part5_k8s.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第五部分：编排篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#foreword" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foreword
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="llm-inference-from-principles-to-production-llm">LLM Inference from Principles to Production (LLM 从原理到生产级推理)<a class="headerlink" href="#llm-inference-from-principles-to-production-llm" title="Permanent link">&para;</a></h1>
+<p><a href="https://random-liu.github.io/llm-inference-principle-to-production/">🌐 Read on GitHub Pages (English Version)</a> | <a href="https://random-liu.github.io/llm-inference-principle-to-production/index.cn/">🌐 阅读精美网页版 (中文版)</a></p>
+<h2 id="foreword">Foreword<a class="headerlink" href="#foreword" title="Permanent link">&para;</a></h2>
+<p>This book is a systematic organization of Large Language Model (LLM) inference technology, originating from the author's study notes and reflections during paternity leave (and welcoming my second baby, Emerson! 👶🍼🧸). With daily work focused on internal clusters supporting inference and other business, the author rarely had time to follow open-source progress. Therefore, the core objectives of this book are:</p>
+<ol>
+<li><strong>Build Mental Models (End-to-End)</strong>: Connect scattered knowledge points to help myself understand core LLM inference principles and serving frameworks end-to-end, establishing a global mindset.</li>
+<li><strong>Track Open-Source Progress</strong>: Follow frontier progress in the open-source community to look beyond daily work, focusing especially on Kubernetes evolution and how it can better adapt to LLM inference.</li>
+<li><strong>Establish a Sustainable Framework</strong>: Serve as a foundation for easier continuous updates in the future to stay up-to-date myself.</li>
+</ol>
+<p><strong>Disclaimer and Positioning</strong>:
+This book is not a profound mathematical derivation book, nor is it a "frontier tracking" that follows the latest daily papers. We will not get overly entangled in complex mathematical formulas and overly trivial code details. Our focus is on <strong>revealing the essential logic behind the technology</strong>.</p>
+<p>Additionally, this book was deeply assisted by Gemini and Claude. Without AI, it would have been impossible for the author to learn and understand such a broad field in a single month. I would like to thank AI on one hand; on the other hand, this has reinforced my determination to "do inference well" — only by building efficient inference infrastructure can we make AI benefit more people.</p>
+<p><strong>Target Audience</strong>:
+The primary audience for this book is <strong>the author themselves</strong>. It is open-sourced on GitHub for convenient version control, switching between machines, and to potentially benefit other peers interested in this field (such as system architects, backend engineers, AI product managers, and developers curious about underlying mechanisms). If you also hope to establish a global understanding of large model inference from principles to production services, I hope these notes can offer some inspiration. Feel free to point out any errors.</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#foreword">Foreword</a></li>
+<li>
+<p><a href="parts/part1_principles/">Part 1: Principles —— Transformer and LLM Foundations</a></p>
+<ul>
+<li><a href="parts/part1_principles/#chapter-1-transformer-architecture-analysis-the-mechanism-of-q-k-and-v">Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V</a><ul>
+<li><a href="parts/part1_principles/#section-1-birds-eye-view-the-macro-division-of-labor-in-classic-transformer-architecture">Section 1: Birds-Eye View: The Macro Division of Labor in Classic Transformer Architecture</a></li>
+<li><a href="parts/part1_principles/#section-2-evolution-modern-llm-decoder-only-architecture">Section 2: Evolution: Modern LLM Decoder-Only Architecture</a></li>
+<li><a href="parts/part1_principles/#section-3-the-library-analogy-understanding-the-logical-meaning-of-q-k-and-v-self-attention">Section 3: The Library Analogy: Understanding the Logical Meaning of Q, K, and V Self-Attention</a></li>
+<li><a href="parts/part1_principles/#section-4-mathematical-principles-self-attention-weight-matrix-and-dynamic-vector-generation">Section 4: Mathematical Principles: Self-Attention Weight Matrix and Dynamic Vector Generation</a></li>
+<li><a href="parts/part1_principles/#section-5-feed-forward-network-ffn-the-models-knowledge-base">Section 5: Feed-Forward Network (FFN): The Model's Knowledge Base</a></li>
+<li><a href="parts/part1_principles/#section-6-expanding-self-attention-multi-head-attention">Section 6: Expanding Self-Attention: Multi-Head Attention</a></li>
+<li><a href="parts/part1_principles/#section-7-expanding-ffn-mixture-of-experts-moe">Section 7: Expanding FFN: Mixture of Experts (MoE)</a></li>
+</ul>
+</li>
+<li><a href="parts/part1_principles/#chapter-2-multi-layer-stacking-and-data-flow-mechanisms">Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms</a><ul>
+<li><a href="parts/part1_principles/#section-1-the-skyscraper-entrance-word-embedding-and-positional-encoding">Section 1: The Skyscraper Entrance: Word Embedding and Positional Encoding</a></li>
+<li><a href="parts/part1_principles/#section-2-the-mechanism-of-stacking-hierarchical-feature-extraction">Section 2: The Mechanism of Stacking: Hierarchical Feature Extraction</a></li>
+<li><a href="parts/part1_principles/#section-3-the-translator-lm-head">Section 3: The Translator: LM Head</a></li>
+<li><a href="parts/part1_principles/#section-4-logits-and-softmax-converting-raw-scores-into-probability-distributions">Section 4: Logits and Softmax: Converting Raw Scores into Probability Distributions</a></li>
+<li><a href="parts/part1_principles/#section-5-science-tip-what-weights-do-the-8b70b-parameters-we-often-talk-about-refer-to">Section 5: Science Tip: What Weights Do the 8B/70B Parameters We Often Talk About Refer To?</a></li>
+<li><a href="parts/part1_principles/#section-6-data-flow-end-to-end-panoramic-view-from-bottom-to-top">Section 6: Data Flow: End-to-End Panoramic View from Bottom to Top</a></li>
+</ul>
+</li>
+<li><a href="parts/part1_principles/#chapter-3-autoregressive-decoding-and-text-generation-mechanisms">Chapter 3: Autoregressive Decoding and Text Generation Mechanisms</a><ul>
+<li><a href="parts/part1_principles/#section-1-prefill-the-specific-process-of-handling-input">Section 1: Prefill: The Specific Process of Handling Input</a></li>
+<li><a href="parts/part1_principles/#section-2-decode-autoregressive-loop-and-text-generation">Section 2: Decode: Autoregressive Loop and Text Generation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><a href="parts/part2_bottlenecks/">Part 2: Bottlenecks — Why LLM Inference is Hard</a></p>
+<ul>
+<li><a href="parts/part2_bottlenecks/#chapter-4-core-metrics-of-large-model-inference">Chapter 4: Core Metrics of Large Model Inference</a></li>
+<li><a href="parts/part2_bottlenecks/#chapter-5-naive-inference-how-unoptimized-systems-work">Chapter 5: Naive Inference: How Unoptimized Systems Work</a><ul>
+<li><a href="parts/part2_bottlenecks/#section-1-the-unoptimized-process">Section 1: The Unoptimized Process</a></li>
+<li><a href="parts/part2_bottlenecks/#section-2-complexity-analysis-the-computational-explosion">Section 2: Complexity Analysis: The Computational Explosion</a></li>
+<li><a href="parts/part2_bottlenecks/#section-3-the-solution-caching-past-computations">Section 3: The Solution: Caching Past Computations</a></li>
+</ul>
+</li>
+<li><a href="parts/part2_bottlenecks/#chapter-6-kv-cache-mechanism-and-massive-vram-footprints">Chapter 6: KV Cache Mechanism and Massive VRAM Footprints</a><ul>
+<li><a href="parts/part2_bottlenecks/#section-1-the-principle-caching-k-and-v">Section 1: The Principle: Caching K and V</a></li>
+<li><a href="parts/part2_bottlenecks/#section-2-the-scope-why-only-k-and-v">Section 2: The Scope: Why Only K and V?</a></li>
+<li><a href="parts/part2_bottlenecks/#section-3-the-cost-the-vram-tsunami">Section 3: The Cost: The VRAM Tsunami</a></li>
+</ul>
+</li>
+<li><a href="parts/part2_bottlenecks/#chapter-7-batching-maximizing-gpu-utilization">Chapter 7: Batching: Maximizing GPU Utilization</a><ul>
+<li><a href="parts/part2_bottlenecks/#section-1-the-bottleneck-memory-bandwidth">Section 1: The Bottleneck: Memory Bandwidth</a></li>
+<li><a href="parts/part2_bottlenecks/#section-2-batched-matrix-multiplication-bmm">Section 2: The Solution: Batched Matrix Multiplication (BMM)</a></li>
+<li><a href="parts/part2_bottlenecks/#section-3-the-flaw-static-batching-and-padding">Section 3: The Flaw: Static Batching and Padding</a></li>
+</ul>
+</li>
+<li><a href="parts/part2_bottlenecks/#chapter-8-core-asymmetry-prefill-vs-decode">Chapter 8: Core Asymmetry: Prefill vs. Decode</a><ul>
+<li><a href="parts/part2_bottlenecks/#section-1-prefill-phase-the-compute-bound-phase">Section 1: Prefill Phase: The Compute-Bound Phase</a></li>
+<li><a href="parts/part2_bottlenecks/#section-2-decode-phase-the-memory-bound-phase">Section 2: Decode Phase: The Memory-Bound Phase</a></li>
+<li><a href="parts/part2_bottlenecks/#section-3-the-asymmetry-data-perspective-comparison">Section 3: The Asymmetry: Data Perspective Comparison</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><a href="parts/part3_single_node/">Part 3: Single Node — High-Performance Engines with Optimized VRAM</a></p>
+<ul>
+<li><a href="parts/part3_single_node/#chapter-9-model-architecture-vram-optimization-gqa">Chapter 9: Model Architecture VRAM Optimization: GQA</a><ul>
+<li><a href="parts/part3_single_node/#section-1-evolution-from-mha-to-gqa">Section 1: Evolution: From MHA to GQA</a></li>
+<li><a href="parts/part3_single_node/#section-2-trimming-rationale-why-reducing-only-k-and-v-works">Section 2: Trimming Rationale: Why Reducing Only K and V Works</a></li>
+<li><a href="parts/part3_single_node/#section-3-frontier-progress-alternative-kv-compression-methods">Section 3: Frontier Progress: Alternative KV Compression Methods</a></li>
+</ul>
+</li>
+<li><a href="parts/part3_single_node/#chapter-10-precision-reduction-kv-cache-quantization-fp8int8">Chapter 10: Precision Reduction: KV Cache Quantization (FP8/INT8)</a><ul>
+<li><a href="parts/part3_single_node/#section-1-trade-off-compute-for-bandwidth">Section 1: Trade-off: Compute for Bandwidth</a></li>
+<li><a href="parts/part3_single_node/#section-2-rationale-why-it-works">Section 2: Rationale: Why It Works</a></li>
+<li><a href="parts/part3_single_node/#section-3-int8-vs-fp8-different-paradigms">Section 3: INT8 vs. FP8: Different Paradigms</a></li>
+<li><a href="parts/part3_single_node/#section-4-dynamic-vs-static-contrast-with-weight-quantization">Section 4: Dynamic vs. Static: Contrast with Weight Quantization</a></li>
+</ul>
+</li>
+<li><a href="parts/part3_single_node/#chapter-11-vram-management-at-the-engine-level-pagedattention">Chapter 11: VRAM Management at the Engine Level: PagedAttention</a><ul>
+<li><a href="parts/part3_single_node/#section-1-fragmentation-crisis-waste-from-static-contiguous-allocation">Section 1: Fragmentation Crisis: Waste from Static Contiguous Allocation</a></li>
+<li><a href="parts/part3_single_node/#section-2-os-inspiration-virtual-memory-paging">Section 2: OS Inspiration: Virtual Memory Paging</a></li>
+<li><a href="parts/part3_single_node/#section-3-block-tables-minimizing-memory-waste">Section 3: Block Tables: Minimizing Memory Waste</a></li>
+</ul>
+</li>
+<li><a href="parts/part3_single_node/#chapter-12-prefix-caching-mechanism-based-on-radix-tree-radixattention">Chapter 12: Prefix Caching Mechanism Based on Radix Tree (RadixAttention)</a><ul>
+<li><a href="parts/part3_single_node/#section-1-dilemma-rag-and-multi-turn-dialogues">Section 1: Dilemma: RAG and Multi-Turn Dialogues</a></li>
+<li><a href="parts/part3_single_node/#section-2-radix-trees-sharing-physical-memory">Section 2: Radix Trees: Sharing Physical Memory</a></li>
+</ul>
+</li>
+<li><a href="parts/part3_single_node/#chapter-13-dynamic-scheduling-mechanisms-continuous-batching-and-chunked-prefill">Chapter 13: Dynamic Scheduling Mechanisms: Continuous Batching and Chunked Prefill</a><ul>
+<li><a href="parts/part3_single_node/#section-1-continuous-batching-revolving-door-mechanism">Section 1: Continuous Batching: Revolving Door Mechanism</a></li>
+<li><a href="parts/part3_single_node/#section-2-chunked-prefill-perfect-complement">Section 2: Chunked Prefill: Perfect Complement</a></li>
+</ul>
+</li>
+<li><a href="parts/part3_single_node/#chapter-14-preemption-and-scheduling-mechanisms-under-vram-saturation">Chapter 14: Preemption and Scheduling Mechanisms Under VRAM Saturation</a><ul>
+<li><a href="parts/part3_single_node/#section-1-dilemma-scheduler-decisions">Section 1: Dilemma: Scheduler Decisions</a></li>
+<li><a href="parts/part3_single_node/#section-2-cache-management-eviction-and-tiered-offloading">Section 2: Cache Management: Eviction and Tiered Offloading</a></li>
+<li><a href="parts/part3_single_node/#section-3-preemption-swap-vs-recompute">Section 3: Preemption: Swap vs. Recompute</a></li>
+<li><a href="parts/part3_single_node/#section-4-sglang-unifying-preemption-and-eviction-under-tree-management">Section 4: SGLang: Unifying Preemption and Eviction under Tree Management</a></li>
+</ul>
+</li>
+<li><a href="parts/part3_single_node/#chapter-15-trading-idle-compute-for-ultimate-latency-speculative-decoding">Chapter 15: Trading "Idle Compute" for "Ultimate Latency": Speculative Decoding</a><ul>
+<li><a href="parts/part3_single_node/#section-1-analogy-the-professor-and-the-assistant">Section 1: Analogy: The Professor and the Assistant</a></li>
+<li><a href="parts/part3_single_node/#section-2-economics-arithmetic-intensity-trade-offs">Section 2: Economics: Arithmetic Intensity Trade-offs</a></li>
+<li><a href="parts/part3_single_node/#section-3-evolution-from-dual-models-to-external-heads">Section 3: Evolution: From Dual Models to External Heads</a></li>
+<li><a href="parts/part3_single_node/#section-4-production-tree-attention-and-dynamic-trade-offs">Section 4: Production: Tree Attention and Dynamic Trade-offs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><a href="parts/part4_distributed/">Part 4: Distributed — Orchestration Across Single Nodes: Parallel Strategies and High-Speed Interconnects</a></p>
+<ul>
+<li><a href="parts/part4_distributed/#chapter-16-distributed-slicing-of-large-models-tensor-pipeline-and-context-parallelism">Chapter 16: Distributed Slicing of Large Models: Tensor, Pipeline, and Context Parallelism</a><ul>
+<li><a href="parts/part4_distributed/#section-1-the-necessity-of-multiple-machines-vram-capacity-limitations">Section 1: The Necessity of Multiple Machines: VRAM Capacity Limitations</a></li>
+<li><a href="parts/part4_distributed/#section-2-tp-and-pp-vertical-and-horizontal-slicing">Section 2: TP and PP: Vertical and Horizontal Slicing</a></li>
+<li><a href="parts/part4_distributed/#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory">Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory</a></li>
+<li><a href="parts/part4_distributed/#section-4-the-impact-of-tp-and-pp-on-core-metrics">Section 4: The Impact of TP and PP on Core Metrics</a></li>
+<li><a href="parts/part4_distributed/#section-5-breaking-the-sequence-wall-context-parallelism">Section 5: Breaking the Sequence Wall: Context Parallelism</a></li>
+<li><a href="parts/part4_distributed/#section-6-hybrid-parallelism-the-3d-topology-of-tp-pp-and-cp">Section 6: Hybrid Parallelism: The 3D Topology of TP, PP, and CP</a></li>
+</ul>
+</li>
+<li><a href="parts/part4_distributed/#chapter-17-expert-parallelism-ep">Chapter 17: Expert Parallelism (EP)</a><ul>
+<li><a href="parts/part4_distributed/#section-1-limitations-of-traditional-parallelism-for-moe">Section 1: Limitations of Traditional Parallelism for MoE</a></li>
+<li><a href="parts/part4_distributed/#section-2-strategy-selection-cross-host-tp-vs-expert-parallelism-ep">Section 2: Strategy Selection: Cross-Host TP vs. Expert Parallelism (EP)</a></li>
+<li><a href="#section-3-the-golden-duo-dp-attention--ep-moe">Section 3: The Golden Duo: DP Attention + EP MoE</a></li>
+</ul>
+</li>
+<li><a href="parts/part4_distributed/#chapter-18-disaggregated-serving-architecture">Chapter 18: Disaggregated Serving Architecture</a><ul>
+<li><a href="parts/part4_distributed/#section-1-the-mismatch-hardware-asymmetry-and-management-overheads">Section 1: The Mismatch: Hardware Asymmetry and Management Overheads</a></li>
+<li><a href="parts/part4_distributed/#section-2-physical-separation-decoupling-hardware-simplifying-management">Section 2: Physical Separation: Decoupling Hardware, Simplifying Management</a></li>
+<li><a href="parts/part4_distributed/#section-3-typical-workflow-of-disaggregated-serving">Section 3: Typical Workflow of Disaggregated Serving</a></li>
+</ul>
+</li>
+<li><a href="parts/part4_distributed/#chapter-19-content-aware-routing-the-traffic-police">Chapter 19: Content-Aware Routing: The Traffic Police</a><ul>
+<li><a href="parts/part4_distributed/#section-1-ai-gateways-business-aware-traffic-control">Section 1: AI Gateways: Business-Aware Traffic Control</a></li>
+<li><a href="parts/part4_distributed/#section-2-cache-aware-routing-and-dynamic-replication">Section 2: Cache-Aware Routing and Dynamic Replication</a></li>
+<li><a href="parts/part4_distributed/#section-3-sglangs-system-level-implementation-gateway-approximate-tree-and-shared-l3">Section 3: SGLang's System-Level Implementation: Gateway Approximate Tree and Shared L3</a></li>
+</ul>
+</li>
+<li><a href="parts/part4_distributed/#chapter-20-network-communication-and-high-speed-interconnects-in-large-model-inference">Chapter 20: Network Communication and High-Speed Interconnects in Large Model Inference</a><ul>
+<li><a href="parts/part4_distributed/#section-1-the-bloodline-within-a-single-machine-pcie-nvlink-and-nvswitch">Section 1: The Bloodline within a Single Machine: PCIe, NVLink, and NVSwitch</a></li>
+<li><a href="parts/part4_distributed/#section-2-the-cross-machine-bridge-rdma-and-its-implementations">Section 2: The Cross-Machine Bridge: RDMA and Its Implementations</a></li>
+<li><a href="parts/part4_distributed/#section-3-parallel-modes-data-volumes-and-metric-impacts">Section 3: Parallel Modes, Data Volumes, and Metric Impacts</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><a href="parts/part5_k8s/">Part 5: Orchestration —— Taming the Supercomputer: Harnessing AI Compute with Kubernetes</a></p>
+<ul>
+<li><a href="parts/part5_k8s/#chapter-21-when-loose-coupling-meets-tight-coupling-the-collision-of-k8s-and-llm-lifecycles">Chapter 21: When "Loose Coupling" Meets "Tight Coupling": The Collision of K8s and LLM Lifecycles</a><ul>
+<li><a href="parts/part5_k8s/#section-1-first-principles-examining-lifecycle-contradictions-under-distributed-inference">Section 1: First Principles: Examining Lifecycle Contradictions under Distributed Inference</a></li>
+<li><a href="parts/part5_k8s/#section-2-workload-lifecycle-core-contradictions-throughout">Section 2: Workload Lifecycle: Core Contradictions Throughout</a></li>
+<li><a href="parts/part5_k8s/#section-3-cluster-lifecycle-heterogeneous-hardware-bootstrapping-and-expensive-graceful-termination">Section 3: Cluster Lifecycle: Heterogeneous Hardware Bootstrapping and Expensive Graceful Termination</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#chapter-22-racing-against-time-model-distribution-and-cold-start-optimization">Chapter 22: Racing Against Time: Model Distribution and Cold Start Optimization</a><ul>
+<li><a href="parts/part5_k8s/#section-1-separation-of-image-and-weights-choice-of-model-formats">Section 1: Separation of Image and Weights: Choice of Model Formats</a></li>
+<li><a href="parts/part5_k8s/#section-2-mass-data-distribution-packaging-protocols-and-pod-mounting">Section 2: Mass Data Distribution: Packaging Protocols and Pod Mounting</a></li>
+<li><a href="parts/part5_k8s/#section-3-vram-loading-optimization-three-schools-of-data-paths-and-trade-offs">Section 3: VRAM Loading Optimization: Three Schools of Data Paths and Trade-offs</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#chapter-23-tentacles-reaching-into-the-motherboard-dra-and-hardware-topology-aware-scheduling">Chapter 23: Tentacles Reaching into the Motherboard: DRA and Hardware Topology Aware Scheduling</a><ul>
+<li><a href="parts/part5_k8s/#section-1-topology-black-hole-why-scalar-counting-fails-in-distributed-inference">Section 1: Topology Black Hole: Why Scalar Counting Fails in Distributed Inference</a></li>
+<li><a href="parts/part5_k8s/#section-2-evolution-dra-dynamic-resource-allocation-and-resource-management-paradigm-revolution">Section 2: Evolution: DRA (Dynamic Resource Allocation) and Resource Management Paradigm Revolution</a></li>
+<li><a href="parts/part5_k8s/#section-3-single-node-battle-facing-hardware-locality">Section 3: Single-Node Battle: Facing Hardware Locality</a></li>
+<li><a href="parts/part5_k8s/#section-4-beyond-single-node-cluster-level-network-topology-and-multi-machine-synergy">Section 4: Beyond Single Node: Cluster-Level Network Topology and Multi-Machine Synergy</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#chapter-24-breaking-silos-leaderworkerset-and-distributed-llm-orchestration">Chapter 24: Breaking Silos: LeaderWorkerSet and Distributed LLM Orchestration</a><ul>
+<li><a href="parts/part5_k8s/#section-1-limitations-of-traditional-controllers-why-the-microservices-paradigm-fails">Section 1: Limitations of Traditional Controllers: Why the Microservices Paradigm Fails</a></li>
+<li><a href="parts/part5_k8s/#section-2-nccl-the-fragile-lifeline-of-distributed-inference">Section 2: NCCL: The Fragile Lifeline of Distributed Inference</a></li>
+<li><a href="parts/part5_k8s/#section-3-the-birth-of-leaderworkerset-primitives-tailored-for-ai">Section 3: The Birth of LeaderWorkerSet: Primitives Tailored for AI</a></li>
+<li><a href="parts/part5_k8s/#section-4-practical-exercise-deploying-distributed-vllm-with-lws">Section 4: Practical Exercise: Deploying Distributed vLLM with LWS</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#chapter-25-all-or-nothing-gang-scheduling-and-resource-deadlocks">Chapter 25: All-or-Nothing: Gang Scheduling and Resource Deadlocks</a><ul>
+<li><a href="parts/part5_k8s/#section-1-from-loose-to-tight-coupling-limitations-of-native-k8s-scheduling">Section 1: From Loose to Tight Coupling: Limitations of Native K8s Scheduling</a></li>
+<li><a href="parts/part5_k8s/#section-2-return-of-a-classic-strategy-how-gang-scheduling-breaks-deadlocks">Section 2: Return of a Classic Strategy: How Gang Scheduling Breaks Deadlocks</a></li>
+<li><a href="parts/part5_k8s/#section-3-gang-scheduling-implementations-in-kubernetes">Section 3: Gang Scheduling Implementations in Kubernetes</a></li>
+<li><a href="parts/part5_k8s/#section-4-kueue-job-queuing-and-quota-management">Section 4: Kueue: Job Queuing and Quota Management</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#chapter-26-breathing-of-the-pool-pod-and-node-autoscaling-in-llm-inference">Chapter 26: Breathing of the Pool: Pod and Node Autoscaling in LLM Inference</a><ul>
+<li><a href="parts/part5_k8s/#section-1-pod-autoscaling-shifting-from-metrics-to-events">Section 1: Pod Autoscaling: Shifting from Metrics to Events</a></li>
+<li><a href="parts/part5_k8s/#section-2-autoscaling-bottlenecks-latency-and-atomicity">Section 2: Autoscaling Bottlenecks: Latency and Atomicity</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#chapter-27-operations-and-upgrades-continuity-vs-heavy-assets">Chapter 27: Operations and Upgrades: Continuity vs. Heavy Assets</a><ul>
+<li><a href="parts/part5_k8s/#section-1-traditional-k8s-paradigms-misalignment-with-llm-inference">Section 1: Traditional K8s Paradigms: Misalignment with LLM Inference</a></li>
+<li><a href="parts/part5_k8s/#section-2-seamless-upgrades-engineering-practices">Section 2: Seamless Upgrades: Engineering Practices</a></li>
+<li><a href="parts/part5_k8s/#section-3-accelerating-upgrade-cold-start-in-place-update-and-local-state-reuse">Section 3: Accelerating Upgrade Cold Start: In-Place Update and Local State Reuse</a></li>
+</ul>
+</li>
+<li><a href="parts/part5_k8s/#part-5-summary-core-contradictions-and-breakthroughs-in-llm-orchestration">Part 5 Summary: Core Contradictions and Breakthroughs in LLM Orchestration</a></li>
+</ul>
+</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">Share:</span>
+  <a href="https://twitter.com/intent/tweet?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/&text=Preface"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
+
+
+  <h2 id="__comments">Comments & Likes</h2>
+  <script src="https://giscus.app/client.js"
+          data-repo="Random-Liu/llm-inference-principle-to-production"
+          data-repo-id="R_kgDOSGfGjQ"
+          data-category="General"
+          data-category-id="DIC_kwDOSGfGjc4C8I81"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+  </script>
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Random-Liu" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/liu-lantao-96a97351/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

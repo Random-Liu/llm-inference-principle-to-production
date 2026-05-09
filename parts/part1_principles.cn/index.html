@@ -1,0 +1,1908 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://random-liu.github.io/llm-inference-principle-to-production/parts/part1_principles.cn/">
+      
+      
+        <link rel="prev" href="../../index.cn/">
+      
+      
+        <link rel="next" href="../part2_bottlenecks.cn/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>第一部分：原理篇 - LLM 从原理到生产级推理 (LLM Inference from Principles to Production)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#transformer-llm" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-header__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              第一部分：原理篇
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://random-liu.github.io/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  返回主页 (Home)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../index.cn/" class="md-tabs__link">
+          
+  
+  
+  中文版
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-nav__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://random-liu.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    返回主页 (Home)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3: Single-Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5: Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文版
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文版
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#transformer-qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一章：Transformer 架构解析：Q、K、V 的机制
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一章：Transformer 架构解析：Q、K、V 的机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transformer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：鸟瞰图：经典 Transformer 架构的宏观分工
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llm-decoder-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：演进：现代 LLM 的 Decoder-Only 架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：图书馆类比：理解自注意力 Q、K、V 的逻辑含义
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四节：数学原理：自注意力的权重矩阵与动态向量生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ffn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五节：前馈网络（FFN）：模型的知识库
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-head-attention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六节：自注意力的拓展：多头注意力（Multi-Head Attention）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ffn-moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七节：FFN 的拓展：混合专家模型（MoE）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二章：多层堆叠与数据流机制
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二章：多层堆叠与数据流机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：摩天大楼的入口：词嵌入与位置编码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformer_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：多层堆叠的机制：为什么要多层 Transformer？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lm-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：翻译官：LM Head
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logits-softmax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四节：Logits 和 Softmax：将原始分数转换为概率分布
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8b70b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五节：科普小贴士：我们常说的 8B/70B 参数到底是指哪些权重？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六节：数据流：从底层直达顶层的端到端全景
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三章：自回归解码与文本生成机制
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三章：自回归解码与文本生成机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prefill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：Prefill（预填充）：处理输入的具体过程
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：Decode（解码）：自回归循环与文本生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第三部分：单机篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第四部分：分布式篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第五部分：编排篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#transformer-qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一章：Transformer 架构解析：Q、K、V 的机制
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第一章：Transformer 架构解析：Q、K、V 的机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#transformer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：鸟瞰图：经典 Transformer 架构的宏观分工
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#llm-decoder-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：演进：现代 LLM 的 Decoder-Only 架构
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：图书馆类比：理解自注意力 Q、K、V 的逻辑含义
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四节：数学原理：自注意力的权重矩阵与动态向量生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ffn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五节：前馈网络（FFN）：模型的知识库
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-head-attention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六节：自注意力的拓展：多头注意力（Multi-Head Attention）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ffn-moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七节：FFN 的拓展：混合专家模型（MoE）
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二章：多层堆叠与数据流机制
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第二章：多层堆叠与数据流机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：摩天大楼的入口：词嵌入与位置编码
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformer_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：多层堆叠的机制：为什么要多层 Transformer？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lm-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：翻译官：LM Head
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#logits-softmax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四节：Logits 和 Softmax：将原始分数转换为概率分布
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8b70b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五节：科普小贴士：我们常说的 8B/70B 参数到底是指哪些权重？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六节：数据流：从底层直达顶层的端到端全景
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三章：自回归解码与文本生成机制
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第三章：自回归解码与文本生成机制">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prefill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：Prefill（预填充）：处理输入的具体过程
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：Decode（解码）：自回归循环与文本生成
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="transformer-llm">第一部分：原理篇 —— Transformer 与 LLM 的工作底座<a class="headerlink" href="#transformer-llm" title="Permanent link">&para;</a></h1>
+<h2 id="transformer-qkv">第一章：Transformer 架构解析：Q、K、V 的机制<a class="headerlink" href="#transformer-qkv" title="Permanent link">&para;</a></h2>
+<p>在大语言模型（LLM）的世界里，核心的基础架构是 <strong>Transformer</strong> ，而 Transformer 的核心则是 <strong>自注意力机制（Self-Attention）</strong> 。在这一章中，我们将解析 Q、K、V 三个核心向量：<strong>Q（Query）</strong>、<strong>K（Key）</strong> 和 <strong>V（Value）</strong>。它们是模型理解上下文、捕捉词语间复杂关系的核心所在。</p>
+<h3 id="transformer">第一节：鸟瞰图：经典 Transformer 架构的宏观分工<a class="headerlink" href="#transformer" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph BT
+    subgraph Decoder ["Decoder"]
+        direction BT
+        Out[Generated Text] --&gt; Emb2[Embedding]
+        Emb2 --&gt; PE2[Positional Encoding]
+        PE2 --&gt; MSA[Masked Self-Attention]
+        MSA --&gt; CA[Cross-Attention]
+        CA --&gt; FFN2[FFN]
+    end
+    subgraph Encoder ["Encoder"]
+        direction BT
+        In[Input Text] --&gt; Emb1[Embedding]
+        Emb1 --&gt; PE1[Positional Encoding]
+        PE1 --&gt; SA1[Unmasked Self-Attention]
+        SA1 --&gt; FFN1[FFN]
+    end
+    FFN1 --&gt;|Hidden States| CA
+    CA ~~~ FFN1
+    FFN2 --&gt; Head[LM Head]
+    Head --&gt; Prob[Predict Next Token]</code></pre>
+<p>在深入 QKV 的微观世界之前，我们先借助上面这张图，从宏观上理解 Transformer 的工作流程。 <strong>请注意，这张图展示的是经典的 Encoder-Decoder（编码器-解码器）架构，也就是 Transformer 的原版设计。</strong></p>
+<p>我们可以把这个过程类比为<strong>同声传译</strong>：</p>
+<ol>
+<li>
+<p><strong>左侧：Encoder（编码器）——“听懂并记录”</strong> 经过多层处理。</p>
+<ul>
+<li><strong>输入</strong>：比如英文句子 "The cat is black"。</li>
+<li><strong>工作</strong>：数据从底部进入，经过多层处理。</li>
+<li><strong>核心机制</strong> ：每一层都包含“自注意力机制”（Self-Attention）。 <strong>请注意，这里的自注意力是“无掩码”的（Unmasked）</strong> 。这与你可能熟悉的、GPT 等模型中只能看前文的 Masked Self-Attention 不同。在 Encoder 中，句子里所有的词都可以 <strong>互相观察</strong> ，全面地理解彼此的语境。在翻译任务中是完全合理的，因为输入的源句子是 <strong>已知且完整</strong> 的，我们不需要预测它，只需要充分提取其语义，最大化地提取上下文信息。</li>
+<li><strong>输出</strong>：最终顶层输出的不是文字，而是包含了丰富语境信息的<strong>隐藏状态向量</strong>。它代表 Encoder 已经完全“听懂”了这句话。</li>
+</ul>
+</li>
+<li>
+<p><strong>右侧：Decoder（解码器）——“翻译并表达”</strong></p>
+<ul>
+<li><strong>输入</strong> ：它接收两部分信息：一是 Encoder 传过来的“听懂的秘密报告”；二是 <strong>它自己上一时刻已经翻译出来的词</strong> 。</li>
+<li><strong>工作</strong>：<ul>
+<li>底部的 <strong>Masked Self-Attention</strong> ：这是解码器的核心机制。让它在预测下一个词时，只能看前面已经说出来的词，不能访问未来的词。 <strong>为什么？</strong> 因为在推理时，未来的词根本还没生出来；而在训练时，如果允许看未来的词，模型就会利用未来的信息，从而无法学会真正的预测能力。</li>
+<li>中间的 <strong>Multi-Head Cross-Attention（交叉注意力）</strong> ： <strong>这是最关键的一步！</strong> Decoder 用自己当前的意图（Query），去 Encoder 的秘密报告里寻找匹配的线索（Key 和 Value）。</li>
+</ul>
+</li>
+<li><strong>输出</strong>：经过 Softmax，基于前面已翻译出的 "Le chat"，预测出下一个词（比如 "est"）的概率。</li>
+</ul>
+</li>
+</ol>
+<p><strong>总结</strong> ：Encoder 负责“理解输入”（双向观察），Decoder 负责“根据理解生成输出”（单向生成）。</p>
+<h3 id="llm-decoder-only">第二节：演进：现代 LLM 的 Decoder-Only 架构<a class="headerlink" href="#llm-decoder-only" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph BT
+    subgraph DecoderOnly ["Decoder-Only Block"]
+        In[Input Tokens] --&gt; Emb[Embedding]
+        Emb --&gt; PE[Positional Encoding]
+        PE --&gt; MSA[Masked Self-Attention]
+        MSA --&gt; FFN[FFN]
+    end
+    FFN --&gt; Head[LM Head]
+    Head --&gt; Prob[Predict Next Token]</code></pre>
+<p>在经典的 Transformer 之后，大语言模型经历了一次重大的架构演进。如今我们熟知的 GPT、Llama、DeepSeek 等主流大模型，并没有沿用原生的 Encoder-Decoder 双塔架构，而是走向了极简的 <strong>Decoder-Only（仅解码器）</strong> 架构——也就是说，它们去掉了左半边的 Encoder，只保留了右半边的 Decoder。</p>
+<p>看到这里，读者可能会产生一个非常自然的疑问： <strong>既然 Encoder 擅长理解，现代模型为何不再沿用该结构，全都变成了只有 Decoder 的“单塔”架构了呢？</strong></p>
+<p>这涉及到一个重要的范式转变：</p>
+<ol>
+<li><strong>Transformer 最初是为了“翻译”而生的</strong> ：在翻译任务中，“输入”和“输出”是天然割裂的两个语言实体（比如英文和中文）。因此需要 Encoder 先完整听懂英文，Decoder 再翻译成中文。</li>
+<li><strong>现代 LLM 的核心任务是“文本接龙”</strong> ：科学家们发现，世界上所有的自然语言任务（问答、代码生成、推理甚至翻译），都可以统一为 <strong>“给出上一段话，预测下一个词”</strong> 的接龙游戏。</li>
+<li><strong>Decoder 搞定一切</strong> ：既然只是一段连续的文本，我们就不再需要物理上隔离的两个塔了。我们直接把提示词（Prompt）和回答（Response）拼在一起，全部喂给 Decoder。</li>
+</ol>
+<p>从上面的架构图可以看出，Decoder-Only 架构相比经典架构（你可以对比第一节的图，去掉了左边的 Encoder 塔和中间的交叉注意力）进行了极大的简化：</p>
+<ol>
+<li><strong>去掉了 Encoder</strong> ：不再有左侧的独立编码器塔。</li>
+<li><strong>去掉了 Cross-Attention</strong> ：因为没有了 Encoder，自然也就不再需要用于跨塔交互的交叉注意力机制了。</li>
+<li><strong>统一的输入</strong> ：Prompt（提示词）和 Response（回答）被拼接成一个连续的序列，从底部统一输入。</li>
+<li><strong>核心机制</strong> ：整个模型完全由堆叠的 <strong>Masked Self-Attention</strong> 块和 <strong>Feed-Forward Network (FFN)</strong> 块组成。</li>
+</ol>
+<p>在这种架构下，模型是如何工作的呢？</p>
+<ul>
+<li><strong>Prefill（预填充）阶段</strong> ：你输入的 Prompt 会被一次性喂给模型。虽然使用的是 Masked Self-Attention，但因为 Prompt 是已知的，模型可以在内部并行地计算 Prompt 中各个词之间的关系（类似于 Encoder 的工作）。</li>
+<li><strong>Decode（生成）阶段</strong> ：模型开始逐字生成回答。每生成一个新词，就把它加到输入序列的末尾，然后预测下一个词。此时，Masked Self-Attention 确保了生成新词时只能看到前面的 Prompt 和已经生成的词，保证了因果关系。</li>
+</ul>
+<p>这种高度简化的架构设计，不仅让模型在海量数据上的预训练变得更加高效，也为后续章节我们将要讨论的 <strong>KV Cache</strong> 等生产级推理优化技术提供了统一的物理基础。</p>
+<h3 id="qkv">第三节：图书馆类比：理解自注意力 Q、K、V 的逻辑含义<a class="headerlink" href="#qkv" title="Permanent link">&para;</a></h3>
+<p>在深入复杂的数学公式之前，我们先用一个直观的现实场景来理解 Q、K、V 的逻辑意义。</p>
+<p>想象一下，你走进了一家巨大的<strong>科技图书馆</strong>，想要寻找关于“降噪蓝牙耳机”的资料。在这个场景中，Q、K、V 分别扮演着不同的角色：</p>
+<ol>
+<li><strong>Q (Query / 查询)</strong>：代表<strong>你当前的意图</strong>。也就是你在图书馆检索电脑里输入的搜索词：“降噪蓝牙耳机”。这代表你现在“想要寻找具备什么特征”的信息。</li>
+<li><strong>K (Key / 键)</strong>：代表<strong>书中内容的标签或索引</strong>。图书馆里的每本书都有它的书名、作者、摘要和分类标签。比如：<ul>
+<li>书本 A 的 Key 是：“有线游戏耳机评测”。</li>
+<li>书本 B 的 Key 是：“索尼降噪蓝牙耳机拆解与芯片分析”。</li>
+</ul>
+</li>
+<li><strong>V (Value / 值)</strong>：代表<strong>书本实际包含的知识内容</strong>。如果你最终决定阅读书本 B，你真正获取的那些关于降噪芯片、声学原理的详细文字，就是 Value。</li>
+</ol>
+<p><strong>自注意力机制的整体逻辑流</strong>，就是用你的 <strong>Query</strong> 去和图书馆里所有书的 <strong>Key</strong> 进行匹配，计算出一个相关性得分；然后根据这个得分，决定你花多少精力去读每本书的 <strong>Value</strong>。</p>
+<p>映射回大模型中，我们用“苹果”这个词来做个具体的对比：</p>
+<p>假设我们有两句话：</p>
+<ul>
+<li>句子 A：“在今天的<strong>新品发布会</strong>上，<strong>苹果</strong>推出了……”</li>
+<li>句子 B：“我在<strong>超市</strong>买的这一箱<strong>苹果</strong>非常……”</li>
+</ul>
+<p>当模型处理到“苹果”这个词时：</p>
+<ol>
+<li><strong>它会生成自己的 Query (Q)</strong>：代表它的“搜寻意图”。
+    &gt; [!NOTE]
+    &gt; 现实中，这个 Query 是一个复杂的高维连续向量，包含了成百上千个抽象的搜寻维度，这些都是在海量数据训练中“固化”在矩阵里的知识。这里我们用“我是‘苹果’，我需要寻找‘科技’或‘水果’线索”这种拟人化的语言，只是为了方便直观理解。</li>
+<li><strong>它去和前文所有词（即前面已经生成的词或已知的 Prompt）的 Key (K) 进行匹配</strong>：<ul>
+<li>在<strong>句子 A</strong> 中，“苹果”的 <strong>Q</strong> 与前文“<strong>新品发布会</strong>”的 <strong>K</strong> 匹配度极高（因为发布会通常与科技公司强相关）。</li>
+<li>在<strong>句子 B</strong> 中，“苹果”的 <strong>Q</strong> 与前文“<strong>超市</strong>”的 <strong>K</strong> 匹配度极高（因为超市与食品、水果强相关）。</li>
+</ul>
+</li>
+<li><strong>根据权重提取 Value (V)</strong>：<ul>
+<li>在<strong>句子 A</strong> 中，因为与“新品发布会”高度匹配，模型会给“新品发布会”的 <strong>V</strong> 分配大权重，最终融合成的“苹果”向量会偏向 <strong>“苹果公司”</strong> 的语义。</li>
+<li>在<strong>句子 B</strong> 中，因为与“超市”高度匹配，模型会给“超市”的 <strong>V</strong> 分配大权重，最终融合成的“苹果”向量会偏向 <strong>“水果”</strong> 的语义。</li>
+</ul>
+</li>
+</ol>
+<p>通过这种动态匹配，同一个词在不同的语境下，就能被赋予完全不同的、精准的含义。</p>
+<hr />
+<h3 id="_1">第四节：数学原理：自注意力的权重矩阵与动态向量生成<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h3>
+<p>理解了逻辑意义后，我们来看大模型在底层是如何通过矩阵乘法动态计算出 Q、K、V 的。</p>
+<h4 id="0-embedding">0. 什么是词向量（Embedding）？<a class="headerlink" href="#0-embedding" title="Permanent link">&para;</a></h4>
+<p>在开始计算之前，我们需要先把文字转换为数值表示。假设输入是“苹果”这个词，模型首先会查阅一本字典（Embedding 表），把“苹果”转换成一串连续的数字，比如一个 4096 维的向量 <span class="arithmatex">\(X\)</span> 。这串数字就代表了“苹果”在多维语义空间中的初始坐标（请注意，这个字典里的数值也是通过海量数据训练得到的，而不是人为指定的）。</p>
+<h4 id="1-q-k-v">1. 线性映射（从词向量到 Q, K, V）<a class="headerlink" href="#1-q-k-v" title="Permanent link">&para;</a></h4>
+<p>假设我们有了输入的词向量 <span class="arithmatex">\(X\)</span> 。在 Transformer 模型中，存在三个核心的、通过海量数据训练得到的<strong>权重矩阵</strong>： <span class="arithmatex">\(W_Q\)</span> 、 <span class="arithmatex">\(W_K\)</span> 和 <span class="arithmatex">\(W_V\)</span> 。</p>
+<p>输入词向量分别乘以这三个矩阵，就动态地生成了该词对应的 Q、K、V 向量：</p>
+<div class="arithmatex">\[
+\begin{aligned}
+Q &amp;= X W_Q \\
+K &amp;= X W_K \\
+V &amp;= X W_V
+\end{aligned}
+\]</div>
+<blockquote>
+<p>[!NOTE]
+<strong>静态权重 vs 动态数据</strong>
+这是一个重要的概念边界： <span class="arithmatex">\(W_Q, W_K, W_V\)</span> 是<strong>静态的模型权重</strong>，它们在训练完成后就固定在显存里了，对所有 Token 都是共享的“加工规则”。而 Q、K、V 则是<strong>动态生成的数据</strong>，它们是每次你输入不同的句子时，由输入向量 <span class="arithmatex">\(X\)</span> 实时乘以权重矩阵临时计算出来的。这也是为什么同一个词在不同语境下能生成不同语义的根源。</p>
+</blockquote>
+<h4 id="2">2. 计算相似度与注意力权重<a class="headerlink" href="#2" title="Permanent link">&para;</a></h4>
+<p>为了知道当前词（Query）应该对前文所有词（Keys）投入多少注意力，模型会计算当前词的 Q 和前文词的 K 的<strong>点积（Dot Product）</strong>。点积的结果越大，说明两个向量在语义空间中越相似。</p>
+<div class="arithmatex">\[\text{Score} = Q \cdot K^T\]</div>
+<p>为了防止点积结果过大导致梯度消失，模型会除以一个缩放因子 <span class="arithmatex">\(\sqrt{d_k}\)</span> （<span class="arithmatex">\(d_k\)</span> 是向量的维度）。随后，通过 <strong>Softmax</strong> 函数将这些得分转化为概率分布，使所有权重相加等于 1：</p>
+<div class="arithmatex">\[\text{Attention Weights} = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)\]</div>
+<h4 id="3">3. 提取信息（加权求和）<a class="headerlink" href="#3" title="Permanent link">&para;</a></h4>
+<p>最后一步，模型用计算出来的注意力权重，对所有词的 <strong>Value</strong> 进行加权求和。这就完成了上下文信息的抓取：</p>
+<div class="arithmatex">\[\text{Output} = \sum (\text{Attention Weights} \times V)\]</div>
+<blockquote>
+<p>[!NOTE]
+这里的关键在于<strong>动态生成</strong>。同一个词（比如“苹果”），在不同的句子中，其初始词向量 <span class="arithmatex">\(X\)</span> 经过查表是相同的，但通过与不同的上下文词进行注意力计算，最终融合出来的输出向量（Output）会截然不同。这就是自注意力机制实现上下文动态理解的核心机制。</p>
+</blockquote>
+<hr />
+<h3 id="ffn">第五节：前馈网络（FFN）：模型的知识库<a class="headerlink" href="#ffn" title="Permanent link">&para;</a></h3>
+<p>在自注意力机制完成了词与词之间的信息交换后，向量会进入 <strong>Feed-Forward Network (FFN，前馈网络)</strong>。如果说注意力机制负责“找词语之间的关系”，那么 FFN 就负责每个词的“闭门思考”。</p>
+<h4 id="1-ffn">1. FFN 的经典工作流程<a class="headerlink" href="#1-ffn" title="Permanent link">&para;</a></h4>
+<p>许多读者可能会误以为进入 FFN 的是 Attention 的直接输出 Q、K 或 V。实际上，进入 FFN 的输入向量 <span class="arithmatex">\(H\)</span> ，并不是单纯的 Attention 输出，而是 <strong>Attention 的输出</strong>与<strong>进入 Attention 之前的输入向量 <span class="arithmatex">\(X\)</span></strong> 进行 <strong>残差相加（Residual Connection）</strong> 之后的结果。</p>
+<p>这个 <span class="arithmatex">\(H\)</span> 向量包含了“我是谁”（原始词意）和“我经历了什么”（全局语境）的混合信息。FFN 的处理流程通常包含以下三步：</p>
+<ol>
+<li>
+<p><strong>第一步：升维映射（Up-Projection）</strong>
+    输入的向量 <span class="arithmatex">\(H\)</span> 首先乘以一个权重矩阵 <span class="arithmatex">\(W_1\)</span> 。在很多大模型中，这一步会把向量的维度从比如 4096 维扩展到 16384 维。这就像是把信息展开，提供一个更大的空间来进行复杂的特征提取。</p>
+</li>
+<li>
+<p><strong>第二步：非线性激活（Activation）</strong>
+    升维后的向量会经过一个非线性激活函数 <span class="arithmatex">\(\sigma\)</span> （如 ReLU、GeLU 或现代模型常用的 SwiGLU）。这一步引入了非线性能力，并且起到了“过滤”和“选择”信息的作用。</p>
+</li>
+<li>
+<p><strong>第三步：降维映射（Down-Projection）</strong>
+    最后，被激活的向量乘以另一个权重矩阵 <span class="arithmatex">\(W_2\)</span> ，把维度重新从 16384 维压缩回原始的 4096 维，以便与输入进行残差相加。</p>
+</li>
+</ol>
+<h4 id="2-attention-ffn-kv">2. 与 Attention 的精妙对比：FFN 是隐藏的“软 KV 记忆库”<a class="headerlink" href="#2-attention-ffn-kv" title="Permanent link">&para;</a></h4>
+<p>在习惯了 Attention 中 Q、K、V 的框架后，看到 FFN 仅有 <span class="arithmatex">\(W_1\)</span> 和 <span class="arithmatex">\(W_2\)</span> 两个矩阵，可能会产生缺少某些组件的直觉。学术界在 2020 年的一篇著名论文中揭示了其背后的数学对称性：<strong>FFN 在本质上，也是一个 Key-Value 记忆检索系统！</strong></p>
+<p>我们把 Attention 和 FFN 的核心公式放在一起进行对比：</p>
+<ul>
+<li><strong>Attention 的核心公式</strong>： <span class="arithmatex">\(\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V\)</span></li>
+<li><strong>FFN 的核心公式</strong>： <span class="arithmatex">\(\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2\)</span></li>
+</ul>
+<p>在这个视角下，FFN 的计算过程可以对应到 Q、K、V 的逻辑中：</p>
+<ol>
+<li>
+<p><strong>输入向量 <span class="arithmatex">\(H\)</span> 就是那个 Q（Query）！</strong>
+    它站在 FFN 面前，本身就是一个“提问”：“我现在的状态是这样的（包含了上下文），知识库里有什么关于我的补充信息吗？”</p>
+</li>
+<li>
+<p><strong>升维矩阵 <span class="arithmatex">\(W_1\)</span> 扮演 K (Keys)</strong>
+    我们将 <span class="arithmatex">\(W_1\)</span> 按列切分，看作是 16384 个列向量。这里的每一个列向量，代表着大模型学到的一个特定的“模式”或“前置条件”（比如“词意是水果，且处于‘超市’或‘食物’的语境中”）。计算 <span class="arithmatex">\(H \cdot W_1\)</span> ，就是在计算提问 <span class="arithmatex">\(H\)</span> (Query) 和知识库里所有钥匙 <span class="arithmatex">\(W_1\)</span> (Keys) 的点积相似度。</p>
+</li>
+<li>
+<p><strong>降维矩阵 <span class="arithmatex">\(W_2\)</span> 扮演 V (Values)</strong>
+    我们将 <span class="arithmatex">\(W_2\)</span> 按行切分，看作是 16384 个行向量。这里的每一个行向量，代表着与对应模式绑定的“具象知识”（比如“清脆、多汁”的特征向量）。</p>
+</li>
+</ol>
+<p>当向量 <span class="arithmatex">\(H\)</span> 走进来时，FFN 通过以下三步完成知识检索（我们继续沿用上一节“苹果”的例子）：</p>
+<p>如果我们处理的是<strong>句子 B</strong>（“我在<strong>超市</strong>买的这一箱<strong>苹果</strong>非常……”）：</p>
+<ol>
+<li><strong>模式匹配</strong>：输入向量 <span class="arithmatex">\(H\)</span> （此时已经通过 Attention 融合成为了“水果苹果”）与 <span class="arithmatex">\(W_1\)</span> 的所有列向量做内积。它会与 <span class="arithmatex">\(W_1\)</span> 中代表“水果、食物”的模式向量产生极高的匹配分。</li>
+<li><strong>激活过滤</strong>：激活函数 <span class="arithmatex">\(\sigma\)</span> 介入，把与“科技公司”、“电子产品”等无关模式的得分归零，只保留“水果”模式的激活。</li>
+<li><strong>知识提取</strong>：用这些激活系数去和 <span class="arithmatex">\(W_2\)</span> 中的 Values 做加权求和，提取出“清脆、多汁”等关于水果的具象知识，融合成最终的输出。</li>
+</ol>
+<p>反之，如果我们处理的是<strong>句子 A</strong>（“在今天的新品发布会上，苹果推出了……”）：</p>
+<ol>
+<li><strong>模式匹配</strong>：输入向量 <span class="arithmatex">\(H\)</span> （此时是“科技公司苹果”）会与 <span class="arithmatex">\(W_1\)</span> 中代表“科技、数码、公司”的模式向量产生高分。</li>
+<li><strong>激活过滤</strong>：激活函数过滤掉“水果”模式。</li>
+<li><strong>知识提取</strong>：从 <span class="arithmatex">\(W_2\)</span> 中提取出“iPhone、高科技”等关于公司的具象知识。</li>
+</ol>
+<h4 id="3-token">3. 融合与 Token 的完整一生<a class="headerlink" href="#3-token" title="Permanent link">&para;</a></h4>
+<p>FFN 查出的知识，不会直接替换掉原本的向量，而是通过 <strong>残差连接（相加）</strong> 融合在一起：
+$<span class="arithmatex">\(x_{new} = H + FFN(H)\)</span>$</p>
+<p>这就像 Token 随身带的 <strong>“记事本”</strong> ：</p>
+<ul>
+<li><span class="arithmatex">\(H\)</span> （记事本上写着）：我是一个“苹果”，我处于“吃”的语境中。</li>
+<li><span class="arithmatex">\(FFN(H)\)</span> （知识库补充）：属性是“清脆、多汁”。</li>
+<li><strong>相加</strong>：把补充资料钉在记事本下一页。Token 既懂了语境，又懂了知识。</li>
+</ul>
+<p><strong>总结：一个 Token 在一层 Transformer 里的旅程，就是</strong>先去 Attention 开会（懂语境）<strong>，</strong>再去 FFN 查图书馆（懂知识）**，最后带着更新后的状态传递到下一层。</p>
+<hr />
+<h3 id="multi-head-attention">第六节：自注意力的拓展：多头注意力（Multi-Head Attention）<a class="headerlink" href="#multi-head-attention" title="Permanent link">&para;</a></h3>
+<p>在前面的讨论中，我们为了简化，假设模型只有一套 <span class="arithmatex">\(W_Q, W_K, W_V\)</span> 。当模型只有一个“头”时，它需要把所有的语义关系都融合在一个向量中，这限制了其捕捉多种语义关系的能力。</p>
+<p>但在实际的工业级大模型中，每一层中都包含几十套这样的矩阵（比如 32 个或 64 个）。这就叫做<strong>多头注意力（Multi-Head Attention）</strong>。</p>
+<p><strong>为什么模型需要多个“头”？</strong>
+因为人类的语言太复杂了，一个词在句子里可能同时扮演着多种角色，具有多重语义。</p>
+<ul>
+<li><strong>头 1（语法头）</strong>：可能专门负责寻找主谓宾关系，看哪个词是动词的发出者。</li>
+<li><strong>头 2（情感头）</strong>：可能专门负责捕捉带有情绪色彩的形容词。</li>
+<li><strong>头 3（指代头）</strong>：可能专门负责寻找“他”、“它”这些代词到底指代前文的哪个名词。</li>
+</ul>
+<p>通过多头机制，模型可以并行地从几十个不同的“语义视角”去观察这个句子，极大地增强了模型的表达能力。在理解了单头注意力的数学原理后，你可以简单地把多头注意力理解为： <strong>多个单头注意力并行计算，最后把它们的输出拼接（Concatenate）在一起。</strong></p>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>关键的第四个矩阵： <span class="arithmatex">\(W_O\)</span></strong>
+多头注意力不仅是把 <span class="arithmatex">\(W_Q\)</span> 、 <span class="arithmatex">\(W_K\)</span> 、 <span class="arithmatex">\(W_V\)</span> 复制了多份。为了把各个头拼接后的“碎片化”信息重新整合、压缩回模型原本的维度，模型必须引入第四个矩阵——<strong>输出投影矩阵 <span class="arithmatex">\(W_O\)</span></strong> 。它负责打破头与头之间的壁垒，进行深度的信息融合。</p>
+</blockquote>
+<p>为了更清晰地说明，我们以 <strong>Llama 3 405B</strong> 的真实参数规模为例，拆解一下标准 MHA 的完整计算过程（物理实现层面）：</p>
+<ol>
+<li><strong>输入准备</strong>：输入的句子矩阵形状为 <code>[N, 16384]</code>（ <span class="arithmatex">\(N\)</span> 个词，每个词长达 16384 维）。</li>
+<li><strong>投影得到 Q、K、V</strong>：使用三个大小为 <code>[16384, 16384]</code> 的大矩阵 <span class="arithmatex">\(W_Q, W_K, W_V\)</span> ，计算得到 <span class="arithmatex">\(Q, K, V\)</span> 矩阵，形状均为 <code>[N, 16384]</code>。</li>
+<li><strong>切分成多头</strong>：在逻辑上把 16384 维切分成 <span class="arithmatex">\(H = 128\)</span> 个头，每个头维度 <span class="arithmatex">\(d_k = 128\)</span> 。形状变为 <code>[N, 128, 128]</code>。</li>
+<li><strong>计算注意力分数</strong>：在 128 个头内部各自独立计算，每个头的 <span class="arithmatex">\(Q\)</span> （形状 <code>[N, 128]</code>）与 <span class="arithmatex">\(K\)</span> 的转置（形状 <code>[128, N]</code>）相乘，得到注意力分数矩阵 <code>[N, N]</code>。</li>
+<li><strong>结合 Value 矩阵</strong>：用分数矩阵乘以当前头的 <span class="arithmatex">\(V\)</span> （形状 <code>[N, 128]</code>），得到每个头的输出，形状为 <code>[N, 128]</code>。</li>
+<li><strong>拼接多头</strong>：将 128 个头的输出拼接回去，恢复成 <code>[N, 16384]</code>。</li>
+<li><strong>输出投影（ <span class="arithmatex">\(W_O\)</span> 登场）</strong>：使用大小为 <code>[16384, 16384]</code> 的输出矩阵 <span class="arithmatex">\(W_O\)</span> 对拼接结果进行融合，得到最终输出 <code>[N, 16384]</code>。</li>
+</ol>
+<p>通过这最后一步的 <span class="arithmatex">\(W_O\)</span> 矩阵乘法，模型将 128 个头的信息进行了深度融合，打破了头与头之间的壁垒。</p>
+<hr />
+<h3 id="ffn-moe">第七节：FFN 的拓展：混合专家模型（MoE）<a class="headerlink" href="#ffn-moe" title="Permanent link">&para;</a></h3>
+<p>在理解了 FFN 是模型的“知识库”之后，我们很容易理解备受关注的 <strong>MoE（Mixture of Experts，混合专家模型）</strong> 架构。MoE 本质上就是 <strong>FFN 的多副本升级版</strong>。</p>
+<h4 id="1">1. 稠密模型的痛点<a class="headerlink" href="#1" title="Permanent link">&para;</a></h4>
+<p>在传统的 <strong>稠密（Dense）</strong> 模型中，每一层只有一个 FFN。所有的 Token，无论是聊“量子力学”还是聊“红烧肉怎么做”，都必须穿过同一个 FFN。随着模型想要记住的知识越来越多，FFN 的体积就必须变得极大。这导致计算量（FLOPs）急剧增加，推理成本高昂。</p>
+<h4 id="2-moe">2. MoE 的解法：分工与稀疏路由<a class="headerlink" href="#2-moe" title="Permanent link">&para;</a></h4>
+<p>MoE 引入了“分工”的思想。它把原本那一个巨大的 FFN，拆分成了多个（比如 8 个或 16 个）较小的 FFN，每一个被称为一个 <strong>“专家”（Expert）</strong> 。</p>
+<p>MoE 的工作流程包含两个核心组件：</p>
+<ul>
+<li><strong>门控网络（Router / 路由器）</strong>：当一个 Token 走进来时，Router 会根据它的语境（Query），计算它与各个专家的匹配度。</li>
+<li><strong>专家网络（Experts）</strong>：每个专家在底层依然是一个标准的 FFN。在训练过程中，不同的专家会自动学会专注于不同的知识领域（比如专家 1 擅长代码，专家 2 擅长文学）。</li>
+</ul>
+<h4 id="3_1">3. 稀疏激活：用小模型的成本，享大模型的性能<a class="headerlink" href="#3_1" title="Permanent link">&para;</a></h4>
+<p>当 Token 进来时：</p>
+<ol>
+<li><strong>Router 算分</strong>：发现这个 Token 在聊“量子力学”。</li>
+<li><strong>稀疏激活（Sparse Activation）</strong>：Router 只会激活与物理最相关的 Top-K 个专家（比如只激活专家 3 和专家 5），而让其他专家“休息”。</li>
+<li><strong>知识提取与融合</strong>：只让激活的专家处理这个 Token，最后把它们的结果按权重融合。</li>
+</ol>
+<p><strong>总结 ：MoE 实现了 </strong>“总参数量巨大，但每次激活的参数量很小”** 的有效平衡。这也正是 DeepSeek 等模型能以极低成本提供顶尖能力的关键所在。</p>
+<p>不过需要注意的是，MoE 减少的只是 <strong>计算成本</strong> （因为每次只激活少数专家）。在 <strong>显存成本</strong> （VRAM）方面，它并没有带来节省——为了随时准备处理各种领域的 Token，所有的专家权重都必须常驻在显存中。这意味着要把如此庞大的参数量全部加载进显存，对硬件的显存容量要求依然极其严苛。关于这部分的显存成本与优化，我们将在本书的后续推理（Inference）篇章中再深入讨论。</p>
+<hr />
+<h2 id="_2">第二章：多层堆叠与数据流机制<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h2>
+<p>在第一章中，我们拆解了 Transformer 最核心的“零件”——自注意力机制与 FFN。但仅有这些零件还不足以构成一个具备推理能力的大模型。在这一章中，我们将从更宏观的角度，看看这些零件是如何被组装成一座庞大的大模型“摩天大楼”的，以及数据是如何在其中穿梭的。</p>
+<p><strong>完整模型架构图</strong></p>
+<p>为了让你对接下来要讨论的“大楼”有一个全局的认识，我们先来看一张完整的 Decoder-Only 模型架构图。它展示了一个 Token 从进入大楼到最终输出预测的完整旅程：</p>
+<pre class="mermaid"><code>graph LR
+    subgraph Input_Stage ["Input Stage"]
+        In[Input Token IDs] --&gt; Emb[Embedding]
+    end
+    subgraph Hidden_Layers ["Transformer Layers"]
+        Emb --&gt; Layer1[Layer 1]
+        Layer1 --&gt; Layer2[Layer 2]
+        Layer2 --&gt; Dots["..."]
+        Dots --&gt; LayerN[Layer N]
+
+        subgraph Detail ["Per-Layer Structure"]
+            SA["Masked Self-Attention (RoPE applied here)"] --&gt; Add1[Residual Add]
+            Add1 --&gt; FFN[Feed-Forward Network]
+            FFN --&gt; Add2[Residual Add]
+        end
+    end
+    subgraph Output_Stage ["Output Stage"]
+        LayerN --&gt; Norm[RMSNorm / LayerNorm]
+        Norm --&gt; LMHead[LM Head]
+        LMHead --&gt; Logits[Logits]
+        Logits --&gt; Softmax[Softmax]
+        Softmax --&gt; Prob[Token Probabilities]
+    end</code></pre>
+<h3 id="_3">第一节：摩天大楼的入口：词嵌入与位置编码<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>在数据进入多层 Transformer 之前，必须先经过“门厅”的处理，将其转化为模型能理解的格式并注入关键信息。</p>
+<ol>
+<li><strong>词嵌入（Embedding）</strong>：正如我们在第一章第四节提到的，输入的文字（Token）首先会通过查表转化为一个高维向量（例如 4096 维）。这代表了词语的初始语义坐标。</li>
+<li>
+<p><strong>位置编码（Positional Encoding）</strong>：
+    自注意力机制有一个天然的物理缺陷：<strong>它无法感知序列的先后顺序</strong>。在 Attention 的公式里，词语与词语之间只是在算向量的相似度，并没有包含它们在句子里的先后顺序信息。如果不做任何处理，“我吃苹果”和“苹果吃我”在 Attention 看来是完全一样的。</p>
+<p>因此，在大楼的入口处，我们必须人为地给向量注入<strong>位置感</strong>。</p>
+<ul>
+<li><strong>旋转位置编码（RoPE）</strong> ：当今最顶尖的开源大模型（如 Llama 系列、Qwen 等）普遍采用 RoPE。它的核心思想是利用复数旋转的数学矩阵，直接把 Q 向量和 K 向量在多维空间中 <strong>“扭转”</strong> 一个角度。</li>
+<li>如果两个词挨得很近，它们的 Q 和 K 被扭转的角度差就很小，点积结果就大；反之则小。这有效地将相对位置信息编码进了注意力计算中。</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h3 id="transformer_1">第二节：多层堆叠的机制：为什么要多层 Transformer？<a class="headerlink" href="#transformer_1" title="Permanent link">&para;</a></h3>
+<p>有了带位置信息的词向量后，它就开始了在 Transformer 大楼里的攀爬之旅。现在的 LLM 通常由几十层甚至上百层高度标准化的 <strong>Transformer 块（Blocks）</strong> 堆叠而成（例如 Llama-3 70B 有 80 层）。</p>
+<p><strong>为什么要搞这么多层？</strong></p>
+<p>这涉及到一个重要的概念：<strong>层次化特征提取（Hierarchical Feature Extraction）</strong>。</p>
+<ol>
+<li><strong>单层能力的极限</strong>：只用一层自注意力，模型只能识别非常表面的、局部的词语关联（比如把“苹果”和“超市”连在一起）。它无法进行深度的逻辑推理或复杂语义的抽象。</li>
+<li><strong>多层能力的涌现</strong>：<ul>
+<li><strong>低层（底层的几层）</strong>：主要负责“提取语法和局部关系”。比如识别哪些词是主语，哪些词是修饰语。</li>
+<li><strong>中层（中间的几十层）</strong>：开始理解“实体关系与常识知识”。FFN 在这里大量检索其“软记忆库”，把各种背景知识补充进向量里。</li>
+<li><strong>高层（顶层的几层）</strong>：负责“抽象概念与逻辑推理”。在这个阶段，模型已经不再处理具体的词汇，而是把整个句子的语义提炼成一个抽象的意图，准备好回答问题。</li>
+</ul>
+</li>
+</ol>
+<p>这种层层递进、从具象到抽象的处理方式，正是大模型具备“智能”的关键所在。</p>
+<p>这里还隐藏着一个关于“信息如何流动”的精妙设计。很多初学者会误以为，词语是像排队一样一个接一个穿过模型的。但实际上，在处理提示词（Prompt）时，所有的词是<strong>齐头并进、一层一层往上爬的</strong>。</p>
+<p>当所有的词一起进入第 1 层时，第 4 个词去匹配第 3 个词，拿到的并不是第 3 个词“刚刚与 1、2 融合完”的最新状态，而是第 3 个词刚进入第 1 层时的独立状态。因为大家是并行计算的，互不等待。</p>
+<p>那么第 3 个词在第 1 层融合了 1 和 2 的信息，结果有什么用呢？答案是：<strong>带到第 2 层去</strong>。第 3 个词带着融合后的结果上了第 2 层，当第 4 个词也在第 2 层开会时，它读取第 3 个词的 Key 和 Value，就间接地读到了 1 和 2 的信息。</p>
+<p>信息不是在同一层内“横向流动”，而是跨层“斜向上流动”。这种设计不仅让 GPU 能够高效地并行计算所有词，还通过层数的堆叠，实现了极其复杂的深度语义融合。</p>
+<pre class="mermaid"><code>graph LR
+    subgraph Layer1 ["Layer 1 (第一层)"]
+        direction TB
+        L1_T1["Token 1"]
+        L1_T2["Token 2"]
+        L1_T3["Token 3"]
+
+        L1_T1 --&gt;|Attention| L1_T2
+        L1_T1 --&gt;|Attention| L1_T3
+        L1_T2 --&gt;|Attention| L1_T3
+    end
+
+    subgraph Layer2 ["Layer 2 (第二层)"]
+        direction TB
+        L2_T1["Token 1'"]
+        L2_T2["Token 2'"]
+        L2_T3["Token 3'"]
+
+        L2_T1 --&gt;|Attention| L2_T2
+        L2_T1 --&gt;|Attention| L2_T3
+        L2_T2 --&gt;|Attention| L2_T3
+    end
+
+    L1_T1 --&gt;|层间传递| L2_T1
+    L1_T2 --&gt;|层间传递| L2_T2
+    L1_T3 --&gt;|层间传递| L2_T3</code></pre>
+<hr />
+<h3 id="lm-head">第三节：翻译官：LM Head<a class="headerlink" href="#lm-head" title="Permanent link">&para;</a></h3>
+<p>当我们的输入数据穿过 Transformer 大楼的顶层时，每一个 Token 都会输出一个最终的隐藏状态向量（ <span class="arithmatex">\(h_{last}\)</span> ）。这个向量已经融合了所有层提取的特征信息，包含了复杂的语义。</p>
+<p>但是，人类看不懂向量，人类只能看懂词汇。</p>
+<p>于是，模型在最顶层设置了一个特殊的“翻译官”——<strong>LM Head（Language Model Head）</strong>。LM Head 本质上是一个巨大的线性映射矩阵，它的形状是 <code>[向量维度, 词表大小]</code>（词表大小通常在 50,000 到 150,000 之间）。</p>
+<p>模型用 <span class="arithmatex">\(h_{last}\)</span> 去乘以这个 LM Head 矩阵，把高维的向量重新投影回这个巨大的词表空间中。计算出来的结果，就是词表中每一个词的<strong>原始得分（Logits）</strong>。</p>
+<blockquote>
+<p>[!NOTE]
+<strong>为什么中间层没有“翻译官（LM Head）”？</strong>
+这是一个常见的直觉疑问：既然每一层都输出了向量，为什么不顺便预测一下词呢？
+因为在数据穿过中间的几十层时，它们始终以“高维稠密向量”的形式流动（可以理解为模型的“潜意识”）。如果我们在中间层就强行把它映射回具体的词，就会破坏这种高维的、复杂的抽象逻辑，造成严重的信息损失。只有让信息在内部充分“思考”（流动）到顶层，最后一次性输出，才能得到最准确的结果。</p>
+<p>[!NOTE]
+<strong>工程彩蛋：权重绑定（Weight Tying）</strong>
+在很多经典模型（如 GPT-2、Llama 2 等）的设计中，为了节省宝贵的显存，第一步的“词嵌入矩阵（Embedding Matrix）”和最后一步的“LM Head 矩阵”其实是<strong>共享同一个物理矩阵</strong>的。也就是用同一套向量既当大楼的“入口”，又当大楼的“出口”。不过在一些最新的超大模型中，为了追求更高的表达能力，这两者也会选择解耦，使用独立的参数。</p>
+</blockquote>
+<hr />
+<h3 id="logits-softmax">第四节：Logits 和 Softmax：将原始分数转换为概率分布<a class="headerlink" href="#logits-softmax" title="Permanent link">&para;</a></h3>
+<p>LM Head 输出的 Logits 是一系列未归一化的实数（比如“苹果”得分 12.5，“手机”得分 8.2，“跑”得分 -3.1）。</p>
+<p>为了决定最终输出哪个词，系统必须把这些原始分数转化为人类和程序更容易理解的<strong>概率分布</strong>。这里再次用到了我们在第一章见过的 <strong>Softmax</strong> 函数。</p>
+<p>Softmax 会把这几万个词的 Logits 进行指数化和归一化，确保：</p>
+<ol>
+<li>所有的概率都在 0 到 1 之间。</li>
+<li>所有词的概率相加严格等于 1。</li>
+</ol>
+<p>经过 Softmax 之后，我们得到了一个概率分布，比如：<code>{"苹果": 0.7, "手机": 0.2, "跑": 0.001 ...}</code>。</p>
+<hr />
+<h3 id="8b70b">第五节：科普小贴士：我们常说的 8B/70B 参数到底是指哪些权重？<a class="headerlink" href="#8b70b" title="Permanent link">&para;</a></h3>
+<p>在学完了大模型的各个构件（Embedding、Attention、FFN、LM Head）之后，我们终于可以解答大模型中一个核心的概念问题： <strong>当我们说一个模型是 8B（80亿）或 70B（700亿）参数时，这些参数到底是指哪些权重？它们是由哪些部分构成的？</strong></p>
+<p>简单来说，<strong>参数（Parameters）就是模型中所有可学习的权重矩阵里的数字总和</strong>。它们是模型在海量数据训练中“固化”下来的参数值。</p>
+<p>为了让你有最直观的感受，我们以目前最顶级的开源大模型 <strong>Llama 3 (405B)</strong> 为例，来拆解一下它的 4050 亿参数到底是由哪些部分的权重构成的。</p>
+<p><strong>Llama 3 (405B) 的核心配置</strong>：</p>
+<ul>
+<li>词表大小（Vocab Size）： <span class="arithmatex">\(128,256\)</span></li>
+<li>隐藏层维度（ <span class="arithmatex">\(d\)</span> ）： <span class="arithmatex">\(16384\)</span></li>
+<li>层数（ <span class="arithmatex">\(L\)</span> ）： <span class="arithmatex">\(126\)</span></li>
+<li>FFN 中间维度： <span class="arithmatex">\(53248\)</span></li>
+<li>采用 GQA（分组查询注意力），Query 头数 128，KV 头数 8。</li>
+</ul>
+<p>我们来算算每一部分的账：</p>
+<ol>
+<li><strong>词嵌入层（Embedding）</strong>：<ul>
+<li><strong>公式</strong>：<code>词表大小 * 隐藏层维度</code></li>
+<li><strong>计算</strong>： <span class="arithmatex">\(128,256 \times 16384 \approx 21.0\)</span> 亿参数。</li>
+<li><strong>通俗地理解</strong>：字典里有 12.8 万个词，每个词用一个 16384 维的向量表示。</li>
+</ul>
+</li>
+<li><strong>Transformer 层（需要乘以总层数 126）</strong>：<ul>
+<li>每一层包含：<ul>
+<li><strong>注意力机制</strong>： <span class="arithmatex">\(W_Q, W_K, W_V, W_O\)</span> 四个矩阵。加起来每层大约有 <span class="arithmatex">\(5.7\)</span> 亿参数。</li>
+<li><strong>前馈网络（FFN）</strong>：包含 Gate、Up、Down 三个巨大的矩阵（尺寸为 <span class="arithmatex">\(16384 \times 53248\)</span> ）。加起来每层高达 <span class="arithmatex">\(26.17\)</span> 亿参数。</li>
+</ul>
+</li>
+<li><strong>单层合计</strong>：约 <span class="arithmatex">\(31.87\)</span> 亿参数。</li>
+<li><strong>126 层总计</strong>： <span class="arithmatex">\(126 \times 31.87 \approx 401.6\)</span> 亿参数。</li>
+<li><strong>划重点</strong>：你可以看到，<strong>FFN 占据了 Transformer 层中绝大多数的参数量（约 82%）！</strong> 模型学到的绝大多数“硬知识”都存在 FFN 的矩阵里。</li>
+</ul>
+</li>
+<li><strong>输出层（LM Head）</strong>：<ul>
+<li><strong>公式</strong>：<code>隐藏层维度 * 词表大小</code></li>
+<li><strong>计算</strong>： <span class="arithmatex">\(16384 \times 128,256 \approx 21.0\)</span> 亿参数。</li>
+<li>负责把高维向量翻译回自然语言词汇的原始得分。</li>
+</ul>
+</li>
+</ol>
+<p><strong>总账单</strong>：
+<span class="arithmatex">\(2.1 \text{ 亿 (Embedding)} + 401.6 \text{ 亿 (126层)} + 2.1 \text{ 亿 (LM Head)} \approx 405.8 \text{ 亿参数！}\)</span></p>
+<p><strong>总结</strong>：
+所以，当你下载一个 405B 的模型时，你实际上是在下载一个包含约 4050 亿个浮点数（如果用 FP16 格式，大约占用 810GB 显存）的巨大文件。这些数字存储在上面提到的那些矩阵中。当你输入 Prompt 时，数据就是与这 4050 亿个数字进行大量的矩阵乘法计算，最终生成输出。</p>
+<hr />
+<h3 id="_4">第六节：数据流：从底层直达顶层的端到端全景<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>现在我们把整座大楼的各个部件串联起来，看看一个 Token 从进入大楼到最终输出的完整“登顶之旅”（End-to-End）：</p>
+<ol>
+<li><strong>输入阶段</strong>：Prompt 里的所有 Token 同时通过查表转化为词向量，作为初始输入 <span class="arithmatex">\(X_0\)</span> 。
+    &gt; [!NOTE]
+    &gt; 如果模型使用的是经典的绝对位置编码（如 BERT），位置信息会在这里与词向量相加。如果使用的是现代的 RoPE，则初始输入不包含位置信息。</li>
+<li><strong>逐层穿梭阶段</strong>：<ul>
+<li><span class="arithmatex">\(X_0\)</span> 进入第 1 层 Block 的 Attention 部门。如果使用 RoPE，此时会在这里动态注入位置旋转。</li>
+<li>词与词交换信息后，通过<strong>残差连接</strong>与原向量相加，防止特征丢失。</li>
+<li>进入第 1 层 Block 的 FFN 部门，查阅知识并闭门思考。</li>
+<li>再次通过残差连接相加，得到第 1 层的输出 <span class="arithmatex">\(X_1\)</span> 。</li>
+<li><span class="arithmatex">\(X_1\)</span> 坐电梯进入第 2 层，重复上述过程，直至穿过最后一层（如第 80 层），得到最终的隐藏状态向量 <span class="arithmatex">\(h_{last}\)</span> 。</li>
+</ul>
+</li>
+<li><strong>输出阶段</strong>：<ul>
+<li><span class="arithmatex">\(h_{last}\)</span> 经过归一化（Norm）后，进入 <strong>LM Head</strong>。</li>
+<li>LM Head 将其投影回庞大的词表空间，计算出每个词的原始得分（Logits）。</li>
+<li>Logits 经过 <strong>Softmax</strong> 归一化，转化为所有词的概率分布。</li>
+</ul>
+</li>
+</ol>
+<p>至此，大模型的<strong>完整单次前向传播</strong>就全部完成了。我们成功地将输入的文字，转化为了对下一个词的精准概率预测。</p>
+<hr />
+<h2 id="_5">第三章：自回归解码与文本生成机制<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h2>
+<p>在第二章中，我们了解了摩天大楼的静态结构。现在，我们要让这座大楼真正运转起来。当一个用户的请求（输入）到来时，模型是如何一步步处理，并最终输出答案的呢？</p>
+<h3 id="prefill">第一节：Prefill（预填充）：处理输入的具体过程<a class="headerlink" href="#prefill" title="Permanent link">&para;</a></h3>
+<p>假设用户输入了一个问题：“什么是人工智能？”</p>
+<ol>
+<li><strong>分词（Tokenization）</strong>：输入文本首先被切分成一个个 Token（如“什么”、“是”、“人工”、“智能”）。</li>
+<li><strong>一次性输入</strong>：这些 Token 对应的向量被<strong>同时</strong>喂入模型。</li>
+<li><strong>并行计算</strong>：虽然使用的是 Masked Self-Attention，但因为输入的 Prompt 是<strong>已知且完整</strong>的，模型可以在内部并行地计算这些词之间的相互关系。这一步的主要目的是<strong>充分理解输入的语境</strong>，并为生成后续文本做好准备。
+    &gt; [!TIP]
+    &gt; <strong>理解 Prefill 的并行</strong>：这里包含两步并行。第一步是<strong>并行生成</strong>所有 Token 的 Q、K、V 向量（每个 Token 独立与权重矩阵相乘，互不依赖）；第二步是<strong>并行计算</strong>所有 Token 之间的注意力权重并加权融合。这两步在 GPU 上都是以矩阵乘法的形式高效并行完成的。</li>
+<li><strong>产生第一个词的概率</strong>：数据流流过所有层和 LM Head 后，生成了针对下一个词的概率分布。</li>
+</ol>
+<hr />
+<h3 id="decode">第二节：Decode（解码）：自回归循环与文本生成<a class="headerlink" href="#decode" title="Permanent link">&para;</a></h3>
+<p>基于 Prefill 阶段最后输出的概率分布，模型可能会挑选出“AI”作为最可能的下一个词。</p>
+<ol>
+<li><strong>输出第一个词</strong>：模型输出“AI”。</li>
+<li><strong>循环往复的“接龙”</strong>：<ul>
+<li>模型把刚刚生成的“AI”<strong>原封不动地拼接到原句的末尾</strong>，输入序列变成：“什么是人工智能？AI”。</li>
+<li>这个新的、更长的序列被<strong>再次</strong>从第 1 层楼喂进去，重新走一遍整栋大楼的旅程。</li>
+<li>大楼顶层输出新的概率分布，预测下一个词（比如“是”）。</li>
+<li>把“是”再拼接到末尾，继续下一轮循环……</li>
+</ul>
+</li>
+</ol>
+<p>这就是 <strong>自回归（Autoregressive）</strong> 的本质： <strong>前一次的输出，成为下一次的输入</strong> 。</p>
+<p>这种“逐字生成”的机制虽然保证了上下文的连贯性，但它带来了显著的物理限制：如果你要模型生成一个 1000 字的故事，大模型就必须把整栋大楼完整地跑完 1000 遍！</p>
+<p>在第一部分中，我们完成了对 Transformer 摩天大楼的拆解，理解了自注意力机制与前馈网络是如何协同工作的，以及数据是如何在多层网络中流动并最终转化为概率输出的。然而，这种“接龙”游戏在面对海量请求和超长文本时，会带来极大的算力与显存需求。</p>
+<p>制约大模型推理速度的因素以及显存的消耗方式，是接下来我们需要关注的问题。让我们带着这些问题，翻开本书的<strong>第二部分</strong>，一起去分析这些物理与数学层面的瓶颈。</p>
+<hr />
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">分享:</span>
+  <a href="https://twitter.com/intent/tweet?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part1_principles.cn/&text=%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86%EF%BC%9A%E5%8E%9F%E7%90%86%E7%AF%87"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part1_principles.cn/"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
+
+
+  <h2 id="__comments">评论与点赞</h2>
+  <script src="https://giscus.app/client.js"
+          data-repo="Random-Liu/llm-inference-principle-to-production"
+          data-repo-id="R_kgDOSGfGjQ"
+          data-category="General"
+          data-category-id="DIC_kwDOSGfGjc4C8I81"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang="zh-CN"
+          crossorigin="anonymous"
+          async>
+  </script>
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Random-Liu" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/liu-lantao-96a97351/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

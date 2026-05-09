@@ -1,0 +1,1671 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://random-liu.github.io/llm-inference-principle-to-production/parts/part2_bottlenecks/">
+      
+      
+        <link rel="prev" href="../part1_principles/">
+      
+      
+        <link rel="next" href="../part3_single_node/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Part 2: Bottlenecks - LLM 从原理到生产级推理 (LLM Inference from Principles to Production)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#part-2-bottlenecks-why-llm-inference-is-so-difficult" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-header__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Part 2: Bottlenecks
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://random-liu.github.io/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  返回主页 (Home)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../index.cn/" class="md-tabs__link">
+          
+  
+  
+  中文版
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-nav__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://random-liu.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    返回主页 (Home)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-4-core-metrics-of-large-model-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 4: Core Metrics of Large Model Inference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-5-starting-from-scratch-how-naive-llm-inference-operates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 5: Starting from Scratch: How Naive LLM Inference Operates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 5: Starting from Scratch: How Naive LLM Inference Operates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-the-unoptimized-inference-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: The Unoptimized Inference Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-bottleneck-anatomy-explosion-of-computational-complexity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Bottleneck Anatomy: Explosion of Computational Complexity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-eliciting-optimizations-can-we-remember-past-calculations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-6-kv-cache-mechanism-and-massive-vram-footprints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 6: KV Cache Mechanism and Massive VRAM Footprints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 6: KV Cache Mechanism and Massive VRAM Footprints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-trading-space-for-time-caching-k-and-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Trading Space for Time: Caching K and V
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-why-only-k-and-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Why Only K and V?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-massive-vram-footprints-a-multi-terabyte-math-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Massive VRAM Footprints: A Multi-Terabyte Math Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-7-maximizing-gpu-utilization-the-evolution-of-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 7: Maximizing GPU Utilization: The Evolution of Batching
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 7: Maximizing GPU Utilization: The Evolution of Batching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-compute-bound-vs-memory-bound" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Compute-Bound vs. Memory-Bound
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-batched-matrix-multiplication-bmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Batched Matrix Multiplication (BMM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-the-padding-problem-flaws-in-static-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: The Padding Problem: Flaws in Static Batching
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-8-core-asymmetry-prefill-vs-decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 8: Core Asymmetry: Prefill vs. Decode
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 8: Core Asymmetry: Prefill vs. Decode">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-prefill-phase-compute-bound-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Prefill Phase — Compute-Bound Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-decode-phase-memory-bound-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Decode Phase — Memory-Bound Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-asymmetry-from-a-data-perspective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Asymmetry from a Data Perspective
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3: Single-Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5: Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文版
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文版
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第三部分：单机篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第四部分：分布式篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第五部分：编排篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-4-core-metrics-of-large-model-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 4: Core Metrics of Large Model Inference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-5-starting-from-scratch-how-naive-llm-inference-operates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 5: Starting from Scratch: How Naive LLM Inference Operates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 5: Starting from Scratch: How Naive LLM Inference Operates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-the-unoptimized-inference-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: The Unoptimized Inference Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-bottleneck-anatomy-explosion-of-computational-complexity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Bottleneck Anatomy: Explosion of Computational Complexity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-eliciting-optimizations-can-we-remember-past-calculations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-6-kv-cache-mechanism-and-massive-vram-footprints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 6: KV Cache Mechanism and Massive VRAM Footprints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 6: KV Cache Mechanism and Massive VRAM Footprints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-trading-space-for-time-caching-k-and-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Trading Space for Time: Caching K and V
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-why-only-k-and-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Why Only K and V?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-massive-vram-footprints-a-multi-terabyte-math-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Massive VRAM Footprints: A Multi-Terabyte Math Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-7-maximizing-gpu-utilization-the-evolution-of-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 7: Maximizing GPU Utilization: The Evolution of Batching
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 7: Maximizing GPU Utilization: The Evolution of Batching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-compute-bound-vs-memory-bound" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Compute-Bound vs. Memory-Bound
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-batched-matrix-multiplication-bmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Batched Matrix Multiplication (BMM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-the-padding-problem-flaws-in-static-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: The Padding Problem: Flaws in Static Batching
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-8-core-asymmetry-prefill-vs-decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 8: Core Asymmetry: Prefill vs. Decode
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 8: Core Asymmetry: Prefill vs. Decode">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-prefill-phase-compute-bound-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Prefill Phase — Compute-Bound Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-decode-phase-memory-bound-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Decode Phase — Memory-Bound Task
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-asymmetry-from-a-data-perspective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Asymmetry from a Data Perspective
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="part-2-bottlenecks-why-llm-inference-is-so-difficult">Part 2: Bottlenecks — Why LLM Inference is So Difficult<a class="headerlink" href="#part-2-bottlenecks-why-llm-inference-is-so-difficult" title="Permanent link">&para;</a></h1>
+<p>This part explains the physical and mathematical "brick walls" engineers hit when pushing LLMs into production.</p>
+<hr />
+<h2 id="chapter-4-core-metrics-of-large-model-inference">Chapter 4: Core Metrics of Large Model Inference<a class="headerlink" href="#chapter-4-core-metrics-of-large-model-inference" title="Permanent link">&para;</a></h2>
+<p>Before discussing large model inference optimizations, we must establish evaluation criteria. The step-by-step autoregressive trait means we cannot gauge performance merely by using "Response Time" of traditional Web services. This chapter outlines core performance metrics.</p>
+<ul>
+<li><strong>TTFT (Time to First Token)</strong>: The latency from when a user dispatches a request to when the model outputs the <strong>first word</strong>. It corresponds to the <strong>Prefill phase</strong>, determining whether the system is responsive.</li>
+<li><strong>TBT (Time Between Tokens)</strong>: Generation latency between two adjacent Tokens. It corresponds to the <strong>Decode phase</strong>, dictating streaming output fluency.</li>
+<li><strong>TPS (Tokens Per Second)</strong>: Measures how many Tokens the model emits per second. It is the inverse of TBT (<span class="arithmatex">\(TPS = 1 / TBT\)</span>).</li>
+<li><strong>Latency</strong>: Total time taken to conclude the full request. Computed as <span class="arithmatex">\(\text{Latency} = \text{TTFT} + (\text{GeneratedTokens} - 1) \times \text{TBT}\)</span>.</li>
+<li><strong>Throughput</strong>: Total number of tokens or requests processed by the server per second. It stands as the core indicator for gauging concurrency and Total Cost of Ownership (TCO).</li>
+</ul>
+<hr />
+<h2 id="chapter-5-starting-from-scratch-how-naive-llm-inference-operates">Chapter 5: Starting from Scratch: How Naive LLM Inference Operates<a class="headerlink" href="#chapter-5-starting-from-scratch-how-naive-llm-inference-operates" title="Permanent link">&para;</a></h2>
+<p>Before introducing advanced optimizations, we must examine the most basic LLM inference mode to understand the severity of the bottlenecks.</p>
+<hr />
+<h3 id="section-1-the-unoptimized-inference-workflow">Section 1: The Unoptimized Inference Workflow<a class="headerlink" href="#section-1-the-unoptimized-inference-workflow" title="Permanent link">&para;</a></h3>
+<p>Suppose the model generates text following the prompt "Large models are". The unoptimized generation flow proceeds as follows:</p>
+<ol>
+<li><strong>Generating Token 1</strong>:<ul>
+<li><strong>Input</strong>: ["Large", "models", "are"]</li>
+<li><strong>Processing</strong>: The entire sentence passes through 80 Transformer layers.</li>
+<li><strong>Output</strong>: Predicts the next word is "the". We get ["Large", "models", "are", "the"].</li>
+</ul>
+</li>
+<li><strong>Generating Token 2</strong>:<ul>
+<li><strong>Input</strong>: ["Large", "models", "are", "the"]</li>
+<li><strong>Processing</strong>: <strong>The 4 words are fed back from layer 1</strong>, traversing the full 80 layers again.</li>
+<li><strong>Output</strong>: Predicts the next word is "future". We get ["Large", "models", "are", "the", "future"].</li>
+</ul>
+</li>
+<li><strong>Generating Token 3</strong>:<ul>
+<li><strong>Input</strong>: ["Large", "models", "are", "the", "future"]</li>
+<li><strong>Processing</strong>: <strong>Fed back yet again from layer 1</strong>, traversing 80 layers.</li>
+<li><strong>Output</strong>: Predicts the next word is ".".</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h3 id="section-2-bottleneck-anatomy-explosion-of-computational-complexity">Section 2: Bottleneck Anatomy: Explosion of Computational Complexity<a class="headerlink" href="#section-2-bottleneck-anatomy-explosion-of-computational-complexity" title="Permanent link">&para;</a></h3>
+<p>This sequential workflow is academically recognized as <strong>Naive Inference</strong>. Assuming sequence length is <span class="arithmatex">\(N\)</span>, model hidden dimension is <span class="arithmatex">\(d\)</span>, and layer count is <span class="arithmatex">\(L\)</span>, a <strong>single round</strong> of Naive computation yields these dimensions:</p>
+<ol>
+<li><strong>Compute Complexity</strong>: Single-round temporal complexity is <span class="arithmatex">\(O(L \cdot (N \cdot d^2 + N^2 \cdot d))\)</span><ul>
+<li><strong>Linear Layer Compute</strong>: <span class="arithmatex">\(O(N \cdot d^2)\)</span> per layer across <span class="arithmatex">\(L\)</span> layers. QKV projections and FFN mappings demand full matrix multiplications.</li>
+<li><strong>Attention Compute</strong>: <span class="arithmatex">\(O(N^2 \cdot d)\)</span> across <span class="arithmatex">\(L\)</span> layers. Every word Query computes dot products against preceding Key vectors, generating <span class="arithmatex">\(N \times N\)</span> matrix multiplications.</li>
+</ul>
+</li>
+<li><strong>Storage Complexity</strong>: Space complexity is <span class="arithmatex">\(O(L \cdot d^2) + O(N \cdot d + N^2)\)</span><ul>
+<li><strong>Static Weights</strong>: <span class="arithmatex">\(O(L \cdot d^2)\)</span>. Parameters matrices must reside in HBM perpetually, independent of context length.</li>
+<li><strong>Dynamic Activations</strong>: <span class="arithmatex">\(O(N \cdot d + N^2)\)</span>. Memory allocated temporarily for calculations and released instantly upon round completions.</li>
+</ul>
+</li>
+<li><strong>Parallelization Capabilities</strong>:<ul>
+<li><strong>Prefill Phase</strong>: Complete Prompt availability allows <strong>highly parallelized</strong> compute, saturating GPU multi-core compute capacities.</li>
+<li><strong>Decode Phase</strong>: Autoregressively sequential, making steps <strong>strictly serial</strong>. Furthermore, Naive Inference re-computes preceding words in parallel during every serial round, causing extensive compute waste.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Real-World Projection: Llama 3 (405B)</strong>
+Examining the SOTA <strong>Llama 3 (405B)</strong> (<span class="arithmatex">\(d = 16384\)</span>, <span class="arithmatex">\(L = 126\)</span>):</p>
+<ul>
+<li><strong>Scenario</strong>: Length <span class="arithmatex">\(N = 1000\)</span> words (processing a 1000-word prompt).</li>
+<li><strong>Single-Round Compute</strong>: Reaching <span class="arithmatex">\(2 \times L \times (11 \times N \times d^2) \approx \mathbf{744 \text{ Trillion Floating-point Operations (TFLOPs)}}\)</span>.</li>
+<li><strong>Estimated Time</strong>: Leveraging an <strong>NVIDIA H100</strong> yielding 1 PFLOPS (FP16 theoretical peak), generating <strong>1 single word</strong> takes approximately <span class="arithmatex">\(744 \div 1000 \approx \mathbf{0.74 \text{ Seconds}}\)</span>.</li>
+<li>Naively processed, the model emits only 1 to 2 words per second, slowing further as contexts lengthen. Quadratic Attention scaling implies that for generating the 1,000,001st token, <strong>generating a single word would consume approximately 2.5 hours</strong>, making production serving wholly unviable.</li>
+</ul>
+<hr />
+<h3 id="section-3-eliciting-optimizations-can-we-remember-past-calculations">Section 3: Eliciting Optimizations: Can We "Remember" Past Calculations?<a class="headerlink" href="#section-3-eliciting-optimizations-can-we-remember-past-calculations" title="Permanent link">&para;</a></h3>
+<p>Naive inference makes large model serving unviable. It fails to handle long text sequences or tolerate concurrent workloads.</p>
+<p>Engineers wondered: Can we cache the calculated results of preceding words and exclusively compute newly appended tokens? This intuition gave birth to the foundational cornerstone of LLM serving—<strong>KV Cache</strong>.</p>
+<hr />
+<h2 id="chapter-6-kv-cache-mechanism-and-massive-vram-footprints">Chapter 6: KV Cache Mechanism and Massive VRAM Footprints<a class="headerlink" href="#chapter-6-kv-cache-mechanism-and-massive-vram-footprints" title="Permanent link">&para;</a></h2>
+<p>To break the <span class="arithmatex">\(O(N^2)\)</span> computational deadlock, KV Cache trades space for time, rewriting large model serving rules.</p>
+<hr />
+<h3 id="section-1-trading-space-for-time-caching-k-and-v">Section 1: Trading Space for Time: Caching K and V<a class="headerlink" href="#section-1-trading-space-for-time-caching-k-and-v" title="Permanent link">&para;</a></h3>
+<p>Returning to the Attention formula: <span class="arithmatex">\(\text{Attention}(Q, K, V) = \text{softmax}(\frac{Q K^T}{\sqrt{d_k}})V\)</span>.
+Engineers observed:</p>
+<ul>
+<li>When generating new tokens, <strong>Queries (Q)</strong> are dynamic intents that must be generated by the newly arrived token.</li>
+<li>However, <strong>Keys (K)</strong> and <strong>Values (V)</strong> of preceding words <strong>never change</strong> once generated.</li>
+<li>Caching these "fixed assets" in VRAM means GPUs only need to compute Q, K, and V for <strong>one new Token</strong>. Newly generated K and V vectors append onto existing caches, bounding attention compute to <span class="arithmatex">\(O(N)\)</span> rather than <span class="arithmatex">\(O(N^2)\)</span>.</li>
+</ul>
+<hr />
+<h3 id="section-2-why-only-k-and-v">Section 2: Why Only K and V?<a class="headerlink" href="#section-2-why-only-k-and-v" title="Permanent link">&para;</a></h3>
+<p>Why don't we cache Q? Because Query vectors represent "active intents" used up in individual steps. Predicting word 4 requires word 4's Q to search preceding words. Word 4's Q becomes useless during word 5's prediction. <strong>Q is discarded, and only characteristic K and V vectors are cached.</strong></p>
+<hr />
+<h3 id="section-3-massive-vram-footprints-a-multi-terabyte-math-problem">Section 3: Massive VRAM Footprints: A Multi-Terabyte Math Problem<a class="headerlink" href="#section-3-massive-vram-footprints-a-multi-terabyte-math-problem" title="Permanent link">&para;</a></h3>
+<p>We compare <strong>Naive</strong> vs. <strong>KV Cache</strong> complexities against generating the <span class="arithmatex">\(N\text{-th}\)</span> Token (<span class="arithmatex">\(L\)</span> layers, <span class="arithmatex">\(d\)</span> dimension):</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dimension</th>
+<th style="text-align: left;">Naive Inference</th>
+<th style="text-align: left;">KV Cache Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Compute Complexity</strong></td>
+<td style="text-align: left;"><code>O(L * (N * d^2 + N^2 * d))</code></td>
+<td style="text-align: left;"><code>O(L * (d^2 + N * d))</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Storage Complexity</strong></td>
+<td style="text-align: left;"><code>O(L * d^2)</code> (Weights Only)</td>
+<td style="text-align: left;"><code>O(L * d^2 + L * N * d)</code> (Weights + Cache)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Core Divergence:</strong></p>
+<ol>
+<li><strong>Substantial Compute Reduction</strong>: KV Cache cuts linear layer computations from <span class="arithmatex">\(O(N)\)</span> to <span class="arithmatex">\(O(1)\)</span>, and attention computations from <span class="arithmatex">\(O(N^2)\)</span> to <span class="arithmatex">\(O(N)\)</span>.</li>
+<li><strong>VRAM Space Penalty</strong>: Compute drops at the cost of VRAM footprints scaling linearly against context length <span class="arithmatex">\(N\)</span> (<span class="arithmatex">\(O(L \cdot N \cdot d)\)</span>).</li>
+<li><strong>Dynamic Activations</strong>: Transient activation memory releases instantly upon forward passes and is omitted in long-term static analyses.</li>
+</ol>
+<p><strong>Calculating Massive VRAM Footprints via Llama 3 405B</strong> (<span class="arithmatex">\(L = 126, d = 16384\)</span>, unoptimized MHA, 1 Million Tokens):</p>
+<ul>
+<li><strong>Footprint per Token</strong>: K and V vectors across 126 layers consume <code>64 KB * 126 = 8064 KB (~8 MB)</code> in FP16 formats.</li>
+<li><strong>Total Footprint</strong>: <code>8064 KB * 1,000,000 \approx \mathbf{8.26 \text{ TB}}$</code>. A single request consumes over <strong>8 Terabytes of VRAM</strong>.</li>
+</ul>
+<p>KV Cache shifts LLMs from "Compute-Bound" (stalling on raw arithmetic) to "Memory-Bound" (stalling on VRAM capacities). We resolve this massive VRAM footprint issue using <strong>GQA</strong>, <strong>PagedAttention</strong>, and <strong>RadixAttention</strong>.</p>
+<hr />
+<h2 id="chapter-7-maximizing-gpu-utilization-the-evolution-of-batching">Chapter 7: Maximizing GPU Utilization: The Evolution of Batching<a class="headerlink" href="#chapter-7-maximizing-gpu-utilization-the-evolution-of-batching" title="Permanent link">&para;</a></h2>
+<p>Having resolved single-user compute via KV Cache, engineers faced concurrent workload demands.</p>
+<hr />
+<h3 id="section-1-compute-bound-vs-memory-bound">Section 1: Compute-Bound vs. Memory-Bound<a class="headerlink" href="#section-1-compute-bound-vs-memory-bound" title="Permanent link">&para;</a></h3>
+<p>Production LLMs are frequently limited by <strong>Memory Bandwidth</strong> rather than raw compute. Model parameters and KV Caches sit in VRAM, while compute takes place inside SMC cores.</p>
+<ul>
+<li><strong>Single User Inference</strong>: For every generated token, GPUs must read monolithic model weights and all accumulated KV Caches from VRAM to the cores. The core spends most of its time <strong>idle, waiting for data transfers</strong>.</li>
+</ul>
+<hr />
+<h3 id="section-2-batched-matrix-multiplication-bmm">Section 2: Batched Matrix Multiplication (BMM)<a class="headerlink" href="#section-2-batched-matrix-multiplication-bmm" title="Permanent link">&para;</a></h3>
+<p>To prevent core idling, we deploy <strong>Batching</strong>. We stack <span class="arithmatex">\(N\)</span> user inputs into a 3D tensor. GPUs fetch model weight matrices once and apply them to all <span class="arithmatex">\(N\)</span> user requests simultaneously, scaling up throughput.</p>
+<blockquote>
+<p>[!NOTE]
+While users share a single copy of model weights, their KV Caches remain strictly isolated. GPUs must drag <span class="arithmatex">\(N\)</span> discrete KV Caches from VRAM to cores, scaling VRAM transfers linearly against Batch Size.</p>
+</blockquote>
+<hr />
+<h3 id="section-3-the-padding-problem-flaws-in-static-batching">Section 3: The Padding Problem: Flaws in Static Batching<a class="headerlink" href="#section-3-the-padding-problem-flaws-in-static-batching" title="Permanent link">&para;</a></h3>
+<p>Standard <strong>Static Batching</strong> forces all requests in a batch to begin and end simultaneously. Since input and output lengths differ, engines insert massive volumes of <strong>Padding</strong> for shorter prompts. Computing padding wastes resources and chains shorter requests to wooden-barrel limits of the longest request.</p>
+<hr />
+<h2 id="chapter-8-core-asymmetry-prefill-vs-decode">Chapter 8: Core Asymmetry: Prefill vs. Decode<a class="headerlink" href="#chapter-8-core-asymmetry-prefill-vs-decode" title="Permanent link">&para;</a></h2>
+<hr />
+<h3 id="section-1-prefill-phase-compute-bound-task">Section 1: Prefill Phase — Compute-Bound Task<a class="headerlink" href="#section-1-prefill-phase-compute-bound-task" title="Permanent link">&para;</a></h3>
+<p><strong>1. Mathematical Workflow</strong>
+Models absorb <strong><span class="arithmatex">\(N\)</span> input tokens</strong> in one shot.</p>
+<ul>
+<li><strong>Linear Layer</strong>: <span class="arithmatex">\(N\)</span> vectors multiply against weight matrices. These are standard <strong>GEMM</strong> operations scaling against <span class="arithmatex">\(N\)</span> (<span class="arithmatex">\(O(L \cdot N \cdot d^2)\)</span>).</li>
+<li><strong>Attention</strong>: Under Causal Mask bounds, each word only attends to preceding words, forming a lower-triangular <span class="arithmatex">\(N \times N\)</span> attention matrix (<span class="arithmatex">\(O(L \cdot N^2 \cdot d)\)</span>).</li>
+<li><strong>Complexity</strong>: Total single-round complexity sums to <span class="arithmatex">\(O(L \cdot (N \cdot d^2 + N^2 \cdot d))\)</span>.</li>
+</ul>
+<p><strong>2. Why Is It Compute-Bound?</strong>
+This anchors around <strong>Arithmetic Intensity</strong> (FLOPs computed per Byte fetched).
+$<span class="arithmatex">\(\text{Intensity} = \frac{\text{Linear Compute} + \text{Attention Compute}}{\text{Model Weight Size} + \text{KV Cache Writes}}\)</span>$</p>
+<p>Evaluating Llama 3 405B at <span class="arithmatex">\(N = 100,000\)</span> (100,000 context):</p>
+<ol>
+<li><strong>Total Compute</strong>:</li>
+<li><strong>Linear Layer</strong>: <span class="arithmatex">\(2 \times N \times P = 2 \times 10^5 \times 405 \times 10^9 = 8.1 \times 10^{16}\)</span> FLOPs.</li>
+<li><strong>Attention</strong>: <span class="arithmatex">\(4 \times L \times N^2 \times d = 4 \times 126 \times (10^5)^2 \times 16384 \approx 8.26 \times 10^{16}\)</span> FLOPs.</li>
+<li><strong>Summation</strong>: Approx. <strong><span class="arithmatex">\(1.64 \times 10^{17}\)</span> FLOPs</strong> (Attention compute is now on par with linear layers).</li>
+<li><strong>Total VRAM Traffic</strong>:</li>
+<li><strong>Reading Weights</strong>: <strong><span class="arithmatex">\(810\)</span> GB</strong> (405B model weights in FP16).</li>
+<li><strong>Writing KV Cache</strong>: Approx. <strong><span class="arithmatex">\(51.6\)</span> GB</strong>.</li>
+<li><strong>Summation</strong>: Approx. <strong><span class="arithmatex">\(861.6\)</span> GB</strong>.</li>
+</ol>
+<p>The resulting <strong>Total Intensity</strong> is:
+$<span class="arithmatex">\(\frac{1.64 \times 10^{17} \text{ FLOPs}}{861.6 \times 10^9 \text{ Bytes}} \approx \mathbf{190,000} \text{ FLOPs/Byte}\)</span>$</p>
+<p>A modern H100 GPU’s inflection threshold sits at roughly 300 FLOPs/Byte. Exceeding this threshold means GPUs are <strong>Compute-Bound</strong>. The thousands of ALU cores run at peak frequencies, and raw theoretical compute power (TFLOPS) dictates processing speed rather than HBM bandwidth.</p>
+<hr />
+<h3 id="section-2-decode-phase-memory-bound-task">Section 2: Decode Phase — Memory-Bound Task<a class="headerlink" href="#section-2-decode-phase-memory-bound-task" title="Permanent link">&para;</a></h3>
+<p>Once the first word is output, autoregressive Decode iterations begin.</p>
+<p><strong>1. Mathematical Workflow</strong>
+Models ingest merely <strong>1 newly generated Token</strong>.</p>
+<ul>
+<li><strong>Linear Layer</strong>: Degrades into <strong>GEMV</strong> matrix-vector multiplications.</li>
+<li><strong>Attention</strong>: The single new token's Query vector attends to all preceding <span class="arithmatex">\(N\)</span> Key vectors in the cache.</li>
+<li><strong>Complexity</strong>: <span class="arithmatex">\(O(L \cdot (d^2 + N \cdot d))\)</span>.</li>
+</ul>
+<p><strong>2. Why Is It Memory-Bound?</strong>
+To generate a <strong>single token</strong>, GPUs must execute a seemingly inefficient operation: <strong>they must drag monolithic model weights (hundreds of GBs) plus all accumulated KV Caches from VRAM to the SRAM cores.</strong> Compute volumes are minuscule, leaving cores idle while HBM bandwidth is fully utilized.</p>
+<p>Evaluating Llama 3 405B at <span class="arithmatex">\(N = 100,000\)</span> (with 100,000 currently accumulated context):</p>
+<ol>
+<li><strong>Single-Step Compute</strong>:</li>
+<li><strong>Linear Layer</strong>: <span class="arithmatex">\(2 \times 1 \times P = 8.1 \times 10^{11}\)</span> FLOPs.</li>
+<li><strong>Attention</strong>: <span class="arithmatex">\(4 \times L \times 1 \times N \times d = 4 \times 126 \times 1 \times 10^5 \times 16384 \approx 8.25 \times 10^{11}\)</span> FLOPs.</li>
+<li><strong>Summation</strong>: Approx. <strong><span class="arithmatex">\(1.635 \times 10^{12}\)</span> FLOPs</strong>.</li>
+<li><strong>Single-Step VRAM Traffic</strong>:</li>
+<li><strong>Reading Weights</strong>: <strong><span class="arithmatex">\(810\)</span> GB</strong> (Full model weights must be read entirely for every round of generation!).</li>
+<li><strong>Reading KV Cache</strong>: Since attention must attend to all past 100,000 tokens, we fetch their KV Caches from VRAM, totaling approx. <strong><span class="arithmatex">\(51.6\)</span> GB</strong>.</li>
+<li><strong>Summation</strong>: Approx. <strong><span class="arithmatex">\(861.6\)</span> GB</strong>.</li>
+</ol>
+<p>The resulting <strong>Single-Step Intensity</strong> is:
+$<span class="arithmatex">\(\frac{1.635 \times 10^{12} \text{ FLOPs}}{861.6 \times 10^9 \text{ Bytes}} \approx \mathbf{1.9} \text{ FLOPs/Byte}\)</span>$</p>
+<p>Arithmetic intensity (1.9) falls vastly below hardware inflection points (~300). VRAM bandwidth—how fast data feeds cores—dictates TBT latencies, rather than raw TFLOPS capabilities.</p>
+<hr />
+<h3 id="section-3-asymmetry-from-a-data-perspective">Section 3: Asymmetry from a Data Perspective<a class="headerlink" href="#section-3-asymmetry-from-a-data-perspective" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dimension</th>
+<th style="text-align: left;">Prefill Phase</th>
+<th style="text-align: left;">Decode Phase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Input Scale</strong></td>
+<td style="text-align: left;"><span class="arithmatex">\(N\)</span> Tokens (High)</td>
+<td style="text-align: left;"><span class="arithmatex">\(1\)</span> Token (Minimal)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Math Kernel</strong></td>
+<td style="text-align: left;">GEMM</td>
+<td style="text-align: left;">GEMV</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Complexity</strong></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot (N \cdot d^2 + N^2 \cdot d))\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot (d^2 + N \cdot d))\)</span></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>VRAM Access</strong></td>
+<td style="text-align: left;">Read Weights + Write Cache</td>
+<td style="text-align: left;">Read Weights + Read &amp; Append Cache</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Hardware Bound</strong></td>
+<td style="text-align: left;"><strong>Compute-Bound</strong></td>
+<td style="text-align: left;"><strong>Memory-Bound</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPU Utilization</strong></td>
+<td style="text-align: left;">Peak</td>
+<td style="text-align: left;">Idle</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The Engineering Paradox:</strong></p>
+<ol>
+<li><strong>Throughput vs. Latency</strong>: Elevating Batch Size dilutes weight reading costs to raise throughput. In Decode, larger batches translate to fetching larger discrete KV Caches, stretching out individual TBT latencies.</li>
+<li><strong>Scheduler Dilemmas</strong>: Mixing compute-heavy Prefills alongside memory-heavy Decodes causes the <strong>Straggler Effect</strong>, triggering jitters in ongoing TBTs and breaking output fluency.</li>
+</ol>
+<p>Part 2 analyzed the two core challenges of LLM inference: massive VRAM footprints from KV Cache and asymmetry between Prefill and Decode phases. These physical and mathematical laws constrain concurrency and speed.</p>
+<p>Part 3 will explore how high-performance engines like vLLM and SGLang overcome these bottlenecks through advanced algorithms and architectural designs.</p>
+<hr />
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">Share:</span>
+  <a href="https://twitter.com/intent/tweet?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part2_bottlenecks/&text=Part%202%3A%20Bottlenecks"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part2_bottlenecks/"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
+
+
+  <h2 id="__comments">Comments & Likes</h2>
+  <script src="https://giscus.app/client.js"
+          data-repo="Random-Liu/llm-inference-principle-to-production"
+          data-repo-id="R_kgDOSGfGjQ"
+          data-category="General"
+          data-category-id="DIC_kwDOSGfGjc4C8I81"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+  </script>
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Random-Liu" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/liu-lantao-96a97351/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

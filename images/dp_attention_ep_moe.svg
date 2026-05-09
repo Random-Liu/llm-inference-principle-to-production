@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 620" width="100%" height="100%">
+  <style>
+    .box { stroke: #4A5568; stroke-width: 1.5; fill: #FFF; rx: 8; }
+    .title { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: bold; fill: #1A202C; }
+    .subtitle { font-family: 'Inter', sans-serif; font-size: 12px; fill: #4A5568; }
+    .label { font-family: 'Inter', sans-serif; font-size: 12px; fill: #2D3748; text-anchor: middle; }
+    .label-gpu { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: bold; fill: #2B6CB0; text-anchor: middle; }
+    .arrow { stroke: #718096; stroke-width: 2; marker-end: url(#arrow); fill: none; }
+    .arrow-thin { stroke: #A0AEC0; stroke-width: 1.5; marker-end: url(#arrow); fill: none; }
+    .bi-arrow { stroke: #718096; stroke-width: 2; marker-start: url(#arrow); marker-end: url(#arrow); fill: none; }
+    .node-box { stroke: #A0AEC0; stroke-width: 1.5; fill: #FFF; rx: 8; }
+    .gpu-header { stroke: #2B6CB0; stroke-width: 2; fill: #EBF8FF; rx: 4; }
+    .attention-box { stroke: #3182CE; stroke-width: 1.5; fill: #EBF8FF; rx: 6; }
+    .moe-box { stroke: #805AD5; stroke-width: 1.5; fill: #FAF5FF; rx: 6; }
+    .text-tp { fill: #3182CE; font-weight: bold; }
+    .text-pp { fill: #805AD5; font-weight: bold; }
+    .text-cp { fill: #C53030; font-weight: bold; }
+    .alltoall { stroke: #4A5568; stroke-width: 1.5; fill: #EDF2F7; rx: 12; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#718096" />
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#F7FAFC" />
+
+  <!-- Title -->
+  <text x="400" y="35" class="title" text-anchor="middle" font-size="18">DP Attention + EP MoE Architecture</text>
+  <text x="400" y="60" class="subtitle label">Independent Attention (DP) · Dynamic Routing in MoE (EP)</text>
+
+
+  <!-- Node 1 -->
+  <rect x="80" y="120" width="180" height="380" class="node-box" />
+  <rect x="90" y="130" width="160" height="30" class="gpu-header" />
+  <text x="170" y="150" class="label-gpu">💻 Physical Node 1</text>
+
+  <rect x="95" y="180" width="150" height="100" class="moe-box" />
+  <text x="170" y="215" class="label title text-pp">Experts (EP)</text>
+  <text x="170" y="240" class="subtitle label">Hold Experts [1 - 32]</text>
+
+  <rect x="95" y="370" width="150" height="100" class="attention-box" />
+  <text x="170" y="405" class="label title text-tp">Attention Layer (DP)</text>
+  <text x="170" y="430" class="subtitle label">Process Request 1, 4 ...</text>
+
+
+  <!-- Node 2 -->
+  <rect x="310" y="120" width="180" height="380" class="node-box" />
+  <rect x="320" y="130" width="160" height="30" class="gpu-header" />
+  <text x="400" y="150" class="label-gpu">💻 Physical Node 2</text>
+
+  <rect x="325" y="180" width="150" height="100" class="moe-box" />
+  <text x="400" y="215" class="label title text-pp">Experts (EP)</text>
+  <text x="400" y="240" class="subtitle label">Hold Experts [33 - 64]</text>
+
+  <rect x="325" y="370" width="150" height="100" class="attention-box" />
+  <text x="400" y="405" class="label title text-tp">Attention Layer (DP)</text>
+  <text x="400" y="430" class="subtitle label">Process Request 2, 5 ...</text>
+
+
+  <!-- Node 3 -->
+  <rect x="540" y="120" width="180" height="380" class="node-box" />
+  <rect x="550" y="130" width="160" height="30" class="gpu-header" />
+  <text x="630" y="150" class="label-gpu">💻 Physical Node 3</text>
+
+  <rect x="555" y="180" width="150" height="100" class="moe-box" />
+  <text x="630" y="215" class="label title text-pp">Experts (EP)</text>
+  <text x="630" y="240" class="subtitle label">Hold Experts [65 - 96]</text>
+
+  <rect x="555" y="370" width="150" height="100" class="attention-box" />
+  <text x="630" y="405" class="label title text-tp">Attention Layer (DP)</text>
+  <text x="630" y="430" class="subtitle label">Process Request 3, 6 ...</text>
+
+
+  <!-- Token Inputs -->
+  <path d="M 170 540 L 170 470" class="arrow" />
+  <text x="170" y="555" class="subtitle label">Req 1, 4 ...</text>
+
+  <path d="M 400 540 L 400 470" class="arrow" />
+  <text x="400" y="555" class="subtitle label">Req 2, 5 ...</text>
+
+  <path d="M 630 540 L 630 470" class="arrow" />
+  <text x="630" y="555" class="subtitle label">Req 3, 6 ...</text>
+
+
+  <!-- All-to-All Flow -->
+  <rect x="280" y="305" width="240" height="30" class="alltoall" />
+  <text x="400" y="325" class="label title" font-size="12">🚀 All-to-All Network Routing</text>
+
+  <!-- Arrows from Attention TO All-to-All -->
+  <path d="M 170 370 L 320 335" class="arrow-thin" />
+  <path d="M 400 370 L 400 335" class="arrow-thin" />
+  <path d="M 630 370 L 480 335" class="arrow-thin" />
+
+  <!-- Arrows from All-to-All TO MoE Experts -->
+  <path d="M 320 305 L 170 280" class="arrow-thin" />
+  <path d="M 400 305 L 400 280" class="arrow-thin" />
+  <path d="M 480 305 L 630 280" class="arrow-thin" />
+
+
+  <!-- Arrow from MoE to output -->
+  <path d="M 170 180 L 170 110" class="arrow" />
+  <path d="M 400 180 L 400 110" class="arrow" />
+  <path d="M 630 180 L 630 110" class="arrow" />
+
+
+  <!-- Legend -->
+  <rect x="50" y="570" width="700" height="40" rx="5" fill="#FFF" stroke="#E2E8F0" />
+  <text x="400" y="594" class="subtitle" text-anchor="middle">💡 Dataflow: Requests are processed by Attention (DP) in parallel, then routed to MoE Experts (EP) via All-to-All.</text>
+</svg>

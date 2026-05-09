@@ -1,0 +1,1862 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://random-liu.github.io/llm-inference-principle-to-production/parts/part1_principles/">
+      
+      
+        <link rel="prev" href="../..">
+      
+      
+        <link rel="next" href="../part2_bottlenecks/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Part 1: Principles - LLM 从原理到生产级推理 (LLM Inference from Principles to Production)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#part-1-principles-the-foundational-engine-of-transformers-and-llms" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-header__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Part 1: Principles
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://random-liu.github.io/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  返回主页 (Home)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../index.cn/" class="md-tabs__link">
+          
+  
+  
+  中文版
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-nav__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://random-liu.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    返回主页 (Home)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-transformer-architecture-analysis-the-mechanism-of-q-k-and-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-a-birds-eye-view-classic-transformer-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: A Bird's-Eye View: Classic Transformer Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-evolution-decoder-only-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Evolution: Decoder-Only Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-the-library-analogy-intuitive-meaning-of-qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: The Library Analogy: Intuitive Meaning of QKV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-4-mathematical-principles-matrix-computation-of-qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 4: Mathematical Principles: Matrix Computation of QKV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-5-feed-forward-network-knowledge-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 5: Feed-Forward Network: Knowledge Base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-6-multi-head-attention-parallel-perspectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 6: Multi-Head Attention: Parallel Perspectives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-7-mixture-of-experts-sparse-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 7: Mixture of Experts: Sparse Activation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-2-multi-layer-stacking-and-data-flow-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-input-stage-embeddings-and-positional-encoding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Input Stage: Embeddings and Positional Encoding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-the-mechanism-of-stacking-hierarchical-feature-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: The Mechanism of Stacking: Hierarchical Feature Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-the-translator-lm-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: The Translator: LM Head
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-4-logits-and-softmax-probabilistic-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 4: Logits and Softmax: Probabilistic Normalization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-5-parameter-breakdown-what-makes-up-8b70b-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 5: Parameter Breakdown: What Makes Up 8B/70B Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-6-data-flow-end-to-end-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 6: Data Flow: End-to-End Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-3-autoregressive-decoding-and-text-generation-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 3: Autoregressive Decoding and Text Generation Mechanisms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 3: Autoregressive Decoding and Text Generation Mechanisms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-prefill-phase-handling-input-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Prefill Phase: Handling Input Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-decode-phase-the-autoregressive-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Decode Phase: The Autoregressive Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3: Single-Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5: Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文版
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文版
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第三部分：单机篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第四部分：分布式篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第五部分：编排篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-1-transformer-architecture-analysis-the-mechanism-of-q-k-and-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-a-birds-eye-view-classic-transformer-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: A Bird's-Eye View: Classic Transformer Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-evolution-decoder-only-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Evolution: Decoder-Only Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-the-library-analogy-intuitive-meaning-of-qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: The Library Analogy: Intuitive Meaning of QKV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-4-mathematical-principles-matrix-computation-of-qkv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 4: Mathematical Principles: Matrix Computation of QKV
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-5-feed-forward-network-knowledge-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 5: Feed-Forward Network: Knowledge Base
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-6-multi-head-attention-parallel-perspectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 6: Multi-Head Attention: Parallel Perspectives
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-7-mixture-of-experts-sparse-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 7: Mixture of Experts: Sparse Activation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-2-multi-layer-stacking-and-data-flow-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-input-stage-embeddings-and-positional-encoding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Input Stage: Embeddings and Positional Encoding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-the-mechanism-of-stacking-hierarchical-feature-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: The Mechanism of Stacking: Hierarchical Feature Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-the-translator-lm-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: The Translator: LM Head
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-4-logits-and-softmax-probabilistic-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 4: Logits and Softmax: Probabilistic Normalization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-5-parameter-breakdown-what-makes-up-8b70b-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 5: Parameter Breakdown: What Makes Up 8B/70B Models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-6-data-flow-end-to-end-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 6: Data Flow: End-to-End Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-3-autoregressive-decoding-and-text-generation-mechanisms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 3: Autoregressive Decoding and Text Generation Mechanisms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 3: Autoregressive Decoding and Text Generation Mechanisms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-prefill-phase-handling-input-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Prefill Phase: Handling Input Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-decode-phase-the-autoregressive-loop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Decode Phase: The Autoregressive Loop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="part-1-principles-the-foundational-engine-of-transformers-and-llms">Part 1: Principles — The Foundational Engine of Transformers and LLMs<a class="headerlink" href="#part-1-principles-the-foundational-engine-of-transformers-and-llms" title="Permanent link">&para;</a></h1>
+<h2 id="chapter-1-transformer-architecture-analysis-the-mechanism-of-q-k-and-v">Chapter 1: Transformer Architecture Analysis: The Mechanism of Q, K, and V<a class="headerlink" href="#chapter-1-transformer-architecture-analysis-the-mechanism-of-q-k-and-v" title="Permanent link">&para;</a></h2>
+<p>In Large Language Models (LLMs), the foundational architecture is the <strong>Transformer</strong>, and its core is the <strong>Self-Attention mechanism</strong>. In this chapter, we will analyze the core vectors of self-attention: <strong>Q (Query)</strong>, <strong>K (Key)</strong>, and <strong>V (Value)</strong>. They are the core of the model's ability to understand context.</p>
+<h3 id="section-1-a-birds-eye-view-classic-transformer-architecture">Section 1: A Bird's-Eye View: Classic Transformer Architecture<a class="headerlink" href="#section-1-a-birds-eye-view-classic-transformer-architecture" title="Permanent link">&para;</a></h3>
+<p>Before diving into QKV, let's grasp the macro workflow of the classic <strong>Encoder-Decoder</strong> Transformer architecture (the original design).</p>
+<pre class="mermaid"><code>graph BT
+    subgraph Decoder ["Decoder"]
+        direction BT
+        Out[Generated Text] --&gt; Emb2[Embedding]
+        Emb2 --&gt; PE2[Positional Encoding]
+        PE2 --&gt; MSA[Masked Self-Attention]
+        MSA --&gt; CA[Cross-Attention]
+        CA --&gt; FFN2[FFN]
+    end
+    subgraph Encoder ["Encoder"]
+        direction BT
+        In[Input Text] --&gt; Emb1[Embedding]
+        Emb1 --&gt; PE1[Positional Encoding]
+        PE1 --&gt; SA1[Unmasked Self-Attention]
+        SA1 --&gt; FFN1[FFN]
+    end
+    FFN1 --&gt;|Hidden States| CA
+    CA ~~~ FFN1
+    FFN2 --&gt; Head[LM Head]
+    Head --&gt; Prob[Predict Next Token]</code></pre>
+<p>We can compare this to <strong>simultaneous interpretation</strong>:</p>
+<ol>
+<li>
+<p><strong>Left Side: Encoder — "Listening and Comprehending"</strong></p>
+<ul>
+<li><strong>Input</strong>: For example, "The cat is black".</li>
+<li><strong>Workflow</strong>: Data enters at the bottom and flows up through layers.</li>
+<li><strong>Core Mechanism</strong>: Each layer uses unmasked <strong>Self-Attention</strong>. Unlike GPT's Masked Self-Attention which only looks backward, the Encoder allows all words to attend to each other. This bidirectional view captures full context. This suits translation perfectly because the source sentence is known and complete; the model extracts semantics rather than predicting the next word.</li>
+<li><strong>Output</strong>: Hidden state vectors rich in context, representing full comprehension of the sentence.</li>
+</ul>
+</li>
+<li>
+<p><strong>Right Side: Decoder — "Translating and Expressing"</strong></p>
+<ul>
+<li><strong>Input</strong>: The Encoder's context vectors and <strong>previously generated words</strong>.</li>
+<li><strong>Workflow</strong>:<ul>
+<li><strong>Masked Self-Attention</strong>: The decoder's core mechanism. It restricts the model to look only at preceding words when predicting the next, preventing it from "peeking" at the future. This maintains causality: during inference, future words do not exist yet; during training, peeking would prevent the model from learning true predictive capabilities.</li>
+<li><strong>Multi-Head Cross-Attention</strong>: The Decoder uses its current Query to search for matching Keys and Values in the Encoder's output.</li>
+</ul>
+</li>
+<li><strong>Output</strong>: Softmax converts outputs to probabilities for the next word (e.g., "est" based on the previously translated "Le chat").</li>
+</ul>
+</li>
+</ol>
+<p><strong>Summary</strong>: The Encoder understands the input (bidirectional), while the Decoder generates output (unidirectional).</p>
+<h3 id="section-2-evolution-decoder-only-architecture">Section 2: Evolution: Decoder-Only Architecture<a class="headerlink" href="#section-2-evolution-decoder-only-architecture" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph BT
+    subgraph DecoderOnly ["Decoder-Only Block"]
+        In[Input Tokens] --&gt; Emb[Embedding]
+        Emb --&gt; PE[Positional Encoding]
+        PE --&gt; MSA[Masked Self-Attention]
+        MSA --&gt; FFN[FFN]
+    end
+    FFN --&gt; Head[LM Head]
+    Head --&gt; Prob[Predict Next Token]</code></pre>
+<p>Modern LLMs (like GPT, Llama, and DeepSeek) evolved from the dual-tower Encoder-Decoder to a minimalist <strong>Decoder-Only</strong> architecture, discarding the Encoder.</p>
+<p>Why abandon the Encoder if it excels at understanding?</p>
+<p>This reflects an important paradigm shift:</p>
+<ol>
+<li><strong>Translation vs. Continuation</strong>: Transformers originally served translation, where input and output are separate (e.g., English and Chinese), requiring an Encoder to understand and a Decoder to translate.</li>
+<li><strong>The core task of modern LLMs is text completion</strong> : scientists discovered that all natural language tasks (Q&amp;A, code generation, reasoning, even translation) can be unified as a "predict the next word given the previous sequence" completion game.</li>
+<li>
+<p><strong>Unified Decoder</strong>: Since the Encoder is good at understanding, why do modern models no longer adopt this structure, becoming Decoder-Only "single-tower" architectures? simplifies the design:</p>
+</li>
+<li>
+<p><strong>No Encoder</strong>: Removes the independent encoder tower.</p>
+</li>
+<li><strong>No Cross-Attention</strong>: Eliminates inter-tower interaction.</li>
+<li><strong>Unified Input</strong>: Concatenates Prompt and Response into a single sequence.</li>
+<li><strong>Core Mechanism</strong>: Composed entirely of stacked <strong>Masked Self-Attention</strong> blocks.</li>
+</ol>
+<p>How it works:</p>
+<ul>
+<li><strong>Prefill Phase</strong>: The model processes the Prompt all at once. Although using Masked Self-Attention, the known Prompt allows parallel computation of word relationships (like an Encoder).</li>
+<li><strong>Decode Phase</strong>: The model generates words one by one. Each new word appends to the sequence to predict the next. Masked Self-Attention ensures the query only attends to preceding tokens, maintaining causality.</li>
+</ul>
+<p>This simplified design makes training more efficient and provides the foundation for inference optimizations like <strong>KV Cache</strong>.</p>
+<h3 id="section-3-the-library-analogy-intuitive-meaning-of-qkv">Section 3: The Library Analogy: Intuitive Meaning of QKV<a class="headerlink" href="#section-3-the-library-analogy-intuitive-meaning-of-qkv" title="Permanent link">&para;</a></h3>
+<p>Before diving into complex mathematical formulas, let us use an intuitive real-world scenario to understand the logical meaning of Q, K, and V.</p>
+<p>Imagine walking into a library to find "noise-canceling Bluetooth headphones". Here is how Q, K, and V operate:</p>
+<ol>
+<li><strong>Q (Query)</strong>: Your search term ("noise-canceling Bluetooth headphones"). It represents what you want to find.</li>
+<li><strong>K (Key)</strong>: The book's index or tags (e.g., title, author, abstract).<ul>
+<li>Book A Key: "Wired Gaming Headset Review".</li>
+<li>Book B Key: "Teardown of Sony Noise-Canceling Bluetooth Headphones".</li>
+</ul>
+</li>
+<li><strong>V (Value)</strong>: Represents the <strong>actual knowledge content contained in the book</strong>. If you eventually decide to read book B, the detailed text about noise reduction chips and acoustic principles you acquire is the Value.</li>
+</ol>
+<p><strong>Self-Attention</strong> matches your <strong>Query</strong> against all <strong>Keys</strong> to calculate relevance scores, then uses these scores to weight how much you read from each book's <strong>Value</strong>.</p>
+<p>Mapping back to large models, let us use the word "apple" for a concrete comparison:</p>
+<ul>
+<li>Sentence A: "At today's <strong>new product launch</strong>, <strong>Apple</strong> introduced..."</li>
+<li>Sentence B: "At the <strong>supermarket</strong>, the box of <strong>apples</strong> I bought is very..."</li>
+</ul>
+<p>When the model processes the word "apple":</p>
+<ol>
+<li><strong>It generates its own Query (Q)</strong>: Representing its "search intention".
+    &gt; [!NOTE]
+    &gt; In reality, this Query is a complex high-dimensional continuous vector, containing hundreds or thousands of abstract search dimensions, all of which are knowledge "solidified" in the matrix during massive data training. Here we use personified language like "I am an 'apple', I need to search for 'technology' or 'fruit' clues" just to facilitate intuitive understanding.</li>
+<li><strong>Match with Keys of preceding words</strong>: The Query of "Apple" matches with Keys of words before it.<ul>
+<li>In <strong>Sentence A</strong>, "Apple" matches strongly with "new product launch".</li>
+<li>In <strong>Sentence B</strong>, "apples" matches strongly with "supermarket".</li>
+</ul>
+</li>
+<li><strong>Extract Value based on weights</strong>:<ul>
+<li>In <strong>Sentence A</strong>, the high match with "new product launch" pulls the semantics of "Apple" toward the tech company.</li>
+<li>In <strong>Sentence B</strong>, the high match with "supermarket" pulls the semantics toward fruit.</li>
+</ul>
+</li>
+</ol>
+<p>Through this dynamic matching, the same word can be given completely different, precise meanings under different contexts.</p>
+<hr />
+<h3 id="section-4-mathematical-principles-matrix-computation-of-qkv">Section 4: Mathematical Principles: Matrix Computation of QKV<a class="headerlink" href="#section-4-mathematical-principles-matrix-computation-of-qkv" title="Permanent link">&para;</a></h3>
+<p>Before starting the calculation, we need to first convert text into numerical representations. Suppose the input is the word "apple". The model first looks up a dictionary (Embedding table) to convert "apple" into a continuous sequence of numbers, such as a 4096-dimensional vector <span class="arithmatex">\(X\)</span>. This sequence of numbers represents the initial coordinates of "apple" in a multi-dimensional semantic space (please note that the values in this dictionary are also learned through massive data training, rather than artificially specified). The model multiplies the input vector <span class="arithmatex">\(X\)</span> by three learned weight matrices (<span class="arithmatex">\(W_Q\)</span>, <span class="arithmatex">\(W_K\)</span>, <span class="arithmatex">\(W_V\)</span>) to generate Q, K, and V:</p>
+<div class="arithmatex">\[
+\begin{aligned}
+Q &amp;= X W_Q \\
+K &amp;= X W_K \\
+V &amp;= X W_V
+\end{aligned}
+\]</div>
+<blockquote>
+<p>[!NOTE]
+This is an important conceptual boundary: <span class="arithmatex">\(W_Q, W_K, W_V\)</span> are <strong>static model weights</strong>. They are fixed in VRAM after training completes and are shared "processing rules" for all tokens. Conversely, Q, K, and V are <strong>dynamically generated data</strong>. They are computed in real-time by multiplying input vectors <span class="arithmatex">\(X\)</span> by weight matrices every time you input a different sentence. This is also the root cause why the same word can generate different semantics in different contexts.</p>
+</blockquote>
+<h4 id="2-calculating-similarity-and-attention-weights">2. Calculating Similarity and Attention Weights<a class="headerlink" href="#2-calculating-similarity-and-attention-weights" title="Permanent link">&para;</a></h4>
+<p>To determine how much attention the current word (Query) gives to preceding words (Keys), the model computes the dot product of the current word's Q and preceding words' K:</p>
+<div class="arithmatex">\[\text{Score} = Q \cdot K^T\]</div>
+<p>To prevent gradient vanishing from large scores, the model divides by <span class="arithmatex">\(\sqrt{d_k}\)</span> (vector dimension). Softmax then converts these scaled scores into probabilities totaling 1:</p>
+<div class="arithmatex">\[\text{Attention Weights} = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right)\]</div>
+<h4 id="3-extracting-information-weighted-sum">3. Extracting Information (Weighted Sum)<a class="headerlink" href="#3-extracting-information-weighted-sum" title="Permanent link">&para;</a></h4>
+<p>Finally, the model sums the <strong>Values</strong> of all words weighted by the attention weights, capturing the context:</p>
+<div class="arithmatex">\[\text{Output} = \sum (\text{Attention Weights} \times V)\]</div>
+<blockquote>
+<p>[!NOTE]
+<strong>Dynamic Generation</strong>: While a word (e.g., "apple") always starts with the same lookup vector <span class="arithmatex">\(X\)</span>, attending to different contexts yields completely different output vectors. This is the power of self-attention.</p>
+</blockquote>
+<hr />
+<h3 id="section-5-feed-forward-network-knowledge-base">Section 5: Feed-Forward Network: Knowledge Base<a class="headerlink" href="#section-5-feed-forward-network-knowledge-base" title="Permanent link">&para;</a></h3>
+<p>After the self-attention mechanism completes the information exchange between words, the vector enters the <strong>Feed-Forward Network (FFN)</strong>. If the attention mechanism is responsible for "finding relationships between words", then the FFN is responsible for each word's "closed-door thinking".</p>
+<h4 id="1-the-ffn-workflow">1. The FFN Workflow<a class="headerlink" href="#1-the-ffn-workflow" title="Permanent link">&para;</a></h4>
+<p>The input vector <span class="arithmatex">\(H\)</span> to the FFN is the sum of the Attention output and the original input vector <span class="arithmatex">\(X\)</span> (Residual Connection).</p>
+<p><span class="arithmatex">\(H\)</span> blends "who I am" (original meaning) with "what I experienced" (context). The FFN processes it in three steps:</p>
+<ol>
+<li><strong>Up-Projection</strong>: Multiplying <span class="arithmatex">\(H\)</span> by weight matrix <span class="arithmatex">\(W_1\)</span> expands dimensions (e.g., 4096 to 16384), unfolding information for feature extraction.</li>
+<li><strong>Non-linear Activation</strong>: The expanded vector passes through a non-linear function <span class="arithmatex">\(\sigma\)</span> (like SwiGLU), filtering and selecting information.</li>
+<li><strong>Down-Projection</strong>: Multiplying by <span class="arithmatex">\(W_2\)</span> compresses the vector back to original dimensions (e.g., 4096) for residual addition.</li>
+</ol>
+<h4 id="2-ffn-as-a-soft-kv-memory-base">2. FFN as a "Soft KV Memory Base"<a class="headerlink" href="#2-ffn-as-a-soft-kv-memory-base" title="Permanent link">&para;</a></h4>
+<p>With only two matrices (<span class="arithmatex">\(W_1\)</span> and <span class="arithmatex">\(W_2\)</span>), FFN seems to lack the QKV structure of Attention. However, a famous 2020 paper showed that <strong>the FFN operates as a Key-Value memory retrieval system</strong>.</p>
+<p>Compare the core formulas:</p>
+<ul>
+<li><strong>Attention</strong>: <span class="arithmatex">\(\text{Output}_{attn} = \text{Softmax}(Q \cdot K^T) \cdot V\)</span></li>
+<li><strong>FFN</strong>: <span class="arithmatex">\(\text{Output}_{ffn} = \sigma(H \cdot W_1) \cdot W_2\)</span></li>
+</ul>
+<p>Here, the FFN calculation maps to Q, K, and V logic:</p>
+<ol>
+<li><strong>Input vector <span class="arithmatex">\(H\)</span> acts as the Query</strong>: It asks, "Given my current state, what supplementary information exists in the knowledge base?"</li>
+<li><strong>Up-Projection Matrix <span class="arithmatex">\(W_1\)</span> acts as the Keys</strong>: Slicing <span class="arithmatex">\(W_1\)</span> by columns yields vectors representing specific "patterns" (e.g., "fruit in a supermarket context"). <span class="arithmatex">\(H \cdot W_1\)</span> calculates similarity between the Query and these Keys.</li>
+<li><strong>Down-Projection Matrix <span class="arithmatex">\(W_2\)</span> acts as the Values</strong>: Slicing <span class="arithmatex">\(W_2\)</span> by rows yields vectors representing concrete knowledge (e.g., "crisp, juicy").</li>
+</ol>
+<p>Processing the "apple" example:</p>
+<p>For <strong>Sentence B</strong> ("At the <strong>supermarket</strong>, the box of <strong>apples</strong> I bought is very..."):</p>
+<ol>
+<li><strong>Pattern Matching</strong>: The input vector <span class="arithmatex">\(H\)</span> (already fused into "fruit apple" by Attention) yields a high matching score with the "fruit, food" pattern in <span class="arithmatex">\(W_1\)</span>.</li>
+<li><strong>Activation Filtering</strong>: Function <span class="arithmatex">\(\sigma\)</span> zeroes out scores for unrelated patterns (like "tech company"), retaining only the "fruit" pattern.</li>
+<li><strong>Knowledge Extraction</strong>: The model weights the Values in <span class="arithmatex">\(W_2\)</span> by these scores, extracting knowledge like "crisp, juicy".</li>
+</ol>
+<p>For <strong>Sentence A</strong> ("At today's new product launch, Apple introduced..."):</p>
+<ol>
+<li><strong>Pattern Matching</strong>: The input vector <span class="arithmatex">\(H\)</span> ("tech company Apple") scores high with "technology, company" patterns in <span class="arithmatex">\(W_1\)</span>.</li>
+<li><strong>Activation Filtering</strong>: The function filters out the "fruit" pattern.</li>
+<li><strong>Knowledge Extraction</strong>: The model extracts knowledge like "iPhone, high-tech" from <span class="arithmatex">\(W_2\)</span>.</li>
+</ol>
+<h4 id="3-fusion-and-the-complete-life-of-a-token">3. Fusion and the Complete Life of a Token<a class="headerlink" href="#3-fusion-and-the-complete-life-of-a-token" title="Permanent link">&para;</a></h4>
+<p>The knowledge retrieved by the FFN will not directly replace the original vector, but is fused together through a <strong>Residual Connection (addition)</strong>:
+$<span class="arithmatex">\(x_{new} = H + FFN(H)\)</span>$</p>
+<p>This is like a <strong>"scratchpad"</strong> carried by the Token:</p>
+<ul>
+<li><span class="arithmatex">\(H\)</span> (written on the scratchpad): I am an "apple", and I am in the context of "eating".</li>
+<li><span class="arithmatex">\(FFN(H)\)</span> (knowledge base supplement): Attributes are "crisp, juicy".</li>
+<li><strong>Addition</strong>: Staple the supplementary material to the next page of the scratchpad. The Token now understands both context and knowledge.</li>
+</ul>
+<p><strong>Summary</strong>: A Token's journey in one layer of the Transformer is: <strong>first go to the Attention meeting (understand context)</strong>, <strong>then go to the FFN library (understand knowledge)</strong>, and finally walk to the next layer with enriched memory!</p>
+<hr />
+<h3 id="section-6-multi-head-attention-parallel-perspectives">Section 6: Multi-Head Attention: Parallel Perspectives<a class="headerlink" href="#section-6-multi-head-attention-parallel-perspectives" title="Permanent link">&para;</a></h3>
+<p>Single-head attention blends all semantic relationships into one vector, risking loss of focus. Industrial models use dozens of heads (sets of matrices) per layer, called <strong>Multi-Head Attention (MHA)</strong>.</p>
+<p><strong>Why multiple heads?</strong>
+Language is complex; a word plays multiple roles simultaneously.</p>
+<ul>
+<li><strong>Grammar Head</strong>: Finds subject-verb-object relationships.</li>
+<li><strong>Emotion Head</strong>: Captures emotional adjectives.</li>
+<li><strong>Coreference Head</strong>: Resolves pronouns (like "he" or "it").</li>
+</ul>
+<p>MHA observes sentences from dozens of perspectives in parallel. It concatenates parallel outputs.</p>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>The Fourth Matrix: <span class="arithmatex">\(W_O\)</span></strong>
+Besides replicating <span class="arithmatex">\(W_Q\)</span>, <span class="arithmatex">\(W_K\)</span>, and <span class="arithmatex">\(W_V\)</span> for multiple heads, MHA introduces a fourth matrix: the <strong>Output Projection Matrix <span class="arithmatex">\(W_O\)</span></strong>. It integrates the concatenated outputs and fuses information across heads back to the original dimension.</p>
+</blockquote>
+<p><strong>Llama 3 405B MHA Workflow</strong>:</p>
+<ol>
+<li><strong>Input</strong>: Sentence matrix of shape <code>[N, 16384]</code> (<span class="arithmatex">\(N\)</span> words, 16384 dimensions).</li>
+<li><strong>Projection</strong>: Matrices <span class="arithmatex">\(W_Q, W_K, W_V\)</span> (size <code>[16384, 16384]</code>) generate <span class="arithmatex">\(Q, K, V\)</span> of shape <code>[N, 16384]</code>.</li>
+<li><strong>Split</strong>: Slices the 16384 dimensions into 128 heads, each dimension 128. Shape becomes <code>[N, 128, 128]</code>.</li>
+<li><strong>Scores</strong>: Each head computes scores independently (<span class="arithmatex">\(Q \times K^T\)</span>), resulting in <code>[N, N]</code>.</li>
+<li><strong>Combine</strong>: Multiplies scores by <span class="arithmatex">\(V\)</span>, yielding output <code>[N, 128]</code> per head.</li>
+<li><strong>Concatenate</strong>: Joins the 128 head outputs to restore <code>[N, 16384]</code>.</li>
+<li><strong>Output Projection</strong>: Matrix <span class="arithmatex">\(W_O\)</span> (<code>[16384, 16384]</code>) fuses results into the final output <code>[N, 16384]</code>.</li>
+</ol>
+<hr />
+<h3 id="section-7-mixture-of-experts-sparse-activation">Section 7: Mixture of Experts: Sparse Activation<a class="headerlink" href="#section-7-mixture-of-experts-sparse-activation" title="Permanent link">&para;</a></h3>
+<p>MoE upgrades the FFN by creating multiple replicas.</p>
+<h4 id="1-dense-model-pain-points">1. Dense Model Pain Points<a class="headerlink" href="#1-dense-model-pain-points" title="Permanent link">&para;</a></h4>
+<p>Traditional <strong>Dense</strong> models use one FFN per layer. All tokens pass through it, whether discussing quantum mechanics or cooking. Memorizing more knowledge requires a massive FFN, surging compute costs (FLOPs).</p>
+<h4 id="2-the-moe-solution-division-of-labor">2. The MoE Solution: Division of Labor<a class="headerlink" href="#2-the-moe-solution-division-of-labor" title="Permanent link">&para;</a></h4>
+<p>MoE splits the massive FFN into multiple smaller FFNs, called <strong>Experts</strong> (e.g., 8 or 16).</p>
+<p>Components:</p>
+<ul>
+<li><strong>Router (Gating Network)</strong>: Calculates match scores between the token (Query) and each expert.</li>
+<li><strong>Experts</strong>: Standard FFNs specializing in specific domains (e.g., code, literature) during training.</li>
+</ul>
+<h4 id="3-sparse-activation">3. Sparse Activation<a class="headerlink" href="#3-sparse-activation" title="Permanent link">&para;</a></h4>
+<p>When a token enters:</p>
+<ol>
+<li><strong>Router Scoring</strong>: Identifies the topic (e.g., quantum mechanics).</li>
+<li><strong>Sparse Activation</strong>: Activates only the Top-K relevant experts (e.g., Expert 3 and 5), leaving others idle.</li>
+<li><strong>Fusion</strong>: Fuses results from active experts based on weights.</li>
+</ol>
+<p><strong>Summary</strong>: MoE enables a massive total parameter count (broad knowledge) with a small active parameter count per forward pass (cheap compute). This is the secret to DeepSeek's efficiency.</p>
+<p>Note that MoE only reduces <strong>compute cost</strong> by activating fewer experts. It does not save <strong>VRAM</strong>; all expert weights must remain in memory to handle any topic instantly. Loading these massive parameters still demands extreme VRAM capacity. We will discuss these VRAM challenges in detail in the Inference part.</p>
+<hr />
+<h2 id="chapter-2-multi-layer-stacking-and-data-flow-mechanisms">Chapter 2: Multi-Layer Stacking and Data Flow Mechanisms<a class="headerlink" href="#chapter-2-multi-layer-stacking-and-data-flow-mechanisms" title="Permanent link">&para;</a></h2>
+<p>We have explored the core parts of the Transformer: the self-attention mechanism and FFN. However, these parts alone are not enough to form a large model with reasoning capabilities. In this chapter, we will look from a more macro perspective to see how these parts are assembled into a giant "skyscraper" of a large model and how data shuttles through it.</p>
+<p><strong>Complete Model Architecture Diagram</strong></p>
+<p>This diagram shows the complete journey of a token in a Decoder-Only model, from entry to prediction:</p>
+<pre class="mermaid"><code>graph LR
+    subgraph Input_Stage ["Input Stage"]
+        In[Input Token IDs] --&gt; Emb[Embedding]
+    end
+    subgraph Hidden_Layers ["Transformer Layers"]
+        Emb --&gt; Layer1[Layer 1]
+        Layer1 --&gt; Layer2[Layer 2]
+        Layer2 --&gt; Dots["..."]
+        Dots --&gt; LayerN[Layer N]
+
+        subgraph Detail ["Per-Layer Structure"]
+            SA["Masked Self-Attention (RoPE applied here)"] --&gt; Add1[Residual Add]
+            Add1 --&gt; FFN[Feed-Forward Network]
+            FFN --&gt; Add2[Residual Add]
+        end
+    end
+    subgraph Output_Stage ["Output Stage"]
+        LayerN --&gt; Norm[RMSNorm / LayerNorm]
+        Norm --&gt; LMHead[LM Head]
+        LMHead --&gt; Logits[Logits]
+        Logits --&gt; Softmax[Softmax]
+        Softmax --&gt; Prob[Token Probabilities]
+    end</code></pre>
+<h3 id="section-1-input-stage-embeddings-and-positional-encoding">Section 1: Input Stage: Embeddings and Positional Encoding<a class="headerlink" href="#section-1-input-stage-embeddings-and-positional-encoding" title="Permanent link">&para;</a></h3>
+<p>Before entering the layers, data undergoes processing in the "lobby" to become model-readable and acquire critical context.</p>
+<ol>
+<li><strong>Word Embedding</strong>: Converts tokens into high-dimensional vectors (e.g., 4096 dimensions) via table lookup, establishing initial semantic coordinates.</li>
+<li>
+<p><strong>Positional Encoding</strong>:
+    Self-attention cannot perceive the sequence order; it computes vector similarity without sequence order. Without help, "I eat the apple" and "the apple eats me" look identical. We must inject position information.</p>
+<ul>
+<li><strong>Rotary Position Embedding (RoPE)</strong>: Modern models (like Llama and Qwen) use RoPE. Instead of adding position values early, it <strong>twists</strong> the Q and K vectors by an angle in multi-dimensional space when computing the dot product.</li>
+<li>Closer words have smaller angle differences, yielding larger dot products. This effectively encodes relative position into the attention calculation.</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h3 id="section-2-the-mechanism-of-stacking-hierarchical-feature-extraction">Section 2: The Mechanism of Stacking: Hierarchical Feature Extraction<a class="headerlink" href="#section-2-the-mechanism-of-stacking-hierarchical-feature-extraction" title="Permanent link">&para;</a></h3>
+<p>After embedding, the word vector begins climbing the Transformer skyscraper. Modern LLMs stack dozens or hundreds of <strong>Transformer Blocks</strong> (e.g., Llama-3 70B has 80 layers).</p>
+<p><strong>Why so many layers?</strong></p>
+<p>This stacking enables <strong>Hierarchical Feature Extraction</strong>:</p>
+<ol>
+<li><strong>Single Layer Limits</strong>: A single layer only recognizes superficial associations (e.g., "apple" and "supermarket"). It cannot perform deep reasoning.</li>
+<li><strong>Multi-Layer Emergence</strong>:<ul>
+<li><strong>Bottom Layers</strong>: Extract grammar and local relationships (e.g., identifying subjects and modifiers).</li>
+<li><strong>Middle Layers</strong>: Capture entity relationships and common sense. The FFN consults its "soft memory base" to add background knowledge.</li>
+<li><strong>Top Layers</strong>: At this stage, the model no longer processes specific words, but distills the semantics of the entire sentence into an abstract intent to answer the prompt.</li>
+</ul>
+</li>
+</ol>
+<p>This layer-by-layer progression from concrete to abstract is key to LLM "intelligence".</p>
+<p>Information flows diagonally upwards across layers, not horizontally within a layer. When processing the Prompt, all words advance side by side, climbing layers simultaneously.</p>
+<p>In Layer 1, when the 4th word attends to the 3rd, it sees the 3rd word's initial state at Layer 1 entry, not a state already fused with words 1 and 2. Parallel computation prevents waiting.</p>
+<p>The output state of the 3rd word from Layer 1 (carrying info from words 1 and 2) serves as its input to Layer 2. When the 4th word attends to it in Layer 2, it matches with its Key and reads its Value, indirectly accessing information from words 1 and 2. This design enables massive GPU parallelism while achieving deep semantic fusion.</p>
+<pre class="mermaid"><code>graph LR
+    subgraph Layer1 ["Layer 1"]
+        direction TB
+        L1_T1["Token 1"]
+        L1_T2["Token 2"]
+        L1_T3["Token 3"]
+
+        L1_T1 --&gt;|Attention| L1_T2
+        L1_T1 --&gt;|Attention| L1_T3
+        L1_T2 --&gt;|Attention| L1_T3
+    end
+
+    subgraph Layer2 ["Layer 2"]
+        direction TB
+        L2_T1["Token 1'"]
+        L2_T2["Token 2'"]
+        L2_T3["Token 3'"]
+
+        L2_T1 --&gt;|Attention| L2_T2
+        L2_T1 --&gt;|Attention| L2_T3
+        L2_T2 --&gt;|Attention| L2_T3
+    end
+
+    L1_T1 --&gt;|Inter-layer Passing| L2_T1
+    L1_T2 --&gt;|Inter-layer Passing| L2_T2
+    L1_T3 --&gt;|Inter-layer Passing| L2_T3</code></pre>
+<hr />
+<h3 id="section-3-the-translator-lm-head">Section 3: The Translator: LM Head<a class="headerlink" href="#section-3-the-translator-lm-head" title="Permanent link">&para;</a></h3>
+<p>At the top floor, each token emits a final hidden state vector (<span class="arithmatex">\(h_{last}\)</span>), containing complex semantics distilled from all layers.</p>
+<p>Since humans read words, not vectors, the model uses a "translator": the <strong>LM Head</strong>. This massive linear projection matrix (shape: <code>[vector dimension, vocabulary size]</code>) maps the vector back to the vocabulary.</p>
+<p>Multiplying <span class="arithmatex">\(h_{last}\)</span> by the LM Head yields <strong>raw scores (Logits)</strong> for every word in the vocabulary.</p>
+<blockquote>
+<p>[!NOTE]
+<strong>Why no LM Head in middle layers?</strong>
+Mapping high-dimensional vectors back to words in middle layers would destroy the complex abstract logic and cause information loss. The model must process information fully before outputting.</p>
+<p>[!NOTE]
+<strong>Engineering Easter Egg: Weight Tying</strong>
+Classic models (like GPT-2, Llama 2) share the same physical matrix for Embedding and LM Head to save VRAM. Some newer, larger models decouple them for better expressive power.</p>
+</blockquote>
+<hr />
+<h3 id="section-4-logits-and-softmax-probabilistic-normalization">Section 4: Logits and Softmax: Probabilistic Normalization<a class="headerlink" href="#section-4-logits-and-softmax-probabilistic-normalization" title="Permanent link">&para;</a></h3>
+<p>Logits are a series of unnormalized real numbers (e.g., "apple": 12.5, "phone": 8.2). To select a word, the system converts these scores into a probability distribution using <strong>Softmax</strong>.</p>
+<p>Softmax exponentiates and normalizes logits across the vocabulary, ensuring:</p>
+<ol>
+<li>All probabilities fall between 0 and 1.</li>
+<li>Probabilities sum to 1.</li>
+</ol>
+<p>The result is a distribution like <code>{"apple": 0.7, "phone": 0.2, "run": 0.001}</code>.</p>
+<hr />
+<h3 id="section-5-parameter-breakdown-what-makes-up-8b70b-models">Section 5: Parameter Breakdown: What Makes Up 8B/70B Models<a class="headerlink" href="#section-5-parameter-breakdown-what-makes-up-8b70b-models" title="Permanent link">&para;</a></h3>
+<p>What do 8B or 70B parameters refer to?</p>
+<p><strong>Parameters are the sum of all numbers in the model's learnable weight matrices</strong>, representing the knowledge "solidified" during training.</p>
+<p>Let's break down the 405 billion parameters of <strong>Llama 3 405B</strong>:</p>
+<p>Core configuration:</p>
+<ul>
+<li>Vocabulary Size: <span class="arithmatex">\(128,256\)</span></li>
+<li>Hidden Dimension (<span class="arithmatex">\(d\)</span>): <span class="arithmatex">\(16384\)</span></li>
+<li>Number of Layers: <span class="arithmatex">\(126\)</span></li>
+<li>FFN Intermediate Dimension: <span class="arithmatex">\(53248\)</span></li>
+<li>GQA: 128 Query Heads, 8 KV Heads</li>
+</ul>
+<p><strong>The Bill</strong>:</p>
+<ol>
+<li><strong>Embedding Layer</strong>: <code>Vocabulary Size * Hidden Dimension</code> = <span class="arithmatex">\(128,256 \times 16384 \approx 2.10\)</span> billion. (128.2k words <span class="arithmatex">\(\times\)</span> 16384 dimensions).</li>
+<li><strong>Transformer Layers</strong> (<span class="arithmatex">\(126\)</span> layers):<ul>
+<li><strong>Attention</strong>: <span class="arithmatex">\(W_Q, W_K, W_V, W_O\)</span> total <span class="arithmatex">\(\approx 5.7\)</span> billion per layer.</li>
+<li><strong>FFN</strong>: Gate, Up, Down matrices total <span class="arithmatex">\(\approx 26.17\)</span> billion per layer.</li>
+<li><strong>Total per layer</strong>: <span class="arithmatex">\(\approx 31.87\)</span> billion.</li>
+<li><strong>Total for 126 layers</strong>: <span class="arithmatex">\(126 \times 31.87 \approx 401.6\)</span> billion.</li>
+<li><strong>Note</strong>: <strong>FFN occupies about 82% of the parameter count</strong> in Transformer layers. Most "hard knowledge" lives here.</li>
+</ul>
+</li>
+<li><strong>Output Layer (LM Head)</strong>: <code>Hidden Dimension * Vocabulary Size</code> = <span class="arithmatex">\(16384 \times 128,256 \approx 2.10\)</span> billion. Maps vectors back to vocabulary scores.</li>
+</ol>
+<p><strong>Total</strong>: <span class="arithmatex">\(2.1\text{B} + 401.6\text{B} + 2.1\text{B} \approx 405.8\)</span> billion parameters.</p>
+<p>Downloading a 405B model means downloading 405 billion floating-point numbers (about 810GB in FP16). Input prompts trigger matrix multiplications with these numbers to generate responses.</p>
+<hr />
+<h3 id="section-6-data-flow-end-to-end-pipeline">Section 6: Data Flow: End-to-End Pipeline<a class="headerlink" href="#section-6-data-flow-end-to-end-pipeline" title="Permanent link">&para;</a></h3>
+<p>Let's trace a token's journey from entry to output:</p>
+<ol>
+<li><strong>Input Stage</strong>: Table lookup converts all prompt tokens into word vectors simultaneously, forming initial input <span class="arithmatex">\(X_0\)</span>.
+    &gt; [!NOTE]
+    &gt; Models with absolute position encoding (like BERT) add position info here. RoPE models do not add it here.</li>
+<li><strong>Layer-by-Layer Shuttle</strong>:<ul>
+<li><span class="arithmatex">\(X_0\)</span> enters Layer 1 Attention. RoPE injects position rotation here.</li>
+<li>Words exchange info, then add to the original vector (Residual Connection) to prevent feature loss.</li>
+<li>The result enters Layer 1 FFN to consult knowledge.</li>
+<li>Another residual connection yields Layer 1 output, <span class="arithmatex">\(X_1\)</span>.</li>
+<li><span class="arithmatex">\(X_1\)</span> ascends to Layer 2 and repeats the process up to the final layer, yielding hidden state <span class="arithmatex">\(h_{last}\)</span>.</li>
+</ul>
+</li>
+<li><strong>Output Stage</strong>:<ul>
+<li>After normalization (Norm), <span class="arithmatex">\(h_{last}\)</span> enters the <strong>LM Head</strong>.</li>
+<li>The LM Head projects it back to vocabulary scores (Logits).</li>
+<li><strong>Softmax</strong> converts logits to a probability distribution.</li>
+</ul>
+</li>
+</ol>
+<p>This completes a <strong>single forward pass</strong>, predicting the next word.</p>
+<hr />
+<h2 id="chapter-3-autoregressive-decoding-and-text-generation-mechanisms">Chapter 3: Autoregressive Decoding and Text Generation Mechanisms<a class="headerlink" href="#chapter-3-autoregressive-decoding-and-text-generation-mechanisms" title="Permanent link">&para;</a></h2>
+<p>In Chapter 2, we understood the static structure of the skyscraper. Now, we are going to make this building truly operate. When a user's request (input) arrives, how does the model process it step by step and ultimately output the answer?</p>
+<h3 id="section-1-prefill-phase-handling-input-context">Section 1: Prefill Phase: Handling Input Context<a class="headerlink" href="#section-1-prefill-phase-handling-input-context" title="Permanent link">&para;</a></h3>
+<p>Suppose the user asks: "What is artificial intelligence?"</p>
+<ol>
+<li><strong>Tokenization</strong>: Splits text into tokens (e.g., "What", "is", "artificial", "intelligence", "?").</li>
+<li><strong>Simultaneous Input</strong>: Feeds all token vectors into the model at once.</li>
+<li><strong>Parallel Computation</strong>: Since the Prompt is complete and known, the model computes word relationships in parallel. This step understands context to prepare for generation.
+    &gt; [!TIP]
+    &gt; <strong>Prefill Parallelism</strong>: 1) Parallel generation of Q, K, V for all tokens. 2) Parallel computation of attention weights and weighted fusion. GPUs execute both as efficient matrix multiplications.</li>
+<li><strong>First Word Probability</strong>: Generates a probability distribution for the first generated word.</li>
+</ol>
+<hr />
+<h3 id="section-2-decode-phase-the-autoregressive-loop">Section 2: Decode Phase: The Autoregressive Loop<a class="headerlink" href="#section-2-decode-phase-the-autoregressive-loop" title="Permanent link">&para;</a></h3>
+<p>Based on the probability distribution from Prefill, the model selects the next word (e.g., "AI").</p>
+<ol>
+<li><strong>Output the Word</strong>: The model outputs "AI".</li>
+<li><strong>The Loop</strong>:<ul>
+<li>The model appends "AI" to the input sequence: "What is artificial intelligence? AI".</li>
+<li>This extended sequence feeds back into the model.</li>
+<li>The model predicts the next word (e.g., "is").</li>
+<li>The loop continues.</li>
+</ul>
+</li>
+</ol>
+<p>This is <strong>Autoregression</strong>: the previous output becomes the next input.</p>
+<p>While this ensures coherence, it demands heavy computation: generating a 1000-word story requires running the model 1000 times.</p>
+<p>In Part One, we explored the Transformer's core mechanics: self-attention, FFNs, and data flow. We saw how the model predicts the next word. However, this "solitaire" game demands massive compute and VRAM for long texts and heavy traffic.</p>
+<p>The factors limiting LLM inference speed and how VRAM is consumed are the questions we need to address next. In <strong>Part Two</strong>, we will analyze these physical and mathematical bottlenecks.</p>
+<hr />
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">Share:</span>
+  <a href="https://twitter.com/intent/tweet?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part1_principles/&text=Part%201%3A%20Principles"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part1_principles/"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
+
+
+  <h2 id="__comments">Comments & Likes</h2>
+  <script src="https://giscus.app/client.js"
+          data-repo="Random-Liu/llm-inference-principle-to-production"
+          data-repo-id="R_kgDOSGfGjQ"
+          data-category="General"
+          data-category-id="DIC_kwDOSGfGjc4C8I81"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+  </script>
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Random-Liu" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/liu-lantao-96a97351/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

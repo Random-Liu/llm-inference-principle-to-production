@@ -1,0 +1,2188 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://random-liu.github.io/llm-inference-principle-to-production/parts/part4_distributed/">
+      
+      
+        <link rel="prev" href="../part3_single_node/">
+      
+      
+        <link rel="next" href="../part5_k8s/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Part 4: Distributed - LLM 从原理到生产级推理 (LLM Inference from Principles to Production)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#part-4-distributed-orchestration-across-single-nodes-parallel-strategies-and-high-speed-interconnects" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-header__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Part 4: Distributed
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://random-liu.github.io/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  返回主页 (Home)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../index.cn/" class="md-tabs__link">
+          
+  
+  
+  中文版
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-nav__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://random-liu.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    返回主页 (Home)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3: Single-Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-16-distributed-slicing-of-large-models-tensor-pipeline-and-context-parallelism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 16: Distributed Slicing of Large Models: Tensor, Pipeline, and Context Parallelism
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 16: Distributed Slicing of Large Models: Tensor, Pipeline, and Context Parallelism">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-the-necessity-of-multiple-machines-vram-capacity-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: The Necessity of Multiple Machines: VRAM Capacity Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-tp-and-pp-vertical-and-horizontal-slicing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: TP and PP: Vertical and Horizontal Slicing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-4-the-impact-of-tp-and-pp-on-core-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 4: The Impact of TP and PP on Core Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-5-breaking-the-sequence-wall-context-parallelism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 5: Breaking the Sequence Wall: Context Parallelism
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-6-hybrid-parallelism-the-3d-topology-of-tp-pp-and-cp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 6: Hybrid Parallelism: The 3D Topology of TP, PP, and CP
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-17-expert-parallelism-ep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 17: Expert Parallelism (EP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 17: Expert Parallelism (EP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-limitations-of-traditional-parallelism-for-moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Limitations of Traditional Parallelism for MoE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-strategy-selection-cross-host-tp-vs-expert-parallelism-ep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Strategy Selection: Cross-Host TP vs. Expert Parallelism (EP)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-hybrid-topology-dp-attention-ep-moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Hybrid Topology: DP Attention + EP MoE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-18-disaggregated-serving-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 18: Disaggregated Serving Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 18: Disaggregated Serving Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-the-mismatch-hardware-asymmetry-and-management-overheads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: The Mismatch: Hardware Asymmetry and Management Overheads
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-physical-separation-decoupling-hardware-simplifying-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Physical Separation: Decoupling Hardware, Simplifying Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-typical-workflow-of-disaggregated-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Typical Workflow of Disaggregated Serving
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-19-content-aware-routing-the-traffic-police" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 19: Content-Aware Routing: The Traffic Police
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 19: Content-Aware Routing: The Traffic Police">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-ai-gateways-business-aware-traffic-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: AI Gateways: Business-Aware Traffic Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-cache-aware-routing-and-dynamic-replication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Cache-Aware Routing and Dynamic Replication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-system-implementation-via-sglang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: System Implementation via SGLang
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-20-network-communication-and-high-speed-interconnects-in-large-model-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 20: Network Communication and High-Speed Interconnects in Large Model Inference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 20: Network Communication and High-Speed Interconnects in Large Model Inference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-intra-node-fabrics-pcie-nvlink-and-nvswitch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Intra-Node Fabrics: PCIe, NVLink, and NVSwitch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-cross-machine-bridge-rdma-and-its-implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Cross-Machine Bridge: RDMA and Its Implementations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-parallel-modes-data-volumes-and-metric-impacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Parallel Modes, Data Volumes, and Metric Impacts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5: Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文版
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文版
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第三部分：单机篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第四部分：分布式篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第五部分：编排篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-16-distributed-slicing-of-large-models-tensor-pipeline-and-context-parallelism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 16: Distributed Slicing of Large Models: Tensor, Pipeline, and Context Parallelism
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 16: Distributed Slicing of Large Models: Tensor, Pipeline, and Context Parallelism">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-the-necessity-of-multiple-machines-vram-capacity-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: The Necessity of Multiple Machines: VRAM Capacity Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-tp-and-pp-vertical-and-horizontal-slicing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: TP and PP: Vertical and Horizontal Slicing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-4-the-impact-of-tp-and-pp-on-core-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 4: The Impact of TP and PP on Core Metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-5-breaking-the-sequence-wall-context-parallelism" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 5: Breaking the Sequence Wall: Context Parallelism
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-6-hybrid-parallelism-the-3d-topology-of-tp-pp-and-cp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 6: Hybrid Parallelism: The 3D Topology of TP, PP, and CP
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-17-expert-parallelism-ep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 17: Expert Parallelism (EP)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 17: Expert Parallelism (EP)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-limitations-of-traditional-parallelism-for-moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Limitations of Traditional Parallelism for MoE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-strategy-selection-cross-host-tp-vs-expert-parallelism-ep" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Strategy Selection: Cross-Host TP vs. Expert Parallelism (EP)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-hybrid-topology-dp-attention-ep-moe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Hybrid Topology: DP Attention + EP MoE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-18-disaggregated-serving-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 18: Disaggregated Serving Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 18: Disaggregated Serving Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-the-mismatch-hardware-asymmetry-and-management-overheads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: The Mismatch: Hardware Asymmetry and Management Overheads
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-physical-separation-decoupling-hardware-simplifying-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Physical Separation: Decoupling Hardware, Simplifying Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-typical-workflow-of-disaggregated-serving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Typical Workflow of Disaggregated Serving
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-19-content-aware-routing-the-traffic-police" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 19: Content-Aware Routing: The Traffic Police
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 19: Content-Aware Routing: The Traffic Police">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-ai-gateways-business-aware-traffic-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: AI Gateways: Business-Aware Traffic Control
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-cache-aware-routing-and-dynamic-replication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Cache-Aware Routing and Dynamic Replication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-system-implementation-via-sglang" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: System Implementation via SGLang
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#chapter-20-network-communication-and-high-speed-interconnects-in-large-model-inference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chapter 20: Network Communication and High-Speed Interconnects in Large Model Inference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Chapter 20: Network Communication and High-Speed Interconnects in Large Model Inference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#section-1-intra-node-fabrics-pcie-nvlink-and-nvswitch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 1: Intra-Node Fabrics: PCIe, NVLink, and NVSwitch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-2-cross-machine-bridge-rdma-and-its-implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 2: Cross-Machine Bridge: RDMA and Its Implementations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#section-3-parallel-modes-data-volumes-and-metric-impacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Section 3: Parallel Modes, Data Volumes, and Metric Impacts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="part-4-distributed-orchestration-across-single-nodes-parallel-strategies-and-high-speed-interconnects">Part 4: Distributed — Orchestration Across Single Nodes: Parallel Strategies and High-Speed Interconnects<a class="headerlink" href="#part-4-distributed-orchestration-across-single-nodes-parallel-strategies-and-high-speed-interconnects" title="Permanent link">&para;</a></h1>
+<p>This part zooms out to cluster-level architecture and explores how top technology companies serve billions of requests.</p>
+<hr />
+<h2 id="chapter-16-distributed-slicing-of-large-models-tensor-pipeline-and-context-parallelism">Chapter 16: Distributed Slicing of Large Models: Tensor, Pipeline, and Context Parallelism<a class="headerlink" href="#chapter-16-distributed-slicing-of-large-models-tensor-pipeline-and-context-parallelism" title="Permanent link">&para;</a></h2>
+<p>When model parameters soar from 7B to 400B or larger, the physical limitations of a single GPU or even a single server are completely shattered. We must shard the model and distribute it across multiple nodes for collaborative inference. This chapter introduces the core technologies of distributed inference.</p>
+<hr />
+<h3 id="section-1-the-necessity-of-multiple-machines-vram-capacity-limitations">Section 1: The Necessity of Multiple Machines: VRAM Capacity Limitations<a class="headerlink" href="#section-1-the-necessity-of-multiple-machines-vram-capacity-limitations" title="Permanent link">&para;</a></h3>
+<p>Why must we deploy distributed inference? The most direct reason is that <strong>VRAM simply cannot fit the model</strong>.</p>
+<p>Take a 400B parameter model as an example:</p>
+<ul>
+<li>If storing the model in half-precision (FP16), model weights alone consume <strong>800 GB</strong> of VRAM!</li>
+<li>Using a classic <strong>NVIDIA H100</strong> as a baseline, single-card VRAM typically stands at <span class="arithmatex">\(80\)</span> GB. You would need at least <span class="arithmatex">\(10\)</span> H100 cards just to load the model—leaving zero capacity for KV Caches.</li>
+<li>Since a standard AI server holds at most <span class="arithmatex">\(8\)</span> cards (<span class="arithmatex">\(640\)</span> GB VRAM), you are physically forced to cross single-machine boundaries and utilize at least <span class="arithmatex">\(2\)</span> physical servers.</li>
+</ul>
+<p>Even though hardware evolves rapidly—with the Blackwell architecture (e.g., B200 with 192 GB VRAM) reducing required GPU counts—the physical limit of single-card capacity persists. It is driven by three factors:</p>
+<ol>
+<li><strong>Continuous Model Expansion</strong>: Model parameters are growing exponentially. From GPT-3’s 175B in 2020 to Llama 4’s projected 2T. Supply chain forecasts indicate next-generation flagship models are targeting 3T to 5T. Single-node capacity is perpetually racing against parameter growth.</li>
+<li><strong>Long Contexts and Massive KV Caches</strong>: In the era of Agents and RAG, long context windows are a strict requirement. Contexts are soaring from thousands of tokens to 128K or even 1M. In the Decode phase, these contexts generate massive KV Caches. Under high concurrency, KV Caches can approach or surpass the weight footprint itself, straining single-node VRAM.</li>
+<li><strong>Hardware Lifecycles and ROI</strong>: In production, hardware like <strong>NVIDIA H100</strong> remains heavily deployed. While upgrading hardware every year is economically unfeasible, teams still need access to state-of-the-art (SOTA) large models. Clustering existing nodes via high-speed networks is the standard solution to maximize ROI.</li>
+</ol>
+<p>Consequently, multi-machine, multi-GPU distributed inference is an absolute necessity, not an optional choice.</p>
+<hr />
+<h3 id="section-2-tp-and-pp-vertical-and-horizontal-slicing">Section 2: TP and PP: Vertical and Horizontal Slicing<a class="headerlink" href="#section-2-tp-and-pp-vertical-and-horizontal-slicing" title="Permanent link">&para;</a></h3>
+<p>To facilitate collaborative work across multiple GPUs, the industry relies on two classic slicing strategies:</p>
+<p><strong>1. Tensor Parallelism (TP) — Vertical Slicing</strong></p>
+<ul>
+<li><strong>Method</strong>: Shard a large matrix multiplication (tensor) within the model "vertically" or "horizontally" across different GPUs. For example, GPU 1 calculates the left half, GPU 2 calculates the right half, and results are aggregated via high-speed interconnects (e.g., NVLink) using All-Reduce.</li>
+<li><strong>Characteristics</strong>: Occurs <strong>within a single network layer</strong>. Communication is frequent and bandwidth demands are extremely high, confining it to <strong>intra-node</strong> deployment.</li>
+</ul>
+<p><strong>2. Pipeline Parallelism (PP) — Horizontal Slicing</strong></p>
+<ul>
+<li><strong>Method</strong>: Split the model by layers. If a model has 80 layers, Machine A manages layers 1 to 40, and Machine B manages layers 41 to 80. After Machine A computes hidden states for the first 40 layers, it transmits them over the network to Machine B.</li>
+<li><strong>Characteristics</strong>: Occurs <strong>between network layers</strong>. Communication frequency is relatively low, making it ideal for distributed deployment across distinct physical hosts.</li>
+</ul>
+<p>By pairing TP and PP (e.g., 8-card TP + 2-node PP), we can elegantly shard ultra-large models across 16 or more GPUs.</p>
+<hr />
+<h3 id="section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory">Section 3: Automatic Distribution: Distributed Decoupling of Compute and Memory<a class="headerlink" href="#section-3-automatic-distribution-distributed-decoupling-of-compute-and-memory" title="Permanent link">&para;</a></h3>
+<p>When sharding large models across GPUs or physical nodes, both <strong>Compute</strong> and <strong>Memory</strong> allocations naturally undergo distributed decoupling.</p>
+<p>We examine this from two distinct dimensions:</p>
+<p><strong>1. Distributed Allocation of Compute</strong></p>
+<ul>
+<li><strong>Tensor Parallelism (TP)</strong>: Shards <strong>computation inside single layers</strong>. A large matrix multiplication gets sliced into smaller blocks, distributing workloads across distinct GPUs.</li>
+<li><strong>Pipeline Parallelism (PP)</strong>: Shards <strong>computation between layers</strong>. Machine A calculates earlier layers and Machine B calculates later layers, establishing a pipeline-style temporal relay.</li>
+</ul>
+<p><strong>2. Distributed Allocation of Memory (VRAM Breakdown)</strong>
+Under distributed environments, VRAM footprints are partitioned across isolated components:</p>
+<ol>
+<li><strong>Model Weights</strong>: TP stores sharded matrix weights across individual GPUs, while PP allocates the layers across distinct physical machines.</li>
+<li><strong>KV Cache</strong>: Under TP, sliced attention heads cause each GPU to store only the K and V vectors assigned to its heads. Under PP, KV Caches tie to specific layers, residing only on the node handling those layers.</li>
+<li><strong>Activations and Temporary Buffers</strong>: Feature maps generated during forward propagation are distributed across local GPUs. TP frequently syncs these activations, while PP shunts activations across node boundaries.</li>
+</ol>
+<p>This decentralized architecture removes the need for centralized memory pools, but demands ultra-high-speed inter-chip interconnects (NVLink or RDMA) to seamlessly sync scattered data.</p>
+<hr />
+<h3 id="section-4-the-impact-of-tp-and-pp-on-core-metrics">Section 4: The Impact of TP and PP on Core Metrics<a class="headerlink" href="#section-4-the-impact-of-tp-and-pp-on-core-metrics" title="Permanent link">&para;</a></h3>
+<p>Having understood the basic principles of TP and PP, we analyze their systematic impacts on core metrics defined in Chapter 4 (TTFT, TBT, Throughput). To ensure precise analysis, we divide the time into three distinct phases:</p>
+<ul>
+<li><strong>Queueing Time</strong>: Time spent waiting in scheduling queues for GPU resources.</li>
+<li><strong>Execution TTFT</strong>: Pure compute time elapsed from when the model initiates processing to the generation of the first Token.</li>
+<li><strong>User-facing TTFT</strong>: Total perceived latency by users (approx. Queueing Time + Execution TTFT + Network Latency).</li>
+</ul>
+<p><strong>1. Tensor Parallelism (TP): Compute Aggregation and Lane Expansion</strong></p>
+<ul>
+<li><strong>Impact on Execution TTFT</strong>: <strong>Significantly Reduced</strong>. The Prefill phase is compute-bound; TP shunts matrix calculations to slash raw computation time (assuming All-Reduce bandwidth isn't a bottleneck, e.g., with NVLink).</li>
+<li><strong>Impact on TBT / TPS</strong>: <strong>Slightly Reduced (TPS Improved)</strong>. In the Decode phase, TP accelerates individual steps. Since computation volume is small, cross-GPU All-Reduce communication overhead increases, yielding non-linear speedups.</li>
+<li><strong>Impact on Queueing Time and Throughput</strong>: <strong>Dual Optimization with Trade-offs</strong>.<ol>
+<li><strong>Faster Serving</strong>: Fast calculations let older requests disembark quickly, naturally cutting wait times for subsequent requests.</li>
+<li><strong>Expanded Concurrency</strong>: Bundled multi-GPU VRAM supports larger Batch Sizes, directly onboarding queued requests.</li>
+<li><em>Trade-off</em>: Applying TP to models that natively fit on a single GPU introduces redundant communication overheads, penalizing total throughput.</li>
+</ol>
+</li>
+</ul>
+<p><strong>2. Pipeline Parallelism (PP): Multi-Stage Relay and Throughput</strong></p>
+<ul>
+<li><strong>Impact on Execution TTFT</strong>: <strong>Slightly Increased</strong>. Requests sequentially pass through distinct physical nodes, introducing cross-node latency and pipeline warm-up costs.</li>
+<li><strong>Impact on TBT / TPS</strong>: <strong>Minimal Improvement</strong>. Horizontal slicing does not accelerate the compute cycle of individual tokens.</li>
+<li><strong>Impact on Queueing Time and Throughput</strong>: <strong>Significantly Increased</strong>.<ul>
+<li><strong>Pipeline Wait Reductions</strong>: When Request A finishes stage 1 on Node 1 and moves on to Node 2, Node 1 instantly releases, allowing Request B to begin its prefill.</li>
+<li><strong>Throughput Priority</strong>: Parallel execution optimizes cluster-wide GPU utilization, serving as a sharp weapon for increasing cluster throughput and cutting average queuing times.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h3 id="section-5-breaking-the-sequence-wall-context-parallelism">Section 5: Breaking the Sequence Wall: Context Parallelism<a class="headerlink" href="#section-5-breaking-the-sequence-wall-context-parallelism" title="Permanent link">&para;</a></h3>
+<p>As the context windows of large models soar from thousands of tokens to millions, traditional Tensor (TP) and Pipeline (PP) parallelisms become inadequate against ultra-long sequences. This gave birth to the third slicing dimension — <strong>Context Parallelism (CP)</strong>.</p>
+<p><strong>1. What Problem Does It Solve?</strong>
+Against ultra-long contexts, core bottlenecks are not only model weights, but also the <strong>KV Cache growing linearly with sequence length</strong> and <strong>attention computation growing quadratically</strong>.</p>
+<ul>
+<li>Even with weights sharded across 8 GPUs via TP, a single GPU cannot fit KV Caches generated by hundreds of thousands or millions of tokens.</li>
+<li>Traditional TP focuses on slicing the Hidden Dimension, failing to mitigate sequence length expansion.</li>
+<li>Therefore, the core goal of CP is to <strong>break the sequence wall</strong>. It enables systems to accommodate contexts far exceeding single-GPU VRAM limits and divides exponentially growing attention compute across multiple GPUs in parallel, dramatically shortening long-context processing time.</li>
+</ul>
+<p><strong>Schematic of the 3D Slicing Dimensions in LLM Parallelism (L × N × d):</strong></p>
+<p><img alt="Parallelism Dimensions" src="../../images/parallelism_dimensions.svg" /></p>
+<p><strong>2. How Does It Work?</strong>
+The core idea of Context Parallelism is to <strong>slice along the Sequence Dimension</strong>:</p>
+<ol>
+<li><strong>Sequence Chunking</strong>: A sequence of millions of tokens splits into <span class="arithmatex">\(N\)</span> chunks across <span class="arithmatex">\(N\)</span> GPUs. Each GPU stores and processes only its segment of the KV Cache.</li>
+<li><strong>Ring Attention</strong>: Causal attention requires tokens to calculate against all preceding tokens. GPUs arrange into a ring topology, calculating local attention while passing KV Cache chunks sequentially in a ring. This fulfills global attention compute without aggregating data centrally.</li>
+</ol>
+<blockquote>
+<p>[!NOTE]
+<strong>Deep Dive: Ring Attention Coordination and Load Balancing</strong></p>
+<p>The implementation of Ring Attention goes beyond data chunking, confronting significant communication and load balancing challenges.</p>
+<p><strong>1. Asynchronous Relay Coordination</strong>
+Suppose 3 GPUs collaboratively compute a sequence. GPU 1 holds <span class="arithmatex">\(Q_1, K_1, V_1\)</span>; GPU 2 holds <span class="arithmatex">\(Q_2, K_2, V_2\)</span>; GPU 3 holds <span class="arithmatex">\(Q_3, K_3, V_3\)</span>. In Causal Attention mode, the process unfolds as follows:</p>
+<ul>
+<li><strong>Step 1</strong>: All GPUs calculate Attention for local data while initiating asynchronous KV chunk transfers (GPU 1 to 2, 2 to 3, 3 to 1).</li>
+<li><strong>Step 2</strong>: Upon receiving upstream KV chunks, GPUs calculate Attention for the new data. In Causal mode, invalid computations (e.g., GPU 1 examining future data <span class="arithmatex">\(KV_3\)</span>) are masked out.</li>
+<li><strong>Step 3</strong>: Continuing the relay ensures all GPUs calculate against required historical contexts. GPUs integrate Online Softmax to dynamically update Softmax maximums and accumulated sums.</li>
+</ul>
+<p><strong>Ring Attention Coordination:</strong>
+<pre class="mermaid"><code>sequenceDiagram
+    participant M1 as "📟 GPU 1 (Holds Q1, KV1)"
+    participant M2 as "📟 GPU 2 (Holds Q2, KV2)"
+    participant M3 as "📟 GPU 3 (Holds Q3, KV3)"
+
+    Note over M1, M3: Step 1: Local Compute &amp; Transfer
+    par Asynchronous Communication
+        M1-&gt;&gt;M2: Send KV1
+    and
+        M2-&gt;&gt;M3: Send KV2
+    and
+        M3-&gt;&gt;M1: Send KV3
+    end
+    Note over M1: Compute Q1 * KV1
+    Note over M2: Compute Q2 * KV2
+    Note over M3: Compute Q3 * KV3
+
+    Note over M1, M3: Step 2: Remote Compute &amp; Next Relay
+    par Asynchronous Communication
+        M1-&gt;&gt;M2: Forward KV3
+    and
+        M2-&gt;&gt;M3: Forward KV1
+    and
+        M3-&gt;&gt;M1: Forward KV2
+    end
+    Note over M1: Compute Q1 * KV3 (Masked)
+    Note over M2: Compute Q2 * KV1
+    Note over M3: Compute Q3 * KV2
+
+    Note over M1, M3: Step 3: Final Compute
+    Note over M1: Compute Q1 * KV2 (Masked)
+    Note over M2: Compute Q2 * KV3 (Masked)
+    Note over M3: Compute Q3 * KV1</code></pre></p>
+<p><strong>2. Load Imbalance and Zig-zag Optimization</strong>
+In Causal Attention, effective workload calculations present a lower triangular shape:</p>
+<ul>
+<li>GPU 1 calculates 1 unit of effective workload (<span class="arithmatex">\(Q_1\)</span> and <span class="arithmatex">\(KV_1\)</span>).</li>
+<li>GPU 2 calculates 2 units of effective workload (<span class="arithmatex">\(Q_2\)</span> with <span class="arithmatex">\(KV_1, KV_2\)</span>).</li>
+<li>GPU 3 calculates 3 units of effective workload (<span class="arithmatex">\(Q_3\)</span> with <span class="arithmatex">\(KV_1, KV_2, KV_3\)</span>).</li>
+</ul>
+<p>This structural imbalance forces earlier GPUs to sit idle or waste compute. There are two standard fixes:</p>
+<ul>
+<li><strong>Option A (Brute Force)</strong>: Process the full sequence and mask future tokens, wasting ~50% of total compute.</li>
+<li><strong>Option B (Zig-zag / Striping)</strong>: Deal chunks non-contiguously (e.g., GPU 1 gets blocks 1 and 6, GPU 2 gets 2 and 5, GPU 3 gets 3 and 4). All nodes process equal workloads, neutralizing idle wait times.</li>
+</ul>
+<p><strong>Zig-zag Load Balancing:</strong>
+<pre class="mermaid"><code>graph TD
+    subgraph "Contiguous Slicing"
+        N1["📟 GPU 1: Chunks [1, 2]"]
+        N2["📟 GPU 2: Chunks [3, 4]"]
+        N3["📟 GPU 3: Chunks [5, 6]"]
+        N1 --&gt;|"Workload: 1+2 = 3"| NW1["Severely Idle"]
+        N2 --&gt;|"Workload: 3+4 = 7"| NW2["Moderate Load"]
+        N3 --&gt;|"Workload: 5+6 = 11"| NW3["Heavy Load"]
+    end
+
+    subgraph "Zig-zag Slicing"
+        Z1["📟 GPU 1: Chunks [1, 6]"]
+        Z2["📟 GPU 2: Chunks [2, 5]"]
+        Z3["📟 GPU 3: Chunks [3, 4]"]
+        Z1 --&gt;|"Workload: 1+6 = 7"| ZW1["Perfectly Balanced"]
+        Z2 --&gt;|"Workload: 2+5 = 7"| ZW2["Perfectly Balanced"]
+        Z3 --&gt;|"Workload: 3+4 = 7"| ZW3["Perfectly Balanced"]
+    end</code></pre></p>
+</blockquote>
+<p><strong>3. Impact on Performance</strong></p>
+<ol>
+<li><strong>Impact on Execution TTFT</strong>: <strong>Dramatically optimizes long-context TTFT</strong>. CP shards sequence compute across multiple GPUs, significantly shortening the Prefill time for massive prompts.</li>
+<li><strong>Impact on TBT / TPS</strong>: <strong>Minor Impact</strong>. Decoders process a single Token at a time without scaling against the entire prompt, resulting in negligible inter-token latency improvements.</li>
+<li><strong>Impact on Throughput and Cost</strong>: <strong>Trading network overhead for feasibility</strong>. CP introduces high ring communication costs. While yielding no advantages in short-text workloads, it stands as the <strong>only viable solution for ultra-long context generation</strong>.</li>
+</ol>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>Cross-Node Context Parallelism</strong>
+While this section focuses on intra-node GPU collaboration for simplicity, Context Parallelism can span physical machines. <strong>When context length reaches 1M or more and exceeds the total VRAM of a single machine, CP must cross machine boundaries.</strong>
+In this case, Ring Attention communication uses cross-machine networks (InfiniBand or RoCE). Since their bandwidth and latency are an order of magnitude worse than NVLink, this requires advanced compute-communication overlap techniques, representing the ultimate long-context engineering challenge.</p>
+</blockquote>
+<hr />
+<h3 id="section-6-hybrid-parallelism-the-3d-topology-of-tp-pp-and-cp">Section 6: Hybrid Parallelism: The 3D Topology of TP, PP, and CP<a class="headerlink" href="#section-6-hybrid-parallelism-the-3d-topology-of-tp-pp-and-cp" title="Permanent link">&para;</a></h3>
+<p>When confronted with ultra-large-scale models (e.g., <span class="arithmatex">\(400\text{B}\)</span>) paired with extreme context lengths (e.g., <span class="arithmatex">\(1\text{M}\)</span> tokens), single parallel strategies fall short. We combine Tensor Parallelism (TP), Pipeline Parallelism (PP), and Context Parallelism (CP) into a rugged 3D parallel topology.</p>
+<p>A typical 3D parallel (TP + PP + CP) architecture yields the following physical layering:</p>
+<ul>
+<li><strong>Intra-Node (NVLink Domain): Maxed-Out TP</strong>: Inside a single 8-GPU server, TP is set to <span class="arithmatex">\(\text{TP}=8\)</span>. These 8 GPUs connect via high-bandwidth NVLink/NVSwitch, serving as a cohesive "physical atom" holding a weight slice and sustaining high-frequency All-Reduce matrix communication.</li>
+<li><strong>Inter-Node Vertical Slicing (Cross-Host Network) for PP</strong>: Physical nodes partition the model's layers vertically via Pipeline Parallelism (PP). <strong>For instance, an 80-layer model splits into 2 stages of 40 layers each (Stage 1 covering layers 1–40, Stage 2 covering layers 41–80).</strong> Nodes pass only lightweight forward activations, imposing minimal stress on cross-machine networks (e.g., InfiniBand or RoCE).</li>
+<li><strong>Inter-Node Horizontal Expansion (Cross-Host Network) for CP</strong>: In the same PP stage, Context Parallelism (CP) tackles KV Cache volumes that exceed single-node capacities. <strong>For instance, a <span class="arithmatex">\(1\text{M}\)</span>-token context splits into 2 chunks of <span class="arithmatex">\(500\text{K}\)</span> tokens each, distributed across two node sets (Node A and Node B).</strong> Nodes duplicate identical layer weights and utilize Ring Attention algorithms to relay KV Cache chunks sequentially across Physical Nodes.</li>
+</ul>
+<p><strong>3D Parallelism Topology (TP + PP + CP):</strong></p>
+<p><img alt="3D Topology" src="../../images/hybrid_parallelism_topology.svg" /></p>
+<p><strong>Transformer Block Data Flow</strong>:</p>
+<ul>
+<li><strong>Attention Layers</strong>: Require inter-node CP communication (e.g., Ring Attention) to exchange KV Caches, as tokens must "see" one another.</li>
+<li><strong>FFN Layers</strong>: Act independently. Host nodes calculate local tokens autonomously without sequence-wide cross-host communication (only intra-node TP synchronization).</li>
+</ul>
+<p>While Dense models isolate Attention (CP-dependent) from independent FFN layers, MoE architectures shard FFN layers into multiple experts. This demands a new strategy: <strong>Expert Parallelism (EP)</strong>.</p>
+<hr />
+<h2 id="chapter-17-expert-parallelism-ep">Chapter 17: Expert Parallelism (EP)<a class="headerlink" href="#chapter-17-expert-parallelism-ep" title="Permanent link">&para;</a></h2>
+<p>Distributing dense models via TP, PP, and CP shares a common trait: every token activates all parameters. </p>
+<p>As models reach trillions of parameters, this dense computation approach hits physical limits. <a href="../part1_principles/#section-7-mixture-of-experts-sparse-activation">Mixture of Experts (MoE)</a> solves this by activating only a fraction of parameters per token (e.g., 2 out of 256 experts). This sparse activation property unlocks a new strategy: <strong>Expert Parallelism (EP)</strong>.</p>
+<hr />
+<h3 id="section-1-limitations-of-traditional-parallelism-for-moe">Section 1: Limitations of Traditional Parallelism for MoE<a class="headerlink" href="#section-1-limitations-of-traditional-parallelism-for-moe" title="Permanent link">&para;</a></h3>
+<p>MoE models decouple model capacity from compute costs. They allow parameter sizes to reach the trillions without causing a linear explosion in compute workloads.</p>
+<p>When tackling MoE models with massive parameter footprints (e.g., DeepSeek V3’s <span class="arithmatex">\(671\text{B}\)</span>), the most intuitive approach is relying on <strong>Tensor Parallelism (TP)</strong> and <strong>Pipeline Parallelism (PP)</strong> to shard weights.</p>
+<p><strong>The Deduction Process:</strong></p>
+<ol>
+<li><strong>Step 1: Intra-node TP for Small Models</strong>: If a model is small (e.g., Mixtral 8x7B at <span class="arithmatex">\(47\text{B}\)</span>), all experts add up to mere gigabytes. Loading the model into an 8-GPU server with <strong>intra-node Tensor Parallelism (<span class="arithmatex">\(\text{TP}=8\)</span>)</strong> is the simplest approach. All GPUs process all experts under NVLink's <span class="arithmatex">\(900\text{GB/s}\)</span> bandwidth without cross-machine latencies.</li>
+<li><strong>Step 2: Cross-host PP for Larger Models</strong>: When parameter counts grow and a single machine can no longer fit the layers, we introduce <strong>Pipeline Parallelism (PP)</strong>—sharding the model horizontally by network layers into multiple stages across physical hosts. Stage relay communications remain infrequent and lightweight, bypassing limited network bandwidth bottlenecks.</li>
+<li><strong>Step 3: Dead Ends via Pipeline Bubbles</strong>: Pipeline Parallelism cannot be sliced infinitely. PP introduces rigid pipeline bubbles. During word-by-word Decode phases, these bubbles stretch Time Between Tokens (TBT) beyond acceptable user thresholds, confining real-world PP depth to 4 or 8 stages.</li>
+</ol>
+<p><strong>The Challenge:</strong>
+Since we cannot slice PP too deeply, the layer groups assigned to a physical machine still hold MoE FFN layers whose experts exceed VRAM capacities. We are physically forced to shard <strong>experts within identical network layers</strong> across distinct nodes.</p>
+<hr />
+<h3 id="section-2-strategy-selection-cross-host-tp-vs-expert-parallelism-ep">Section 2: Strategy Selection: Cross-Host TP vs. Expert Parallelism (EP)<a class="headerlink" href="#section-2-strategy-selection-cross-host-tp-vs-expert-parallelism-ep" title="Permanent link">&para;</a></h3>
+<p>Engineers face two divergent architectural paradigms when slicing single layers across host boundaries:</p>
+<ol>
+<li><strong>Option A: Cross-Host Tensor Parallelism (Cross-Host TP)</strong><ul>
+<li><strong>Approach</strong>: Extend the TP logic by sharding all experts within a layer vertically or horizontally across different physical nodes.</li>
+<li><strong>Metaphor</strong>: <strong>"Everyone cuts the same tree"</strong> — sharded weights, stationary token activations.</li>
+<li><strong>Disadvantages</strong>:<ul>
+<li><strong>Compute Degradation</strong>: Slicing matrices too finely eliminates large matrix GEMM computations. GPUs degrade into inefficient GEMV operations, severely wasting compute capacity.</li>
+<li><strong>Network Overload</strong>: Every layer triggers multiple cross-machine global All-Reduce events, choking 50-100GB/s inter-host (IB/RoCE) networks.</li>
+<li><strong>Synchronous Blockage</strong>: Cross-host All-Reduce is a rigid synchronous operation. Node calculations must wait for cluster-wide communication to conclude; minor network jitters stall the entire cluster's CUDA cores.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>Option B: Expert Parallelism (EP)</strong><ul>
+<li><strong>Approach</strong>: <strong>Stationary weights, moving tokens</strong>. We preserve the physical integrity of individual experts, anchoring Expert A on Node 1 and Expert B on Node 2. When tokens are calculated, they route over the network (via All-to-All) to the GPU hosting the target expert, compute locally, and route back.</li>
+<li><strong>Metaphor</strong>: <strong>"Divide trees among people"</strong> — stationary weights, moving token activations.</li>
+<li><strong>Core Advantages</strong>:<ul>
+<li><strong>Algorithmic Isomorphism</strong>: Maintains physical expert integrity, allowing network routing to fulfill the sorter role in alignment with sparse mapping algorithms.</li>
+<li><strong>High Hardware Efficiency</strong>: Under high-concurrency, EP aggregates tokens destined for the same expert onto a specific GPU. This triggers full GEMM operations, saturates Tensor Cores, and avoids GEMV degradation.</li>
+<li><strong>Compute-Comm Overlap</strong>: All-to-All communication remains asynchronous. While GPUs compute local tokens, the NIC shunts cross-node tokens in the background, hiding communication latency behind computation time.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<p><strong>Comparing Cross-Host TP and Expert Parallelism (EP):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Dimension</th>
+<th style="text-align: left;">Cross-Host Tensor Parallelism (TP)</th>
+<th style="text-align: left;">Expert Parallelism (EP)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Philosophy</strong></td>
+<td style="text-align: left;">Stationary Tokens, Sharded Weights</td>
+<td style="text-align: left;">Stationary Weights, Routed Tokens</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Matrix Compute</strong></td>
+<td style="text-align: left;">Inefficient GEMV</td>
+<td style="text-align: left;">Highly efficient GEMM</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Comm Pattern</strong></td>
+<td style="text-align: left;">All-Reduce (Synchronous)</td>
+<td style="text-align: left;">All-to-All (Asynchronous)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Comm Frequency</strong></td>
+<td style="text-align: left;">Scaled by active experts</td>
+<td style="text-align: left;">Fixed at 2 events per layer</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Overlap</strong></td>
+<td style="text-align: left;">Blocking Sync</td>
+<td style="text-align: left;">Background Asynchronous Shunting</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!NOTE]
+<strong>Quantifying EP vs. TP Communication Volume</strong>
+Intuitively, EP's All-to-All volume seems immense. However, mathematical analysis proves otherwise. Assuming <span class="arithmatex">\(M\)</span> nodes and <span class="arithmatex">\(K\)</span> active experts per token, unoptimized theoretical EP yields merely <span class="arithmatex">\(1/M\)</span> of TP's cross-node traffic. Even when Operator Fusion scales down TP volume by <span class="arithmatex">\(K\)</span>, EP communication traffic remains just <span class="arithmatex">\(K/M\)</span> of TP.</p>
+</blockquote>
+<hr />
+<h3 id="section-3-hybrid-topology-dp-attention-ep-moe">Section 3: Hybrid Topology: DP Attention + EP MoE<a class="headerlink" href="#section-3-hybrid-topology-dp-attention-ep-moe" title="Permanent link">&para;</a></h3>
+<p>Production serving (e.g., DeepSeek V3/R1) deploys a hybrid topology: <strong>DP (Data Parallelism) for Attention layers, and EP (Expert Parallelism) for FFN (MoE) layers</strong>.</p>
+<p>This division leverages architectural <strong>heterogeneity</strong>:</p>
+<ol>
+<li><strong>Attention Layers (Dense &amp; Lightweight)</strong>: Modern mechanisms (like GQA or MLA studied in <a href="../part3_single_node/#chapter-9-model-architecture-vram-optimization-gqa">Chapter 9: Model Architecture VRAM Optimization: GQA</a>) compress attention weights enough (typically under 10% of total parameters) to replicate across all GPUs. Attention layers apply <strong>DP</strong>—nodes process local requests without communication, avoiding All-Reduce overhead.</li>
+<li><strong>FFN Layers (Sparse &amp; Heavy)</strong>: Massive expert weights shard across nodes via <strong>EP</strong>, routing tokens over the network.</li>
+</ol>
+<p><strong>DP Attention + EP MoE Architecture:</strong></p>
+<p><img alt="DP Attention + EP MoE Topology" src="../../images/dp_attention_ep_moe.svg" /></p>
+<blockquote>
+<p>[!NOTE]
+<strong>Trade-offs between DP and CP for Context Volumes</strong>
+DP and CP both shard <strong>input data</strong> rather than weights, but target different dimensions:</p>
+<ul>
+<li><strong>DP Attention</strong>: Slices the <strong>Batch / Request dimension</strong>, targeting maximum throughput.</li>
+<li><strong>CP Attention</strong>: Slices the <strong>Sequence dimension</strong> for a single request, relying on Ring Attention syncs.</li>
+</ul>
+<p>Production deployments profile these trade-offs based on text lengths:</p>
+<ul>
+<li><strong>Short Text Limits</strong>: Naive CP on short sequences shards compute too finely, choking GPUs on frequent cross-node ring syncs.</li>
+<li><strong>Long Text Limits</strong>: Conversely, heavy contexts will OOM individual cards unless CP is engaged.</li>
+</ul>
+<p><strong>Engineering Practices:</strong></p>
+<ul>
+<li><strong>Example 1: Compromise Efficiency for Consistency</strong>: Deploy subtle CP (e.g., <span class="arithmatex">\(\text{CP}=2\)</span> or 4). Short context throughput drops by 10–20%, but guarantees universal compatibility.</li>
+<li><strong>Example 2: Physical Isolation for Performance</strong>: Implement a routing gateway to shunt traffic at the boundary. High-frequency short context traffic routes to a pure <code>DP Attention + EP MoE</code> topology, keeping Attention zero-communication to secure maximum throughput, while heavy long context traffic enters a dedicated <code>CP Attention + EP MoE</code> cluster.</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="chapter-18-disaggregated-serving-architecture">Chapter 18: Disaggregated Serving Architecture<a class="headerlink" href="#chapter-18-disaggregated-serving-architecture" title="Permanent link">&para;</a></h2>
+<p>What is <strong>Disaggregated Serving</strong>? Put simply, it is an architecture that completely isolates the <strong>Prefill</strong> phase and <strong>Decode</strong> phase of large model inference, running them on physical clusters with different hardware configurations.</p>
+<p>In Part 3, we introduced <strong>Continuous Batching</strong> and <strong>Chunked Prefill</strong>. These strategies achieve "perfect carpooling" of Prefill and Decode at the single-machine level, squeezing maximum performance out of a single graphics card. You might ask: since single-machine problems have been resolved, why go through the trouble of deploying Disaggregated Serving?</p>
+<p>The answer is that single-machine optimizations are mere <strong>"tactical-level"</strong> squeezes. Attempting to balance Prefill and Decode within a single GPU not only runs into the physical limits of <strong>hardware mismatches</strong>, but also introduces <strong>extreme complexity in scheduling and system management</strong>. When serving scales to industrial magnitudes, single-node "perfection" becomes a macroscopic burden. This chapter unveils <strong>Disaggregated Serving</strong>, exploring how it simultaneously resolves hardware mismatches and simplifies resource management.</p>
+<hr />
+<h3 id="section-1-the-mismatch-hardware-asymmetry-and-management-overheads">Section 1: The Mismatch: Hardware Asymmetry and Management Overheads<a class="headerlink" href="#section-1-the-mismatch-hardware-asymmetry-and-management-overheads" title="Permanent link">&para;</a></h3>
+<p>As mentioned in <a href="../part2_bottlenecks/#chapter-8-core-asymmetry-prefill-vs-decode">Chapter 8: Core Asymmetry: Prefill vs. Decode</a>, Prefill and Decode have completely opposite hardware requirements:</p>
+<ul>
+<li><strong>Prefill</strong>: Processes massive inputs, craving immense <strong>Compute Power (FLOPs)</strong> while carrying relatively small VRAM requirements.</li>
+<li><strong>Decode</strong>: Spits out tokens sequentially, consuming minimal compute power (yielding idle compute) while requiring frequent movements of massive KV Caches from memory. It thrives on <strong>Memory Bandwidth</strong> and <strong>Memory Capacity</strong>.</li>
+</ul>
+<p>Running a unified deployment architecture (mixed deployment) strikes the system with a double blow:</p>
+<ol>
+<li><strong>Wasted Hardware Mismatch</strong>: When teams deploy expensive B200 graphics cards to handle Decode phases, their high Tensor Core compute spends most of the time "sleeping" while waiting for memory data transfers. This amounts to cutting firewood with a dragon-slaving sword, causing immense cost waste.</li>
+<li><strong>The "Tightrope Walking" of Scheduling</strong>: To manage this conflict on a single GPU, engineers developed complex scheduling algorithms like Continuous Batching and Chunked Prefill. System managers must walk a tightrope, balancing the resource occupations of both phases. Minor slip-ups immediately trigger jitters in Time to First Token (TTFT) or Time Between Tokens (TBT), turning resource planning and capacity management into complex affairs.</li>
+</ol>
+<hr />
+<h3 id="section-2-physical-separation-decoupling-hardware-simplifying-management">Section 2: Physical Separation: Decoupling Hardware, Simplifying Management<a class="headerlink" href="#section-2-physical-separation-decoupling-hardware-simplifying-management" title="Permanent link">&para;</a></h3>
+<p>To fundamentally break the deadlock, top technology companies deploy the <strong>Disaggregated Serving</strong> architecture (such as various internal systems at Google and open-source DistServe).</p>
+<p>The core philosophy centers on <strong>Physical Isolation</strong>:</p>
+<ol>
+<li><strong>Prefill Cluster</strong>: Composed of compute-rich nodes with average memory capacities, dedicated exclusively to receiving users' long Prompts, completing prefilling at maximum speed, and generating initial KV Caches.</li>
+<li><strong>Decode Cluster</strong>: Houses memory-bandwidth nodes equipped with massive HBM memory and ultra-high memory bandwidth, dedicated to hosting KV Caches and streaming tokens sequentially.</li>
+</ol>
+<p>This division of labor yields dual benefits:</p>
+<p><strong>1. Resolving Hardware Mismatches and Unleashing Potential</strong>
+Teams can purchase independent hardware for different clusters—<strong>targeting extreme TTFT in the Prefill cluster, and extreme TPS and TBT stability in the Decode cluster</strong>—squeezing the absolute best out of both hardware types while significantly reducing total TCO.</p>
+<p><strong>2. Simplifying Resource Management (Dimensionality Reduction)</strong>
+More importantly, Disaggregated Serving <strong>transforms complex mixed scheduling problems into straightforward capacity planning questions</strong>:</p>
+<ul>
+<li><strong>Farewell to "Micromanagement"</strong>: Prefill nodes focus purely on processing Prompts; Decode nodes focus purely on streaming text. The system no longer requires complex resource balancings within a single GPU, improving system stability and maintainability.</li>
+<li><strong>Business-Driven Minimalist Scaling</strong>: Resource management directly links to business workload profiles instead of black-box algorithm tunings.<ul>
+<li><strong>RAG and Long Document Q&amp;A</strong>: High input text followed by short answers. This is a <strong>"heavy Prefill, light Decode"</strong> scenario. Under disaggregated serving, engineers directionally scale up only the Prefill cluster.</li>
+<li><strong>Agent and Chain of Thought (CoT) Inference</strong>: A short instruction followed by extensive internal monologue. This is a <strong>"light Prefill, heavy Decode"</strong> scenario. Teams directionally scale up only the Decode cluster, avoiding unnecessary spending on raw compute capacity.</li>
+</ul>
+</li>
+</ul>
+<p>By applying refined resource matching, Disaggregated Serving resolves the dragon-slaying sword dilemma and makes cluster management clean and controllable.</p>
+<hr />
+<h3 id="section-3-typical-workflow-of-disaggregated-serving">Section 3: Typical Workflow of Disaggregated Serving<a class="headerlink" href="#section-3-typical-workflow-of-disaggregated-serving" title="Permanent link">&para;</a></h3>
+<p>Disaggregated serving operates as a carefully choreographed relay race. The <strong>AI Gateway</strong> plays the role of a <strong>"Matchmaker"</strong>, while the <strong>Prefill Node</strong> and <strong>Decode Node</strong> execute point-to-point handovers:</p>
+<ol>
+<li><strong>Request Access and Matchmaking</strong>: Users send Prompts to the <strong>AI Gateway</strong>. Acting as a matchmaker, the gateway selects an optimal pair of Prefill and Decode nodes and generates a unique session identifier (Room ID) for them.</li>
+<li><strong>Concurrent Dispatching</strong>: The gateway simultaneously shunts the request along with connection details to both selected nodes.</li>
+<li><strong>Point-to-Point Handshake and Pre-allocation</strong>: Upon receiving the request, the Decode node pre-allocates memory within its local KV pool and sends the designated memory addresses back to the Prefill node.</li>
+<li><strong>Prefill Computation and Direct Push</strong>: The Prefill node processes the prompt and generates the KV Cache. It then leverages high-speed <strong>RDMA</strong> protocols (e.g., the Mooncake engine) to push the full KV Cache directly into the Decode node’s VRAM.</li>
+<li><strong>Decode Generation</strong>: The Decode node verifies cache delivery, instantly bypasses the Prefill phase, and takes over self-regression to stream generated tokens back to the user.</li>
+</ol>
+<pre class="mermaid"><code>sequenceDiagram
+    autonumber
+    actor User as 🧑 User
+    participant Gateway as 🚦 AI Gateway / Scheduler
+    participant Prefill as 🚀 Prefill Node&lt;br/&gt;(Compute-Bound)
+    participant Decode as 💾 Decode Node&lt;br/&gt;(Memory/Bandwidth-Bound)
+
+    User-&gt;&gt;Gateway: 1. Send Prompt Request
+    Note over Gateway: Matchmaker role: Select P/D Pair&lt;br/&gt;Assign Session ID
+    par Concurrent Dispatch
+        Gateway-&gt;&gt;Prefill: 2. Shunt Request (Includes Decode VRAM Address)
+    and
+        Gateway-&gt;&gt;Decode: 2. Shunt Request (Includes Session ID)
+    end
+
+    Note over Decode: 3. Pre-allocate KV VRAM Space
+    Decode-&gt;&gt;Prefill: 4. Send Memory Address
+
+    Note over Prefill: 5. Process Prompt&lt;br/&gt;Generate KV Cache
+
+    Note over Prefill, Decode: Key Handover: PUSH KV Cache via RDMA
+    Prefill-&gt;&gt;Decode: 6. Direct push into Decode VRAM
+
+    Prefill-&gt;&gt;Gateway: 7. Mark Prefill Complete
+
+    Note over Decode: 8. Trigger Sequential Generation
+
+    loop Word-by-Word Generation
+        Decode-&gt;&gt;User: 9. Stream Tokens
+    end
+    Decode-&gt;&gt;Gateway: 10. Generation ends, release Session Resources</code></pre>
+<p>This decentralized data handover mechanism—where the gateway only controls flow and nodes connect point-to-point—successfully prevents the gateway from becoming the bottleneck for massive KV data transfers, transforming resource competition within a single machine into efficient pipeline work between clusters.</p>
+<hr />
+<h2 id="chapter-19-content-aware-routing-the-traffic-police">Chapter 19: Content-Aware Routing: The Traffic Police<a class="headerlink" href="#chapter-19-content-aware-routing-the-traffic-police" title="Permanent link">&para;</a></h2>
+<p>Once Disaggregated Serving partitions the cluster into Prefill and Decode pools, the question becomes: when massive HTTP requests pour in, who decides which request routes to which machine? This chapter introduces the "traffic police" of large model clusters—<strong>Content-Aware Routing</strong>.</p>
+<hr />
+<h3 id="section-1-ai-gateways-business-aware-traffic-control">Section 1: AI Gateways: Business-Aware Traffic Control<a class="headerlink" href="#section-1-ai-gateways-business-aware-traffic-control" title="Permanent link">&para;</a></h3>
+<p>Traditional load balancers (e.g., NGINX or F5) only inspect basic physical metrics like network traffic, concurrent connections, and server CPU or memory utilizations. To them, an incoming HTTP request is a stream of generic bytes.</p>
+<p>In an LLM inference cluster, such blind routing triggers disasters, as inference costs are heavily determined by <strong>Prompt content and length</strong>.</p>
+<p>Consequently, <strong>AI Gateways</strong> act as business-aware traffic police:</p>
+<ul>
+<li><strong>Request Inspection</strong>: Before a request reaches the GPU, the gateway parses it to determine how many tokens it holds and what business type it falls under.</li>
+<li><strong>Intelligent Routing Decisions</strong>: Since resource consumption differences across Prefill and Decode phases are immense, the gateway routes intelligently based on <strong>request profiles</strong> (input length versus expected output length) rather than employing blind round-robin scheduling.</li>
+</ul>
+<p><strong>AI Gateway Routing Policies:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Request Profile</th>
+<th style="text-align: left;">Features (Input/Output)</th>
+<th style="text-align: left;">Prefill Node Routing Policy</th>
+<th style="text-align: left;">Decode Node Routing Policy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Daily Chat</strong></td>
+<td style="text-align: left;">Short Input / Short Output</td>
+<td style="text-align: left;"><strong>Greedy/Ultra-Fast</strong>: Route to the shortest queue and lowest load for rapid TTFT.</td>
+<td style="text-align: left;"><strong>Random/Round-Robin</strong>: Low demands on VRAM and bandwidth; any idle node will suffice.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Knowledge Base (RAG)</strong></td>
+<td style="text-align: left;"><strong>Long Input</strong> / Short Output</td>
+<td style="text-align: left;"><strong>Compute-First</strong>: Must dispatch to a currently non-overloaded, compute-rich node; otherwise massive prefills will blow up TTFT.</td>
+<td style="text-align: left;"><strong>Capacity-First</strong>: Must route to nodes with <strong>large remaining VRAM capacity</strong> to accommodate massive initial KV Caches.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Agent/Long Text Gen</strong></td>
+<td style="text-align: left;">Short Input / <strong>Long Output</strong></td>
+<td style="text-align: left;"><strong>Fast-Pass</strong>: Prefill duration is extremely short; standard idle nodes are sufficient.</td>
+<td style="text-align: left;"><strong>Bandwidth and Stability First</strong>: Decode phase is long; must select nodes with few active batches and high VRAM bandwidth to secure TBT.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Complex Dialog</strong></td>
+<td style="text-align: left;"><strong>Long Input</strong> / <strong>Long Output</strong></td>
+<td style="text-align: left;"><strong>Resource Tilt</strong>: Extremely compute-heavy; select the freest top-tier nodes, or even trigger Context Parallelism (CP).</td>
+<td style="text-align: left;"><strong>Double Strictness</strong>: Requires both <strong>large VRAM capacity</strong> (for initial KV) and <strong>sufficient VRAM bandwidth</strong> (for long-term continuous streaming).</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!NOTE]
+<strong>Preventing HOL (Head-of-Line) Blocking</strong>
+When long and short requests arrive simultaneously, AI Gateways actively prevent short requests from waiting behind long ones. If Prefill nodes are saturated, the gateway shunts short requests via priority queues or dedicated "fast lane" nodes to protect optimal user experiences.</p>
+</blockquote>
+<hr />
+<h3 id="section-2-cache-aware-routing-and-dynamic-replication">Section 2: Cache-Aware Routing and Dynamic Replication<a class="headerlink" href="#section-2-cache-aware-routing-and-dynamic-replication" title="Permanent link">&para;</a></h3>
+<p><strong>Cache-Aware Routing</strong> stands as the AI Gateway's most powerful optimization capability.</p>
+<p><strong>1. Why Do We Need It?</strong>
+Building on <strong>RadixAttention</strong> (Prefix Caching) studied in <a href="../part3_single_node/#chapter-12-prefix-caching-mechanism-based-on-radix-tree-radixattention">Chapter 12: Prefix Caching Mechanism Based on Radix Tree (RadixAttention)</a>, if multiple requests share the same System Prompt, long document background, or dialogue history, memory nodes cache their prefix KV Caches locally. If the gateway blindly routes requests via round-robin, requests with identical prefixes scatter across different nodes, forcing nodes to repeatedly calculate the same prefill. This wastes massive compute and elongates TTFT. Consequently, gateways must track prefix content and route requests to nodes already housing those caches.</p>
+<p><strong>2. Operational Flow</strong></p>
+<ul>
+<li><strong>Prefix Matching</strong>: The gateway tracks an internal "cache index table," identifying which text prefixes reside on which memory nodes. When requests come in, the gateway routes them to nodes yielding the highest cache hit rate to reuse KV Caches.</li>
+<li><strong>Dynamic Replication</strong>: If a prefix becomes an internet-wide hotspot, requests can overload the memory node. The gateway monitors imbalances, shunts traffic to idle nodes, and prompts idle nodes to pull replicas of that cache, achieving load balancing.</li>
+</ul>
+<hr />
+<h3 id="section-3-system-implementation-via-sglang">Section 3: System Implementation via SGLang<a class="headerlink" href="#section-3-system-implementation-via-sglang" title="Permanent link">&para;</a></h3>
+<p>Currently, cutting-edge inference engines like <strong>SGLang</strong> pair soft gateway routing with hierarchical backend caching to implement these mechanisms at minimal system cost.</p>
+<p><strong>1. The Gateway's "Approximate Prefix Tree" (Solving Matching Overhead)</strong>
+SGLang’s Rust-based gateway maintains a global <strong>Approximate Radix Tree</strong>:</p>
+<ul>
+<li><strong>Tokenizer-Free Optimization</strong>: To sustain high gateway throughputs, the tree stores <strong>raw text strings</strong> instead of Token IDs. Gateways don't load massive vocabularies for tokenization; they match strings directly to locate caches.</li>
+<li><strong>Dual-Mode Switching</strong>: When system load is balanced, the gateway routes by cache match rate. If hotspot requests overload memory nodes, gateways switch dynamically to "Shortest Queue" routing, shunting incoming requests to idle nodes.</li>
+</ul>
+<p><strong>2. The Backend's "L3 Shared Cache" (Solving Replica Generation)</strong>
+Idle nodes inheriting split traffic don't hold local KV Caches. To bypass expensive recomputing, SGLang introduces <strong>HiCache</strong>, partitioning caches into GPU (L1), CPU (L2), and <strong>Distributed Shared Storage (L3)</strong> (such as DeepSeek 3FS).</p>
+<ul>
+<li>Once hotspot nodes flush caches to L3, idle nodes receive redirected requests and <strong>prefetch</strong> KV Caches directly from shared L3.</li>
+<li>Once the new node finishes processing, it houses the cache locally. The gateway updates its Radix tree, marking the idle node as a new replica for the hotspot prefix.</li>
+</ul>
+<blockquote>
+<p>[!NOTE]
+<strong>HiCache vs. Single-Node Offloading</strong>
+Both utilize the "GPU <span class="arithmatex">\(\rightarrow\)</span> CPU <span class="arithmatex">\(\rightarrow\)</span> External Storage" hardware pyramid. However, HiCache expands single-node offloading into <strong>cluster-wide sharing</strong> and structurally couples with prefix trees to actively prefetch data.</p>
+</blockquote>
+<hr />
+<h2 id="chapter-20-network-communication-and-high-speed-interconnects-in-large-model-inference">Chapter 20: Network Communication and High-Speed Interconnects in Large Model Inference<a class="headerlink" href="#chapter-20-network-communication-and-high-speed-interconnects-in-large-model-inference" title="Permanent link">&para;</a></h2>
+<p>Whether partitioning models in distributed inference or shunting data in Disaggregated Serving, partitioning compute generates corresponding communication overheads. Network communication is the lifeline of inference systems.</p>
+<p>This chapter analyzes core interconnect technologies, bandwidth traits, and their adaptations across parallel modes.</p>
+<hr />
+<h3 id="section-1-intra-node-fabrics-pcie-nvlink-and-nvswitch">Section 1: Intra-Node Fabrics: PCIe, NVLink, and NVSwitch<a class="headerlink" href="#section-1-intra-node-fabrics-pcie-nvlink-and-nvswitch" title="Permanent link">&para;</a></h3>
+<p>Interconnect technologies between host GPUs have evolved significantly:</p>
+<ol>
+<li><strong>PCIe (Peripheral Component Interconnect Express)</strong>:<ul>
+<li><strong>Characteristics</strong>: The traditional universal bus (unidirectional PCIe 5.0 x16 delivers ~64 GB/s). In scenarios like Tensor Parallelism (TP) that demand high-frequency All-Reduce synchronizations, PCIe bandwidth becomes a severe bottleneck.</li>
+</ul>
+</li>
+<li><strong>NVLink + NVSwitch</strong>: Used in combination to establish a high-speed full-mesh network within a single machine.<ul>
+<li><strong>NVLink</strong>: A point-to-point fabric developed by NVIDIA specifically for GPU interconnection, enabling direct VRAM reads/writes (P2P) while bypassing the CPU. Delivers up to 900 GB/s bidirectional bandwidth on H100 GPUs.</li>
+<li><strong>NVSwitch</strong>: Resolves link capacity bottlenecks by routing all GPUs into an internal switch chip, allowing any GPU pair to communicate at full NVLink bandwidth.</li>
+<li><strong>Overall Result</strong>: 8 GPUs connect individually to NVSwitch to achieve a full-mesh interconnected network, serving as the physical cornerstone for efficient Tensor Parallelism (TP).</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h3 id="section-2-cross-machine-bridge-rdma-and-its-implementations">Section 2: Cross-Machine Bridge: RDMA and Its Implementations<a class="headerlink" href="#section-2-cross-machine-bridge-rdma-and-its-implementations" title="Permanent link">&para;</a></h3>
+<p>When distributed inference spans physical hosts, traditional Ethernet and TCP/IP stacks fall short. Departing data must traverse from GPU VRAM to CPU Memory, into the kernel network stack, and out to the NIC—creating long pathways, heavy CPU overheads, and high latencies.</p>
+<p><strong>1. RDMA: Eliminating the Bottleneck</strong>
+RDMA (Remote Direct Memory Access) enables NICs to read and write remote GPU VRAM directly, <strong>bypassing the CPU and kernel</strong> for zero-copy transfers. It drops latency from milliseconds to microseconds and frees up CPU compute for scheduling and control flow.</p>
+<p><strong>2. InfiniBand vs. RoCE</strong></p>
+<ul>
+<li><strong>InfiniBand (IB)</strong>: A dedicated HPC network combining hardware and software. Inherently lossless (credit-based flow control), delivering 400–800Gbps bandwidth at sub-microsecond latencies. Demands specialized NICs and switches.</li>
+<li><strong>RoCE</strong>: Runs RDMA over standard Ethernet. Saves on hardware costs but requires complex PFC and ECN configurations to construct a "lossless Ethernet".</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>InfiniBand</th>
+<th>RoCE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Typical Bandwidth</strong></td>
+<td>400G～800Gbps</td>
+<td>200G～400Gbps</td>
+</tr>
+<tr>
+<td><strong>Latency</strong></td>
+<td>Sub-microsecond</td>
+<td>Microsecond level (slightly higher)</td>
+</tr>
+<tr>
+<td><strong>Losslessness</strong></td>
+<td>Natively supported</td>
+<td>Needs PFC/ECN configuration</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>High (Dedicated Hardware)</td>
+<td>Low (Reuses Ethernet)</td>
+</tr>
+<tr>
+<td><strong>Suitable Scenario</strong></td>
+<td>Extreme latency-sensitive large clusters</td>
+<td>Cost-sensitive or existing Ethernet infrastructure</td>
+</tr>
+</tbody>
+</table>
+<p><strong>3. NVLink Switch</strong>
+NVLink Switch (e.g., NVSwitch in GB200 NVL72) connects GPUs across racks via copper cables, establishing a 72-GPU full-mesh cluster with inter-machine bandwidth and latency close to intra-machine NVLink levels. It doesn't fundamentally alter the existing parallel strategies, but its ultra-high bandwidth shifts many engineering trade-offs—for example, allowing larger cross-machine TP configurations, which significantly reduces the reliance on Pipeline Parallelism (PP) typically used to forcefully slice weights across nodes due to VRAM constraints.</p>
+<hr />
+<h3 id="section-3-parallel-modes-data-volumes-and-metric-impacts">Section 3: Parallel Modes, Data Volumes, and Metric Impacts<a class="headerlink" href="#section-3-parallel-modes-data-volumes-and-metric-impacts" title="Permanent link">&para;</a></h3>
+<p><strong>Quantitative Distributed Inference Metrics:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Mode</th>
+<th style="text-align: left;">Frequency &amp; Scope</th>
+<th style="text-align: left;">Single Transfer</th>
+<th style="text-align: left;">Total Event Volume</th>
+<th style="text-align: left;">Metrics Impacted</th>
+<th style="text-align: left;">Required Network</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Tensor Parallelism (TP)</strong></td>
+<td style="text-align: left;"><strong>Step-Level (High Frequency)</strong>: <span class="arithmatex">\(2 \times L\)</span> events / step</td>
+<td style="text-align: left;"><span class="arithmatex">\(O(N \cdot d)\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot N \cdot d)\)</span></td>
+<td style="text-align: left;"><strong>TBT, TTFT</strong></td>
+<td style="text-align: left;">Intra-Node NVLink</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Pipeline Parallelism (PP)</strong></td>
+<td style="text-align: left;"><strong>Step-Level (Low Frequency)</strong>: <span class="arithmatex">\(P - 1\)</span> events / step</td>
+<td style="text-align: left;"><span class="arithmatex">\(O(N \cdot d)\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(P \cdot N \cdot d)\)</span></td>
+<td style="text-align: left;"><strong>Throughput, TTFT</strong></td>
+<td style="text-align: left;">Cross-Node IB / RoCE</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Context Parallelism (CP)</strong></td>
+<td style="text-align: left;"><strong>Request-Level (Single Pulse)</strong>: <span class="arithmatex">\((M-1) \times L\)</span> events / req</td>
+<td style="text-align: left;"><span class="arithmatex">\(O(\frac{N}{M} \cdot d)\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot N \cdot d)\)</span></td>
+<td style="text-align: left;"><strong>TTFT</strong></td>
+<td style="text-align: left;">Intra-Node NVLink / Cross-Node</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Expert Parallelism (EP)</strong></td>
+<td style="text-align: left;"><strong>Step-Level (High Frequency)</strong>: <span class="arithmatex">\(2 \times L_{\text{MoE}}\)</span> events / step</td>
+<td style="text-align: left;"><span class="arithmatex">\(O(\frac{K \cdot N}{M} \cdot d)\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L_{\text{MoE}} \cdot K \cdot N \cdot d)\)</span></td>
+<td style="text-align: left;"><strong>TBT, Throughput</strong></td>
+<td style="text-align: left;">Cross-Node IB / RoCE</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Disaggregated Serving</strong></td>
+<td style="text-align: left;"><strong>Request-Level (Single Pulse)</strong>: 1 event / req</td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot N \cdot d)\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot N \cdot d)\)</span></td>
+<td style="text-align: left;"><strong>User-Facing TTFT</strong></td>
+<td style="text-align: left;">Cross-Node IB / RoCE</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!NOTE]
+<strong>Parameters</strong>: <span class="arithmatex">\(L\)</span>: Total layers; <span class="arithmatex">\(L_{\text{MoE}}\)</span>: MoE layers; <span class="arithmatex">\(K\)</span>: Active experts per token; <span class="arithmatex">\(N\)</span>: Sequence length; <span class="arithmatex">\(d\)</span>: Hidden dimension; <span class="arithmatex">\(P\)</span>: Pipeline stages (<span class="arithmatex">\(P \le L\)</span>); <span class="arithmatex">\(M\)</span>: Parallel machine count.</p>
+</blockquote>
+<p><strong>Dimensional Difference (Core Insight):</strong></p>
+<ul>
+<li><strong>Distinguish Time Scale</strong>: TP, PP, and EP are <strong>normalized (step-level)</strong>, bound to forward propagation cycles. Conversely, CP and Disaggregated Serving are <strong>eventized (request-level)</strong>, shielding continuous token generation from network bottlenecks.</li>
+<li><strong>Mathematical Reality of Communication Volume</strong>: The <span class="arithmatex">\(K : 1\)</span> ratio between EP and TP data volumes applies exclusively to "Intra-Node NVLink TP". Slicing via Cross-Host TP amplifies All-Reduce volumes <span class="arithmatex">\(M\)</span> times, exposing EP's <span class="arithmatex">\(K / M\)</span> advantage.</li>
+<li><strong>Compute-Communication Overlap Capability</strong>: <strong>Tensor Parallelism (TP)</strong> is the only pattern that halts computation for synchronous communication. PP, CP, EP, and Disaggregated Serving hide communication latencies within compute times via pipelining, asynchronous shunting, or event-driven direct pushes.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">Share:</span>
+  <a href="https://twitter.com/intent/tweet?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part4_distributed/&text=Part%204%3A%20Distributed"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part4_distributed/"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
+
+
+  <h2 id="__comments">Comments & Likes</h2>
+  <script src="https://giscus.app/client.js"
+          data-repo="Random-Liu/llm-inference-principle-to-production"
+          data-repo-id="R_kgDOSGfGjQ"
+          data-category="General"
+          data-category-id="DIC_kwDOSGfGjc4C8I81"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          crossorigin="anonymous"
+          async>
+  </script>
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Random-Liu" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/liu-lantao-96a97351/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

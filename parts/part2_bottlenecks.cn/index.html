@@ -1,0 +1,1698 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://random-liu.github.io/llm-inference-principle-to-production/parts/part2_bottlenecks.cn/">
+      
+      
+        <link rel="prev" href="../part1_principles.cn/">
+      
+      
+        <link rel="next" href="../part3_single_node.cn/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>第二部分：瓶颈篇 - LLM 从原理到生产级推理 (LLM Inference from Principles to Production)</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#llm" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-header__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              第二部分：瓶颈篇
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到浅色模式"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="切换到浅色模式" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="blue" data-md-color-accent="light-blue"  aria-label="切换到深色模式"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="切换到深色模式" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://random-liu.github.io/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  返回主页 (Home)
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  English
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../index.cn/" class="md-tabs__link">
+          
+  
+  
+  中文版
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" class="md-nav__button md-logo" aria-label="LLM 从原理到生产级推理 (LLM Inference from Principles to Production)" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    LLM 从原理到生产级推理 (LLM Inference from Principles to Production)
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://random-liu.github.io/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    返回主页 (Home)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    English
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    English
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Preface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 1: Principles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part2_bottlenecks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 2: Bottlenecks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 3: Single-Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 4: Distributed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Part 5: Orchestration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    中文版
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    中文版
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../index.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    前言
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part1_principles.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第一部分：原理篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第二部分：瓶颈篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四章：大模型推理核心指标解析
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#llm_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五章：从零开始：最朴素的 LLM 推理是如何运作的？
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五章：从零开始：最朴素的 LLM 推理是如何运作的？">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：无优化推理流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：瓶颈剖析：计算复杂度爆炸
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：引出优化：我们能否“记住”过去的计算？
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kv-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六章：KV Cache 机制与巨量显存占用
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六章：KV Cache 机制与巨量显存占用">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#k-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：空间换时间：缓存 K 和 V
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#k-v_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：为什么只有 K 和 V？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：巨量显存占用：TB 级的数学题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七章：最大化 GPU 利用率：批处理的演进
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七章：最大化 GPU 利用率：批处理的演进">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：计算密集 vs 内存密集
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：批处理矩阵乘法（BMM）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：填充问题：“静态批处理”的缺陷
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prefill-decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八章：核心不对称性：Prefill 与 Decode
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第八章：核心不对称性：Prefill 与 Decode">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prefill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：Prefill 阶段 —— 计算密集型任务
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：Decode 阶段 —— 内存带宽密集型任务
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：数据视角下的“不对称性”
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part3_single_node.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第三部分：单机篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part4_distributed.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第四部分：分布式篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../part5_k8s.cn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    第五部分：编排篇
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第四章：大模型推理核心指标解析
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#llm_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第五章：从零开始：最朴素的 LLM 推理是如何运作的？
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第五章：从零开始：最朴素的 LLM 推理是如何运作的？">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：无优化推理流程
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：瓶颈剖析：计算复杂度爆炸
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：引出优化：我们能否“记住”过去的计算？
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kv-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第六章：KV Cache 机制与巨量显存占用
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第六章：KV Cache 机制与巨量显存占用">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#k-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：空间换时间：缓存 K 和 V
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#k-v_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：为什么只有 K 和 V？
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：巨量显存占用：TB 级的数学题
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第七章：最大化 GPU 利用率：批处理的演进
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第七章：最大化 GPU 利用率：批处理的演进">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：计算密集 vs 内存密集
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bmm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：批处理矩阵乘法（BMM）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：填充问题：“静态批处理”的缺陷
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prefill-decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第八章：核心不对称性：Prefill 与 Decode
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="第八章：核心不对称性：Prefill 与 Decode">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prefill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第一节：Prefill 阶段 —— 计算密集型任务
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第二节：Decode 阶段 —— 内存带宽密集型任务
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        第三节：数据视角下的“不对称性”
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="llm">第二部分：瓶颈篇 —— 为什么 LLM 推理如此困难<a class="headerlink" href="#llm" title="Permanent link">&para;</a></h1>
+<p>这一部分解释了工程师在将 LLM投入生产时所遭遇的物理和数学“撞墙”期。</p>
+<h2 id="_1">第四章：大模型推理核心指标解析<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h2>
+<p>在探讨大模型推理的各种优化技术之前，我们必须先建立一套衡量的标准。大模型“一个字一个字往外蹦”的自回归特性，决定了它不能简单地用传统 Web 服务的“响应时间”来评估。本章将介绍大模型推理中最核心的几个性能指标。</p>
+<ul>
+<li><strong>TTFT（Time to First Token，首字延迟）</strong>：从用户发送请求到模型吐出<strong>第一个字</strong>的耗时。它对应的是 <strong>Prefill 阶段</strong>，决定了系统是否“跟手”。</li>
+<li><strong>TBT（Time Between Tokens，吐字间隔）</strong>：相邻两个 Token 之间的生成耗时。它对应的是 <strong>Decode 阶段</strong>，决定了流式输出的流畅度。</li>
+<li><strong>TPS（Tokens Per Second，生成速率）</strong>：每秒钟模型能吐出多少个 Token，与 TBT 互为倒数（ <span class="arithmatex">\(TPS = 1 / TBT\)</span> ），用于直观衡量生成速度。</li>
+<li><strong>Latency（总延迟）</strong>：完成整个请求的总耗时。计算公式为 <span class="arithmatex">\(Latency = TTFT + (生成Token数 - 1) \times TBT\)</span> 。</li>
+<li><strong>Throughput（吞吐量）</strong>：系统每秒钟总共能处理多少 Token 或请求。这是衡量服务器并发能力和成本（TCO）的核心指标。</li>
+</ul>
+<hr />
+<h2 id="llm_1">第五章：从零开始：最朴素的 LLM 推理是如何运作的？<a class="headerlink" href="#llm_1" title="Permanent link">&para;</a></h2>
+<p>在讨论先进的优化技术之前，我们必须先分析最基础的 LLM 推理模式。理解了基础的推理方式，我们才能准确把握大模型推理的严峻瓶颈。</p>
+<h3 id="_2">第一节：无优化推理流程<a class="headerlink" href="#_2" title="Permanent link">&para;</a></h3>
+<p>假设我们要让模型基于提示词（Prompt）“大模型是”生成后续的文本。在没有任何优化的情况下，生成第 1 个词到第 3 个词的过程如下：</p>
+<ol>
+<li><strong>生成第 1 个词</strong>：<ul>
+<li><strong>输入</strong>：["大", "模型", "是"]</li>
+<li><strong>处理</strong>：整个句子穿过 80 层 Transformer 大楼。</li>
+<li><strong>输出</strong>：预测出下一个词是“未”。此时我们得到了 ["大", "模型", "是", "未"]。</li>
+</ul>
+</li>
+<li><strong>生成第 2 个词</strong>：<ul>
+<li><strong>输入</strong>：["大", "模型", "是", "未"]</li>
+<li><strong>处理</strong>：<strong>把这 4 个字重新从第 1 层楼喂进去</strong>，重新走一遍 80 层楼。</li>
+<li><strong>输出</strong>：预测出下一个词是“来”。此时得到 ["大", "模型", "是", "未", "来"]。</li>
+</ul>
+</li>
+<li><strong>生成第 3 个词</strong>：<ul>
+<li><strong>输入</strong>：["大", "模型", "是", "未", "来"]</li>
+<li><strong>处理</strong>：<strong>再次把这 5 个字重新从第 1 层楼喂进去</strong>，再走一遍 80 层楼。</li>
+<li><strong>输出</strong>：预测出下一个词是“。”。</li>
+</ul>
+</li>
+</ol>
+<h3 id="_3">第二节：瓶颈剖析：计算复杂度爆炸<a class="headerlink" href="#_3" title="Permanent link">&para;</a></h3>
+<p>这种按部就班的推理方式在学术上被称为 <strong>Naive Inference（朴素推理）</strong> 。我们以一个具体的步骤为例来剖析其本质：假设当前句子长度为 <span class="arithmatex">\(N\)</span> ，模型隐藏层维度为 <span class="arithmatex">\(d\)</span> （即每个词向量的特征维度，代表模型理解词语的精细程度），层数为 <span class="arithmatex">\(L\)</span> 。在 Naive 模式下，为了生成下一个词而进行的 <strong>单轮</strong> 计算中，它在计算、存储和并行度上有着截然不同的表现：</p>
+<ol>
+<li>
+<p><strong>计算复杂度（Compute Complexity）</strong> ：单轮时间复杂度为 <span class="arithmatex">\(O(L \cdot (N \cdot d^2 + N^2 \cdot d))\)</span></p>
+<ul>
+<li><strong>线性层计算</strong> ： <span class="arithmatex">\(O(N \cdot d^2)\)</span> （注：每一层都要计算，总共 <span class="arithmatex">\(L\)</span> 层）。我们需要对所有 <span class="arithmatex">\(N\)</span> 个词进行 QKV 投影、FFN 映射等矩阵乘法。</li>
+<li><strong>注意力计算</strong> ： <span class="arithmatex">\(O(N^2 \cdot d)\)</span> （注：每一层都要计算，总共 <span class="arithmatex">\(L\)</span> 层）。所有 <span class="arithmatex">\(N\)</span> 个词，每一个词的Query都要与它前面词的Key算点乘积。所以是 <span class="arithmatex">\(N \times N\)</span> 的矩阵相乘。</li>
+</ul>
+</li>
+<li>
+<p><strong>存储复杂度（Storage Complexity）</strong> ：单轮空间复杂度为 <span class="arithmatex">\(O(L \cdot d^2) + O(N \cdot d + N^2)\)</span></p>
+<ul>
+<li><strong>静态权重</strong> ： <span class="arithmatex">\(O(L \cdot d^2)\)</span> 。模型的参数矩阵必须常驻显存，与输入长度无关。</li>
+<li><strong>动态激活值</strong> ： <span class="arithmatex">\(O(N \cdot d + N^2)\)</span> 。为了算这一轮而临时开辟的内存（计算完即释放）。</li>
+</ul>
+</li>
+<li>
+<p><strong>并行化能力（Parallelization）</strong> ：</p>
+<ul>
+<li><strong>Prefill 阶段</strong> ：因为输入的 Prompt 是完整的，所有词的计算都可以 <strong>高度并行化</strong> 执行，充分利用 GPU 的多核算力。</li>
+<li><strong>Decode 阶段</strong> ：由于自回归的特性，当前词必须依赖前一个词的输出，因此步骤之间是 <strong>绝对串行</strong> 的，无法跨时间步并行化。此外，Naive Inference 每一轮串行都要重新并行算一遍历史词，造成了极大的算力闲置和浪费。</li>
+</ul>
+</li>
+</ol>
+<p><strong>真实案例推演：以 Llama 3 (405B) 为例</strong></p>
+<p>为了具体量化 Naive 模式的严重影响，我们用目前最顶级的开源大模型 <strong>Llama 3 (405B)</strong> 来做一次真实场景的近似计算。</p>
+<ul>
+<li><strong>模型参数</strong> ：隐藏层维度 <span class="arithmatex">\(d = 16384\)</span> ，层数 <span class="arithmatex">\(L = 126\)</span> 。</li>
+<li><strong>场景设定</strong> ：当前句子长度为 <span class="arithmatex">\(N = 1000\)</span> （比如输入了 1000 字的提示词），我们准备生成下一个词。</li>
+<li><strong>单轮计算量</strong> ：根据公式，这一轮的线性层计算量大约为 <span class="arithmatex">\(2 \times L \times (11 \times N \times d^2)\)</span> （注：系数 11 源于 Attention 的 4 个线性层与 SwiGLU FFN 的 3 个线性层折算系数。不同模型由于设计不同，该系数通常在 10~12 之间，此处取 11 作近似；乘以 2 是因为每次乘加操作计为 2 次浮点运算）。带入数字： <span class="arithmatex">\(2 \times 126 \times 11 \times 1000 \times (16384^2) \approx 744\)</span> 万亿次浮点运算（TFLOPs）。</li>
+<li><strong>预计耗时</strong> ：假设我们使用目前主流的顶级 AI 显卡 <strong>NVIDIA H100</strong>，其半精度（FP16）的理论峰值算力约为每秒 1000 万亿次（1 PFLOPS）。在理想状态下（算力利用率 100%），仅仅算这 <strong>1 个词</strong> 的纯计算耗时就高达： <span class="arithmatex">\(744 \div 1000 \approx 0.74\)</span> 秒。</li>
+</ul>
+<p>这意味着，在 Naive 模式下，哪怕用最顶级的显卡，模型每秒也只能生成一两个字，随着上下文变长还会更慢。因为在长文本场景下，Attention 的 <span class="arithmatex">\(N^2\)</span> 复杂度会占据绝对的主导地位。这意味着我们绝对不能每生成一个词，就把前面所有的词都重新计算一遍。如果我们将上下文长度 <span class="arithmatex">\(N\)</span> 推到如今模型动辄支持的 <strong>100 万</strong>，为了生成第 100 万零 1 个词，计算量将急剧增加，<strong>生成单个词的耗时将达到约 2.5 小时</strong>。这种速度在生产环境中是完全不可接受的。</p>
+<h3 id="_4">第三节：引出优化：我们能否“记住”过去的计算？<a class="headerlink" href="#_4" title="Permanent link">&para;</a></h3>
+<p>这种低效的运作方式使得大模型推理在实际应用中变得不可行——它根本无法支持长文本的生成，也无法承受高并发的压力。</p>
+<p>系统工程师们开始思考：既然前面的词已经算过了，我们能不能把它们的计算结果“缓存”起来，每次只计算新加入的那个词？
+这个朴素的思想，直接催生了大模型推理史上最重要的基石技术——<strong>KV Cache</strong>。</p>
+<hr />
+<h2 id="kv-cache">第六章：KV Cache 机制与巨量显存占用<a class="headerlink" href="#kv-cache" title="Permanent link">&para;</a></h2>
+<p>为了打破 <span class="arithmatex">\(O(N^2)\)</span> 的计算死循环，KV Cache 应运而生。它用空间换时间，大幅优化了大模型推理的效率。</p>
+<h3 id="k-v">第一节：空间换时间：缓存 K 和 V<a class="headerlink" href="#k-v" title="Permanent link">&para;</a></h3>
+<p>回到我们在第一章讨论的 Attention 公式： <span class="arithmatex">\(\text{Attention}(Q, K, V) = \text{softmax}(\frac{Q K^T}{\sqrt{d_k}})V\)</span> 。</p>
+<p>工程师们惊奇地发现：</p>
+<ul>
+<li>当生成新词时，新词的 <strong>Query (Q)</strong> 必须由新词自己产生，因为这是当前的意图。</li>
+<li>但是，前文中所有词的 <strong>Key (K)</strong> 和 <strong>Value (V)</strong> 在生成出来之后，<strong>就再也不会改变了</strong>！</li>
+</ul>
+<p>既然 K 和 V 是固定不变的“固定资产”，我们为什么不在第一轮算完它们之后，把它们存在显存里呢？
+这就是 <strong>KV Cache（键值缓存）</strong> 。在后续的推理中，GPU 只需要为新进来的那<strong>一个</strong> Token 计算 Q、K、V，然后把新计算出的 K 和 V 拼接到缓存中，再去和缓存里所有的 K 和 V 做注意力计算即可。
+计算复杂度直接从 <span class="arithmatex">\(O(N^2)\)</span> 降到了 <span class="arithmatex">\(O(N)\)</span> 。</p>
+<h3 id="k-v_1">第二节：为什么只有 K 和 V？<a class="headerlink" href="#k-v_1" title="Permanent link">&para;</a></h3>
+<p>这是一个经常被问到的 Aha Moment：<strong>为什么我们不缓存 Q 呢？</strong></p>
+<p>因为 Q 代表的是“寻找的意图”，它是消耗品。</p>
+<ul>
+<li>当模型预测第 4 个词时，我们需要用第 4 个词的 Q 去看前 3 个词。</li>
+<li>当模型预测第 5 个词时，我们需要用第 5 个词的 Q 去看前 4 个词。
+第 4 个词的 Q 在第 4 步用完就作废了，它对第 5 步的预测毫无帮助。因此，<strong>Q 不需要缓存，只需要缓存承载特征的 K 和 V</strong>。</li>
+</ul>
+<h3 id="tb">第三节：巨量显存占用：TB 级的数学题<a class="headerlink" href="#tb" title="Permanent link">&para;</a></h3>
+<p>为了更直观地看清 KV Cache 带来的改变，我们先来对比一下在生成第 N 个词时，<strong>无优化模式 (Naive)</strong> 与 <strong>有 KV Cache 模式</strong> 在计算和存储复杂度上的差异（假设模型层数为 L，维度为 d）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">维度</th>
+<th style="text-align: left;">无优化模式 (Naive)</th>
+<th style="text-align: left;">有 KV Cache 模式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>计算复杂度</strong></td>
+<td style="text-align: left;"><code>O(L * (N * d^2 + N^2 * d))</code></td>
+<td style="text-align: left;"><code>O(L * (d^2 + N * d))</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>状态存储复杂度</strong></td>
+<td style="text-align: left;"><code>O(L * d^2)</code> (仅模型权重)</td>
+<td style="text-align: left;"><code>O(L * d^2 + L * N * d)</code> (权重 + 缓存)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>核心差异剖析</strong>：</p>
+<ol>
+<li><strong>计算复杂度的大幅降低</strong>：KV Cache 把每次生成新词的线性层计算量从 <code>O(N)</code> 降到了 <code>O(1)</code>（只算当前一个新词），注意力计算量从 <code>O(N^2)</code> 降到了 <code>O(N)</code>。</li>
+<li><strong>显存空间换时间</strong>：天下没有免费的午餐。计算量虽然暴降，但代价是显存占用从几乎不随 N 增长，变成了随 N 线性增长（<code>O(L * N * d)</code>）。</li>
+<li><strong>关于动态激活值</strong>：表中的存储复杂度忽略了计算过程中产生的<strong>动态激活值（Activations）</strong>。因为激活值是瞬时的（Ephemeral），在单次前向传播结束后就会被释放，不会像 KV Cache 那样随着生成长度 N 的增加而在显存中持续累积，因此在分析长期静态存储瓶颈时通常忽略不计。</li>
+</ol>
+<p>这就是为什么 KV Cache 虽然降低了计算量，却带来了巨大的显存占用。</p>
+<p>因为大模型不仅层数深（比如 126 层），而且每个词的 K 和 V 向量维度都很大。这意味着你必须为<strong>每一个用户的每一个 Token，在每一层楼里都存一份 K 和 V</strong>。</p>
+<p>我们来算一笔账：假设使用我们之前提到的 <strong>Llama 3 (405B)</strong> 模型（层数 126，隐藏层维度为 16384），在不考虑任何优化（即标准 MHA 模式）的情况下，上下文窗口为 100 万 Token：</p>
+<ul>
+<li><strong>每个 Token 的大小</strong>：在每一层，K 和 V 向量维度均为 16384，每个元素占 2 字节（FP16），即 <code>16384 * 2 * 2 = 64 KB</code>。穿过 126 层，每个 Token 总共需要 <code>64 KB * 126 = 8064 KB</code>（约 8 MB）的缓存。</li>
+<li><strong>总大小</strong>：<code>8064 KB * 1,000,000 \approx 8.26 TB</code>。仅仅这<strong>一个请求</strong>的 KV Cache 就会消耗高达 <strong>8 TB 以上</strong> 的显存。</li>
+</ul>
+<p>这直接将大模型推理从“计算密集型”（算力不够）推向了“内存密集型”（显存不够）。</p>
+<p>这种任由显存随上下文线性增长的“原始”KV Cache 机制显然是不可持续的。为了解决巨大的显存占用问题，业界后来发明了 <strong>GQA（分组查询注意力）</strong> 、 <strong>PagedAttention（分页注意力）</strong> 以及 <strong>RadixAttention</strong> 等技术，我们将在后续章节为你逐一解析。</p>
+<hr />
+<h2 id="gpu">第七章：最大化 GPU 利用率：批处理的演进<a class="headerlink" href="#gpu" title="Permanent link">&para;</a></h2>
+<p>解决了单用户推理的算力瓶颈（通过 KV Cache）后，工程师们面临的主要挑战是：<strong>如何同时服务成千上万的用户？</strong></p>
+<h3 id="vs">第一节：计算密集 vs 内存密集<a class="headerlink" href="#vs" title="Permanent link">&para;</a></h3>
+<p>你可能会认为，GPU 最怕的是计算量太大。但对于大模型推理而言，很多时候真正的瓶颈其实是<strong>显存带宽</strong>。</p>
+<p>大模型的权重矩阵（几百 GB）以及随着上下文增长的 KV Cache 都存储在 GPU 的显存（VRAM）中，而计算发生在线程核心（SMC）中。</p>
+<ul>
+<li><strong>如果一次只处理一个用户</strong>：每生成一个 Token，GPU 不仅要把整栋大楼的几百 GB 权重参数从显存搬进核心，还要把历史累积的 KV Cache 也一起搬进去！算完这一个 Token 后，这些数据在核心中就被释放。下一轮循环，再重新全部搬一遍！</li>
+<li>这种情况下，数据搬运量极大，严重卡住了显存带宽，GPU 的计算核心绝大多数时间都在<strong>闲置等数据</strong>。算力被极大地浪费了。</li>
+</ul>
+<h3 id="bmm">第二节：批处理矩阵乘法（BMM）<a class="headerlink" href="#bmm" title="Permanent link">&para;</a></h3>
+<p>为了不让 GPU 的算力闲置，最直接的办法就是<strong>批处理（Batching）</strong>。</p>
+<p>既然搬运一次模型权重的开销如此巨大，那我们就一次性多处理几个用户的请求！
+通过<strong>批处理矩阵乘法（BMM）</strong>，我们把 <span class="arithmatex">\(N\)</span> 个用户的输入向量堆叠成一个 3D 张量。GPU 只需要搬运一次权重矩阵，就可以同时为这 <span class="arithmatex">\(N\)</span> 个用户进行计算。吞吐量成倍提升。</p>
+<blockquote>
+<p>[!NOTE]
+虽然 N 个用户共享同一套模型权重（只需搬运一次），但每个用户的 KV Cache 是完全独立的私有数据。在计算 Attention 时，GPU 必须把这 N 个用户各自的 KV Cache 分别从显存中搬进计算核心，这会导致 KV Cache 的搬运量随着 Batch Size 线性增长。</p>
+</blockquote>
+<h3 id="_5">第三节：填充问题：“静态批处理”的缺陷<a class="headerlink" href="#_5" title="Permanent link">&para;</a></h3>
+<p>然而，传统的 <strong>静态批处理（Static Batching）</strong> 要求一个批次中的所有请求必须同时开始和结束。由于用户的输入和输出长度各不相同，为了凑齐批次，系统必须对短请求填充大量的无效 Token（Padding）。这不仅浪费了宝贵的计算资源，还导致短请求被迫等待长请求，引发了木桶效应。</p>
+<h2 id="prefill-decode">第八章：核心不对称性：Prefill 与 Decode<a class="headerlink" href="#prefill-decode" title="Permanent link">&para;</a></h2>
+<h3 id="prefill">第一节：Prefill 阶段 —— 计算密集型任务<a class="headerlink" href="#prefill" title="Permanent link">&para;</a></h3>
+<p><strong>1. 物理过程与计算复杂度</strong></p>
+<p>在这一阶段，模型一次性接收用户输入的 <strong><span class="arithmatex">\(N\)</span></strong> 个 Token 作为输入。</p>
+<ul>
+<li><strong>线性层计算</strong>：这 <span class="arithmatex">\(N\)</span> 个 Token 的向量与模型权重矩阵相乘。这在数学上是标准的<strong>矩阵-矩阵乘法（GEMM）</strong>，计算量与 Token 数 <span class="arithmatex">\(N\)</span> 成正比，复杂度为 <span class="arithmatex">\(O(L \cdot N \cdot d^2)\)</span> 。</li>
+<li><strong>注意力计算</strong>：由于 Decoder-Only 架构的因果掩码（Causal Mask）限制，<strong>每个词只能与它前面的词</strong>计算注意力，生成一个下三角的 <span class="arithmatex">\(N \times N\)</span> 注意力分数矩阵。计算量与 Token 数的平方成正比，复杂度为 <span class="arithmatex">\(O(L \cdot N^2 \cdot d)\)</span> 。</li>
+<li><strong>单轮计算复杂度</strong>：两者相加，总复杂度为 <span class="arithmatex">\(O(L \cdot (N \cdot d^2 + N^2 \cdot d))\)</span> 。其中 <span class="arithmatex">\(L\)</span> 为模型层数， <span class="arithmatex">\(d\)</span> 为隐藏层维度。可以看出，当输入长度 <span class="arithmatex">\(N\)</span> 极大时，注意力计算的二次方复杂度会迅速上升。</li>
+</ul>
+<p><strong>2. 为什么它是“计算密集型”（Compute-Bound）？</strong>
+这里涉及到一个核心概念：<strong>计算强度（Arithmetic Intensity）</strong>，即“每从显存读取一个字节的数据，GPU 能进行多少次浮点运算”。</p>
+<p>我们可以计算一下 Prefill 阶段的完整计算强度（包含线性层、Attention 以及 KV Cache 的显存写入）：</p>
+<div class="arithmatex">\[\text{总计算强度} = \frac{\text{线性层计算量} + \text{Attention 计算量}}{\text{模型权重大小} + \text{KV Cache 写入量}}\]</div>
+<p>我们以 <strong><span class="arithmatex">\(N = 100,000\)</span></strong> （十万上下文）的 Llama 3 405B 为例进行估算：</p>
+<ol>
+<li><strong>总计算量</strong>：</li>
+<li><strong>线性层</strong>： <span class="arithmatex">\(2 \times N \times P = 2 \times 10^5 \times 405 \times 10^9 = 8.1 \times 10^{16}\)</span> FLOPs。</li>
+<li><strong>Attention</strong>： <span class="arithmatex">\(4 \times L \times N^2 \times d = 4 \times 126 \times (10^5)^2 \times 16384 \approx 8.26 \times 10^{16}\)</span> FLOPs。</li>
+<li><strong>合计</strong>：约 <strong><span class="arithmatex">\(1.64 \times 10^{17}\)</span> FLOPs</strong>（此时 Attention 计算量已与线性层相当）。</li>
+<li><strong>总显存流量</strong>：</li>
+<li><strong>读取权重</strong>：<strong><span class="arithmatex">\(810\)</span> GB</strong>（FP16 格式下 405B 模型权重）。</li>
+<li><strong>写入 KV Cache</strong>：约 <strong><span class="arithmatex">\(51.6\)</span> GB</strong>。</li>
+<li><strong>合计</strong>：约 <strong><span class="arithmatex">\(861.6\)</span> GB</strong>。</li>
+</ol>
+<p>最终的<strong>总计算强度</strong>为：
+$<span class="arithmatex">\(\frac{1.64 \times 10^{17} \text{ FLOPs}}{861.6 \times 10^9 \text{ Bytes}} \approx \mathbf{190,000} \text{ FLOPs/Byte}\)</span>$</p>
+<p>这意味着，每从显存读取一个字节的数据，GPU 需要进行约 19 万次浮点运算。而现代顶级 GPU（如 H100）的“算力/带宽”平衡点（拐点）通常在几百 FLOPs/Byte 左右（例如 H100 SXM 在 FP16 下的算力约为 1000 TFLOPS，带宽约 3.3 TB/s，拐点约 <span class="arithmatex">\(300\)</span> FLOPs/Byte）。</p>
+<p>由于 <span class="arithmatex">\(190,000\)</span> 远超拐点 <span class="arithmatex">\(300\)</span> ，GPU 必然处于<strong>算力受限（Compute-Bound）</strong>状态。加载进来的这批权重被这十万个 Token 充分共享复用，GPU 的数千个计算核心（ALU）会被塞满并高速运转。此时，限制推理速度的瓶颈是 GPU 的<strong>理论算力峰值（TFLOPS）</strong>，而不是显存带宽。</p>
+<hr />
+<h3 id="decode">第二节：Decode 阶段 —— 内存带宽密集型任务<a class="headerlink" href="#decode" title="Permanent link">&para;</a></h3>
+<p>当 Prefill 吐出第一个词后，推理模式发生转变。模型进入自回归的 Decode 阶段，开始逐字生成文本。</p>
+<p><strong>1. 物理过程与计算复杂度</strong>
+在这一阶段的每一步，模型都只接收<strong>上一步生成的 1 个新 Token</strong> 作为输入。</p>
+<ul>
+<li><strong>线性层计算</strong>：这 1 个 Token 的向量与模型权重矩阵相乘。这在数学上退化为了<strong>矩阵-向量乘法（GEMV）</strong>。</li>
+<li><strong>注意力计算</strong>：这个新 Token 的 Query 向量，要去和 KV Cache 中缓存的过去所有 <span class="arithmatex">\(N\)</span> 个词的 Key 向量做点积。</li>
+<li><strong>计算复杂度</strong>： <span class="arithmatex">\(O(L \cdot (d^2 + N \cdot d))\)</span> 。随着上下文长度 <span class="arithmatex">\(N\)</span> 的增长，注意力计算的占比会逐渐增加。</li>
+</ul>
+<p><strong>2. 为什么它是“内存带宽密集型”（Memory-Bound）？</strong>
+这是大模型推理中经典的“内存墙”问题。
+为了生成这<strong>仅仅 1 个词</strong>，GPU 必须执行一个看似低效的操作：<strong>它必须把常驻在显存里的、高达几百 GB 的完整模型权重，以及随着对话不断增长的 KV Cache，全部从显存（VRAM）搬运到计算核心（SRAM）中进行计算！</strong></p>
+<ul>
+<li><strong>计算量极小</strong>：因为输入只有 1 个 Token，矩阵-向量乘法的计算量非常微薄，GPU 的绝大多数核心都在闲置。</li>
+<li><strong>搬运量极大</strong>：显存带宽（如 H100 的 HBM3 带宽约 3.3 TB/s）达到极限。
+我们可以计算一下 Decode 阶段<strong>生成单个 Token</strong> 的单步计算强度公式：</li>
+</ul>
+<div class="arithmatex">\[\text{单步计算强度} = \frac{\text{线性层计算量} + \text{Attention 计算量}}{\text{模型权重大小} + \text{KV Cache 读取量}}\]</div>
+<p>我们同样以 <strong><span class="arithmatex">\(N = 100,000\)</span></strong> （当前已累计十万字上下文）的 Llama 3 405B 为例进行估算：</p>
+<ol>
+<li><strong>单步计算量</strong>：</li>
+<li><strong>线性层</strong>： <span class="arithmatex">\(2 \times 1 \times P = 8.1 \times 10^{11}\)</span> FLOPs。</li>
+<li><strong>Attention</strong>： <span class="arithmatex">\(4 \times L \times 1 \times N \times d = 4 \times 126 \times 1 \times 10^5 \times 16384 \approx 8.25 \times 10^{11}\)</span> FLOPs。</li>
+<li><strong>合计</strong>：约 <strong><span class="arithmatex">\(1.635 \times 10^{12}\)</span> FLOPs</strong>。</li>
+<li><strong>单步显存流量</strong>：</li>
+<li><strong>读取权重</strong>：<strong><span class="arithmatex">\(810\)</span> GB</strong>（每一轮生成都必须完整读取一次权重！）。</li>
+<li><strong>读取 KV Cache</strong>：由于需要和过去十万个词做注意力，我们需要从显存中读取这十万个词的 KV Cache，大小约为 <strong><span class="arithmatex">\(51.6\)</span> GB</strong>。</li>
+<li><strong>合计</strong>：约 <strong><span class="arithmatex">\(861.6\)</span> GB</strong>。</li>
+</ol>
+<p>最终的<strong>单步计算强度</strong>为：
+$<span class="arithmatex">\(\frac{1.635 \times 10^{12} \text{ FLOPs}}{861.6 \times 10^9 \text{ Bytes}} \approx \mathbf{1.9} \text{ FLOPs/Byte}\)</span>$</p>
+<p>此时，计算强度（1.9）极低，远远低于硬件拐点（约 300）。限制推理速度的瓶颈不再是 GPU 能算多快，而是<strong>显存能以多快的速度把数据喂给核心</strong>。这就是为什么哪怕你换了算力更强的显卡，Decode 阶段的速度（每秒蹦出的字数）可能也提升有限，除非新显卡拥有更高的显存带宽。</p>
+<hr />
+<h3 id="_6">第三节：数据视角下的“不对称性”<a class="headerlink" href="#_6" title="Permanent link">&para;</a></h3>
+<p>为了让你对这种不对称性有更直观的量化认知，我们来看一组对比（假设上下文长度为 <span class="arithmatex">\(N\)</span> ，隐藏层维度为 <span class="arithmatex">\(d\)</span> ，层数为 <span class="arithmatex">\(L\)</span> ）：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">特性</th>
+<th style="text-align: left;">Prefill 阶段 (预填充)</th>
+<th style="text-align: left;">Decode 阶段 (单步解码)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>输入规模</strong></td>
+<td style="text-align: left;"><span class="arithmatex">\(N\)</span> 个 Token (大)</td>
+<td style="text-align: left;"><span class="arithmatex">\(1\)</span> 个 Token (极小)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>数学算子</strong></td>
+<td style="text-align: left;">矩阵-矩阵乘法 (GEMM)</td>
+<td style="text-align: left;">矩阵-向量乘法 (GEMV)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>计算复杂度</strong></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot (N \cdot d^2 + N^2 \cdot d))\)</span></td>
+<td style="text-align: left;"><span class="arithmatex">\(O(L \cdot (d^2 + N \cdot d))\)</span></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>显存访问</strong></td>
+<td style="text-align: left;">加载权重 + 写入 KV Cache</td>
+<td style="text-align: left;">加载权重 + 读取 KV Cache + 追加 KV Cache</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>硬件瓶颈</strong></td>
+<td style="text-align: left;"><strong>算力受限</strong> (Compute-Bound)</td>
+<td style="text-align: left;"><strong>带宽受限</strong> (Memory-Bound)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>GPU 利用率</strong></td>
+<td style="text-align: left;">极高 (适合榨干算力)</td>
+<td style="text-align: left;">极低 (算力被严重闲置)</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>
+<p><strong>工程上的核心矛盾</strong>
+这种不对称性直接导致了以下工程难题：</p>
+</li>
+<li>
+<p><strong>吞吐量与延迟的冲突</strong>：为了提高吞吐量，我们希望加大 Batch Size。这可以摊薄加载模型权重的显存带宽成本，提升计算强度和吞吐量；但对于 Decode 阶段，更大的 Batch Size 意味着要搬运更多用户的私有 KV Cache，这会直接拉长每个用户的吐字间隔（TBT，即延迟）。在极端情况下（如超长上下文），当 KV Cache 的大小逼近甚至超过模型权重时，加大 Batch Size 甚至无法再有效提升吞吐量。</p>
+</li>
+<li><strong>调度器的挑战</strong>：当一个新用户的 Prefill 请求（重度计算）到达，并被混合到正在进行 Decode（重度访存）的批处理队列中时，由于 Prefill 的计算耗时长，会导致同批次中正在进行 Decode 的用户遭遇严重的卡顿（Straggler Effect），破坏了流式输出的流畅性。</li>
+</ol>
+<p>这正是我们在本书第三部分将要看到的：vLLM 的 <strong>连续批处理（Continuous Batching）</strong> 和 <strong>分块预填充（Chunked Prefill）</strong> 想要解决的核心矛盾。</p>
+<p>在第二部分中，我们分析了大模型推理的两个核心挑战：由 KV Cache 引发的巨大显存占用，以及由 Prefill 和 Decode 机制差异导致的核心不对称性。这些物理和数学规律制约了大模型的并发能力和响应速度。</p>
+<p>面对这些挑战，工程师们提出了多种解决方案。在接下来的<strong>第三部分</strong>中，我们将深入探讨现代高性能推理引擎（如 vLLM 和 SGLang）的优化策略，看看它们是如何通过精妙的算法与架构设计，突破显存瓶颈并优化这种不对称性的。</p>
+<hr />
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<div class="social-share" style="margin-top: 40px; margin-bottom: 25px; display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--md-default-fg-color--lightest); padding-bottom: 15px;">
+  <span style="font-weight: bold; font-size: 0.95rem; color: var(--md-default-fg-color);">分享:</span>
+  <a href="https://twitter.com/intent/tweet?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part2_bottlenecks.cn/&text=%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86%EF%BC%9A%E7%93%B6%E9%A2%88%E7%AF%87"
+     target="_blank" title="Share on X (Twitter)" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#1DA1F2'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-x-twitter"></i>
+  </a>
+  <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A//random-liu.github.io/llm-inference-principle-to-production/parts/part2_bottlenecks.cn/"
+     target="_blank" title="Share on LinkedIn" style="font-size: 1.5rem; color: var(--md-default-fg-color); text-decoration: none; transition: color 0.3s;"
+     onmouseover="this.style.color='#0077B5'" onmouseout="this.style.color='var(--md-default-fg-color)'">
+    <i class="fa-brands fa-linkedin"></i>
+  </a>
+</div>
+
+
+  <h2 id="__comments">评论与点赞</h2>
+  <script src="https://giscus.app/client.js"
+          data-repo="Random-Liu/llm-inference-principle-to-production"
+          data-repo-id="R_kgDOSGfGjQ"
+          data-category="General"
+          data-category-id="DIC_kwDOSGfGjc4C8I81"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme"
+          data-lang="zh-CN"
+          crossorigin="anonymous"
+          async>
+  </script>
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/Random-Liu" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/liu-lantao-96a97351/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand", "toc.follow", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
